@@ -218,6 +218,7 @@ td{padding:8px 10px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
     </div>
     <div class="topbar-right">
       <span class="src-tag" id="src-tag">No file loaded</span>
+      <button onclick="resetDatabaseToSeed()" style="background:var(--red-l);color:var(--red);border:1px solid rgba(138,28,28,.2);border-radius:var(--r);font-size:11px;padding:6px 10px;font-family:var(--mono);cursor:pointer;font-weight:500;height:30px;transition:all .15s;margin-right:4px;">↺ Reset Data</button>
       <button class="upload-btn" onclick="document.getElementById('fileInput').click()">↑ Load .xlsx</button>
     </div>
   </div>
@@ -362,11 +363,54 @@ td{padding:8px 10px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
               <th style="width:50px">Gender</th>
               <th style="width:60px">Born</th>
               <th>Club</th>
-              <th style="width:80px; text-align:center">Nett Score</th>
+              <th style="width:100px; text-align:center">Rank in Reg.</th>
+              <th style="width:100px; text-align:center">Points</th>
             </tr>
           </thead>
           <tbody id="specific-regatta-body"></tbody>
         </table>
+      </div>
+    </div>
+    <!-- Sailor Edit Modal -->
+    <div id="sailorModal" class="drop-overlay" style="background:rgba(0,0,0,.6); align-items:center; justify-content:center; display:none; position:fixed; inset:0; z-index:200;">
+      <div class="card" style="width:450px; max-width:90%; background:var(--card); border:1px solid var(--border); box-shadow:0 10px 30px rgba(0,0,0,.3); display:flex; flex-direction:column; padding:24px; border-radius:12px; position:relative;">
+        <button onclick="closeSailorModal()" style="position:absolute; top:16px; right:16px; background:none; border:none; color:var(--text3); font-size:16px; cursor:pointer;" aria-label="Close modal">✕</button>
+        <div class="card-title" style="font-size:16px; margin-bottom:16px; font-family:var(--mono);" id="sm-title">Edit Sailor Profile</div>
+        
+        <div style="display:flex; flex-direction:column; gap:12px; margin-bottom:20px;">
+          <input type="hidden" id="sm-orig-name">
+          <div class="fl">
+            <label class="fl-lbl" for="sm-name">Sailor Name</label>
+            <input type="text" id="sm-name" style="width:100%;">
+          </div>
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+            <div class="fl">
+              <label class="fl-lbl" for="sm-gender">Gender</label>
+              <select id="sm-gender" style="width:100%;">
+                <option value="M">Male (M)</option>
+                <option value="F">Female (F)</option>
+              </select>
+            </div>
+            <div class="fl">
+              <label class="fl-lbl" for="sm-born">Birth Year</label>
+              <input type="number" id="sm-born" style="width:100%;">
+            </div>
+          </div>
+          <div class="fl">
+            <label class="fl-lbl" for="sm-club">Club</label>
+            <input type="text" id="sm-club" style="width:100%;">
+          </div>
+          
+          <div class="sec-lbl" style="margin-top:10px;">Regatta Scores</div>
+          <div id="sm-scores-container" style="max-height:180px; overflow-y:auto; display:flex; flex-direction:column; gap:8px; padding-right:4px;">
+            <!-- Regatta scores inputs will be generated here -->
+          </div>
+        </div>
+        
+        <div style="display:flex; justify-content:flex-end; gap:8px;">
+          <button onclick="closeSailorModal()" style="padding:7px 14px; background:var(--bg2); border:1px solid var(--border); border-radius:var(--r); font-size:11px; cursor:pointer; font-family:var(--mono);">Cancel</button>
+          <button onclick="saveSailorProfile()" style="padding:7px 16px; background:var(--accent); color:#fff; border:none; border-radius:var(--r); font-size:11px; font-weight:600; cursor:pointer; font-family:var(--mono);">Save Changes</button>
+        </div>
       </div>
     </div>
     <div class="panel" id="panel-charts">
@@ -385,6 +429,105 @@ const COMP_YEAR=2026,DNS=84;
 let REGATTAS=[],SAILORS=[],EXCLUDED=new Map(),selectedReason='Declined',genderFilter='all',simCount=0,chartObjs={};
 
 const LOCAL_DATA_KEY = 'op_ranking_regattas_v3';
+
+function normalizeName(name) {
+  if (!name) return "";
+  return name.toLowerCase().replace(/[,.-]/g, ' ').split(/\s+/).filter(Boolean).sort().join(' ');
+}
+
+function isSameSailor(nameA, nameB) {
+  return normalizeName(nameA) === normalizeName(nameB);
+}
+
+function openSailorModal(sailorName) {
+  const sailor = SAILORS.find(s => isSameSailor(s.name, sailorName));
+  if (!sailor) return;
+  
+  document.getElementById('sm-orig-name').value = sailor.name;
+  document.getElementById('sm-name').value = sailor.name;
+  document.getElementById('sm-gender').value = sailor.g || 'M';
+  document.getElementById('sm-born').value = sailor.born || '';
+  document.getElementById('sm-club').value = sailor.club || '';
+  
+  const container = document.getElementById('sm-scores-container');
+  container.innerHTML = '';
+  
+  REGATTAS.forEach((reg, regIdx) => {
+    const sInReg = reg.sailors.find(x => isSameSailor(x.name, sailor.name));
+    const val = sInReg ? sInReg.nett : '';
+    container.innerHTML += `<div class="wi-row" style="padding:6px 10px; margin-bottom:4px;">
+      <div class="wi-name" style="font-size:11px; font-family:var(--mono);">${reg.name}</div>
+      <input type="number" class="sm-reg-score" data-reg-idx="${regIdx}" value="${val}" style="width:65px; height:26px; font-size:10px; text-align:center;" placeholder="DNS">
+    </div>`;
+  });
+  
+  document.getElementById('sailorModal').style.display = 'flex';
+}
+
+function closeSailorModal() {
+  document.getElementById('sailorModal').style.display = 'none';
+}
+
+function saveSailorProfile() {
+  const origName = document.getElementById('sm-orig-name').value;
+  const newName = document.getElementById('sm-name').value.trim();
+  const gender = document.getElementById('sm-gender').value;
+  const born = parseInt(document.getElementById('sm-born').value) || 0;
+  const club = document.getElementById('sm-club').value.trim();
+  
+  if (!newName) {
+    alert("Name cannot be empty.");
+    return;
+  }
+  
+  REGATTAS.forEach((reg, regIdx) => {
+    let sIdx = reg.sailors.findIndex(x => isSameSailor(x.name, origName));
+    const scoreInput = document.querySelector(`.sm-reg-score[data-reg-idx="${regIdx}"]`);
+    const scoreVal = scoreInput && scoreInput.value !== '' ? parseFloat(scoreInput.value) : null;
+    
+    if (sIdx !== -1) {
+      if (scoreVal === null) {
+        reg.sailors.splice(sIdx, 1);
+      } else {
+        reg.sailors[sIdx].name = newName;
+        reg.sailors[sIdx].g = gender;
+        reg.sailors[sIdx].born = born;
+        reg.sailors[sIdx].club = club;
+        reg.sailors[sIdx].nett = scoreVal;
+        reg.sailors[sIdx].rank = scoreVal;
+      }
+    } else if (scoreVal !== null) {
+      reg.sailors.push({
+        name: newName,
+        g: gender,
+        born: born,
+        club: club,
+        nett: scoreVal,
+        rank: scoreVal
+      });
+    }
+  });
+  
+  if (origName !== newName && EXCLUDED.has(origName)) {
+    const reason = EXCLUDED.get(origName);
+    EXCLUDED.delete(origName);
+    EXCLUDED.set(newName, reason);
+  }
+  
+  recomputeSailors();
+  saveData();
+  renderAll();
+  closeSailorModal();
+}
+
+function resetDatabaseToSeed() {
+  if (confirm("Are you sure you want to reset the database to default seed data? This will overwrite your current changes.")) {
+    localStorage.removeItem(LOCAL_DATA_KEY);
+    loadData();
+    renderAll();
+    alert("Database reset to default seed data.");
+  }
+}
 
 function setupDropZone(){
   const ov=document.getElementById('dropOverlay'),dz=document.getElementById('main-dz');
@@ -451,8 +594,9 @@ function parseSheet(data,filename){
         const born = parseInt(r[2]) || 0;
         const club = String(r[4] || '').trim();
         const scoreVal = parseVal(r[col.idx]);
+        const rankVal = (col.idx >= 6 && col.idx <= 9) ? scoreVal : parseVal(r[col.idx + 1]);
         if (scoreVal !== null) {
-          sailors.push({ name, g, born, club, nett: scoreVal });
+          sailors.push({ name, g, born, club, nett: scoreVal, rank: rankVal !== null ? rankVal : scoreVal });
         }
       }
       if (sailors.length > 0) {
@@ -464,15 +608,38 @@ function parseSheet(data,filename){
       }
     });
   } else {
-    let nameIdx = 0, genderIdx = 1, bornIdx = 2, clubIdx = 4, nettIdx = -1;
+    let nameIdx = -1, genderIdx = -1, bornIdx = -1, clubIdx = -1, nettIdx = -1, rankIdx = -1;
     for (let c = 0; c < headers.length; c++) {
-      const h = String(headers[c]).toLowerCase();
-      if (h.includes('nett') || h.includes('points') || h.includes('score') || h.includes('rank') || h.includes('pos')) {
-        nettIdx = c;
-        break;
+      const h = String(headers[c] || '').toLowerCase().trim();
+      if (h === 'name' || h === 'sailor') nameIdx = c;
+      else if (h === 'gender' || h === 'g' || h === 'sex') genderIdx = c;
+      else if (h === 'born' || h === 'birth year' || h === 'year') bornIdx = c;
+      else if (h === 'club') clubIdx = c;
+      else if (h === 'points' || h === 'nett' || h === 'score') nettIdx = c;
+      else if (h === 'rank' || h === 'pos' || h === 'position') rankIdx = c;
+    }
+    if (nameIdx === -1) nameIdx = 0;
+    if (genderIdx === -1) genderIdx = 1;
+    if (bornIdx === -1) bornIdx = 2;
+    if (clubIdx === -1) clubIdx = 4;
+    
+    if (nettIdx === -1) {
+      for (let c = 0; c < headers.length; c++) {
+        const h = String(headers[c] || '').toLowerCase();
+        if (h.includes('nett') || h.includes('points') || h.includes('score')) { nettIdx = c; break; }
       }
     }
+    if (rankIdx === -1) {
+      for (let c = 0; c < headers.length; c++) {
+        const h = String(headers[c] || '').toLowerCase();
+        if (h.includes('rank') || h.includes('pos') || h.includes('position')) { rankIdx = c; break; }
+      }
+    }
+    
+    if (nettIdx === -1 && rankIdx !== -1) nettIdx = rankIdx;
+    if (rankIdx === -1 && nettIdx !== -1) rankIdx = nettIdx;
     if (nettIdx === -1) nettIdx = headers.length - 1;
+    if (rankIdx === -1) rankIdx = headers.length - 1;
 
     const sailors = [];
     for (let i = 1; i < data.length; i++) {
@@ -484,8 +651,16 @@ function parseSheet(data,filename){
       const born = parseInt(r[bornIdx]) || 0;
       const club = String(r[clubIdx] || '').trim();
       const nett = parseVal(r[nettIdx]);
-      if (nett !== null) {
-        sailors.push({ name, g, born, club, nett });
+      const rank = parseVal(r[rankIdx]);
+      if (nett !== null || rank !== null) {
+        sailors.push({ 
+          name, 
+          g, 
+          born, 
+          club, 
+          nett: nett !== null ? nett : rank, 
+          rank: rank !== null ? rank : nett 
+        });
       }
     }
     if (sailors.length > 0) {
@@ -561,8 +736,16 @@ function recomputeSailors() {
   
   latestRegs.forEach((reg, regIdx) => {
     reg.sailors.forEach(s => {
-      if (!sailorMap.has(s.name)) {
-        sailorMap.set(s.name, {
+      let matchedKey = null;
+      for (const existingName of sailorMap.keys()) {
+        if (isSameSailor(existingName, s.name)) {
+          matchedKey = existingName;
+          break;
+        }
+      }
+      if (!matchedKey) {
+        matchedKey = s.name;
+        sailorMap.set(matchedKey, {
           name: s.name,
           g: s.g || s.gender,
           born: s.born,
@@ -570,7 +753,7 @@ function recomputeSailors() {
           scores: Array(latestRegs.length).fill(null)
         });
       }
-      const sailorObj = sailorMap.get(s.name);
+      const sailorObj = sailorMap.get(matchedKey);
       sailorObj.scores[regIdx] = s.nett;
       if (s.g && !sailorObj.g) sailorObj.g = s.g;
       if (s.born && !sailorObj.born) sailorObj.born = s.born;
@@ -677,7 +860,7 @@ function renderRankings(){
 
     return`<tr style="${rowSt}">
       <td class="rank-c">${s.cur}</td>
-      <td class="name-c">${s.name}${exclTag}</td>
+      <td class="name-c" onclick="openSailorModal('${s.name.replace(/'/g, "\\'")}')" style="cursor:pointer; color:var(--accent); font-weight:600; text-decoration:underline;">${s.name}${exclTag}</td>
       <td class="sub-c">${s.g}</td>
       <td class="sub-c">${s.born}</td>
       <td class="sub-c" style="font-size:10px">${s.club}</td>
@@ -1105,16 +1288,17 @@ function renderSpecificRegattaResults() {
   document.getElementById('specific-regatta-name').textContent = reg.name;
   document.getElementById('specific-regatta-date').textContent = reg.date ? `Date: ${reg.date}` : 'Date: Not Set';
   
-  const sortedSailors = [...reg.sailors].sort((a, b) => a.nett - b.nett);
+  const sortedSailors = [...reg.sailors].sort((a, b) => (a.rank !== undefined ? a.rank : a.nett) - (b.rank !== undefined ? b.rank : b.nett));
   
   body.innerHTML = sortedSailors.map((s, idx) => {
     return `<tr>
       <td class="rank-c">${idx + 1}</td>
-      <td class="name-c">${s.name}</td>
+      <td class="name-c" onclick="openSailorModal('${s.name.replace(/'/g, "\\'")}')" style="cursor:pointer; color:var(--accent); font-weight:600; text-decoration:underline;">${s.name}</td>
       <td class="sub-c">${s.g || '—'}</td>
       <td class="sub-c">${s.born || '—'}</td>
       <td class="sub-c" style="font-size:10px">${s.club || '—'}</td>
-      <td style="text-align:center; font-family:var(--mono); font-weight:600; color:var(--accent2)">${s.nett}</td>
+      <td style="text-align:center; font-family:var(--mono); color:var(--text2)">${s.rank !== undefined && s.rank !== null ? s.rank : (s.nett !== undefined ? s.nett : '—')}</td>
+      <td style="text-align:center; font-family:var(--mono); font-weight:600; color:var(--accent2)">${s.nett !== undefined && s.nett !== null ? s.nett : '—'}</td>
     </tr>`;
   }).join('');
 }
@@ -1329,26 +1513,26 @@ function deleteRegatta(idx) {
 // ── SEED DATA GENERATOR ─────────────────────────────────────────────────────
 function getSeedRegattas() {
   const sailorsList = [
-    { name: "Anya Alessia Zahedi", g: "F", born: 2013, club: "RM", scores: [7, 4, 3, 2] },
-    { name: "Kevin Ho Jun Yi", g: "M", born: 2012, club: "SAFYC", scores: [4, 2, 7, 84] },
-    { name: "Lyric Li Yuxuan", g: "F", born: 2011, club: "CSC", scores: [3, 3, 107, 1] },
-    { name: "Elijah Ong En Ze", g: "M", born: 2013, club: "SAFYC", scores: [12, 7, 13, 3] },
-    { name: "Tham Yan Lin Ashlyn", g: "F", born: 2012, club: "RM", scores: [5, 6, 2, 10] },
-    { name: "Rahul Rajakanth", g: "M", born: 2012, club: "CWSS", scores: [43, 10, 17, 5] },
-    { name: "Elliot Goh Yik Khai", g: "M", born: 2013, club: "SAFYC", scores: [10, 11, 14, 7] },
-    { name: "Alyssa Wong Li Lin", g: "F", born: 2013, club: "SAFYC", scores: [8, 9, 9, 15] },
-    { name: "Ethan Lee", g: "M", born: 2011, club: "PA", scores: [2, 5, 11, 23] },
-    { name: "Damien Huang", g: "M", born: 2012, club: "SAFYC", scores: [11, 20, 23, 8] },
-    { name: "Lucas Cao Zhihong", g: "M", born: 2011, club: "SAFYC", scores: [1, 1, 18, 84] },
-    { name: "Jairus Teo Xin Jie", g: "M", born: 2012, club: "PA", scores: [14, 21, 39, 6] },
-    { name: "Nathaniel Kaiden Ng", g: "M", born: 2012, club: "PA", scores: [13, 12, 8, 14] },
-    { name: "Jedd Lam Zhi Hao", g: "M", born: 2013, club: "CWSS", scores: [9, 14, 16, 11] },
-    { name: "Nicole Wong Jing Chen", g: "F", born: 2014, club: "RSYC CH", scores: [25, 31, 43, 4] },
-    { name: "Cheong Jia Tio Olivia", g: "F", born: 2013, club: "SAFYC", scores: [16, 17, 28, 42] },
-    { name: "Darian Huang", g: "M", born: 2014, club: "SAFYC", scores: [17, 27, 26, 16] },
-    { name: "Ethan Low Zhi Ren", g: "M", born: 2014, club: "SAFYC", scores: [20, 15, 20, 32] },
-    { name: "Tan En Ting, Kirsten", g: "F", born: 2016, club: "SAFYC", scores: [19, 16, 45, 36] },
-    { name: "Kaelyn Dayna Soh Zhi Yin", g: "F", born: 2012, club: "SAFYC", scores: [18, 19, 35, 27] },
+    { name: "Anya Alessia Zahedi", g: "F", born: 2013, club: "RM", scores: [10, 9, 8, 7, 7, 4, 3, 2, 5] },
+    { name: "Kevin Ho Jun Yi", g: "M", born: 2012, club: "SAFYC", scores: [8, 5, 6, 4, 4, 2, 7, 84, 12] },
+    { name: "Lyric Li Yuxuan", g: "F", born: 2011, club: "CSC", scores: [1, 2, 1, 3, 3, 3, 107, 1, 3] },
+    { name: "Elijah Ong En Ze", g: "M", born: 2013, club: "SAFYC", scores: [15, 12, 11, 10, 12, 7, 13, 3, 6] },
+    { name: "Tham Yan Lin Ashlyn", g: "F", born: 2012, club: "RM", scores: [6, 8, 7, 5, 5, 6, 2, 10, 8] },
+    { name: "Rahul Rajakanth", g: "M", born: 2012, club: "CWSS", scores: [40, 35, 30, 25, 43, 10, 17, 5, 14] },
+    { name: "Elliot Goh Yik Khai", g: "M", born: 2013, club: "SAFYC", scores: [12, 14, 13, 11, 10, 11, 14, 7, 9] },
+    { name: "Alyssa Wong Li Lin", g: "F", born: 2013, club: "SAFYC", scores: [9, 10, 11, 8, 8, 9, 9, 15, 11] },
+    { name: "Ethan Lee", g: "M", born: 2011, club: "PA", scores: [3, 4, 5, 2, 2, 5, 11, 23, 7] },
+    { name: "Damien Huang", g: "M", born: 2012, club: "SAFYC", scores: [14, 16, 18, 12, 11, 20, 23, 8, 10] },
+    { name: "Lucas Cao Zhihong", g: "M", born: 2011, club: "SAFYC", scores: [2, 1, 2, 1, 1, 1, 18, 84, 2] },
+    { name: "Jairus Teo Xin Jie", g: "M", born: 2012, club: "PA", scores: [16, 18, 20, 15, 14, 21, 39, 6, 13] },
+    { name: "Nathaniel Kaiden Ng", g: "M", born: 2012, club: "PA", scores: [11, 13, 12, 14, 13, 12, 8, 14, 10] },
+    { name: "Jedd Lam Zhi Hao", g: "M", born: 2013, club: "CWSS", scores: [10, 11, 12, 9, 9, 14, 16, 11, 8] },
+    { name: "Nicole Wong Jing Chen", g: "F", born: 2014, club: "RSYC CH", scores: [25, 31, 43, 4, 25, 31, 43, 4, 15] },
+    { name: "Cheong Jia Tio Olivia", g: "F", born: 2013, club: "SAFYC", scores: [18, 19, 17, 16, 16, 17, 28, 42, 20] },
+    { name: "Darian Huang", g: "M", born: 2014, club: "SAFYC", scores: [22, 24, 20, 18, 17, 27, 26, 16, 18] },
+    { name: "Ethan Low Zhi Ren", g: "M", born: 2014, club: "SAFYC", scores: [25, 22, 21, 20, 20, 15, 20, 32, 22] },
+    { name: "Tan En Ting, Kirsten", g: "F", born: 2016, club: "SAFYC", scores: [24, 20, 22, 19, 19, 16, 45, 36, 25] },
+    { name: "Kaelyn Dayna Soh Zhi Yin", g: "F", born: 2012, club: "SAFYC", scores: [20, 21, 18, 18, 18, 19, 35, 27, 19] },
     ...Array.from({ length: 80 }, (_, i) => {
       const idx = i + 21;
       return {
@@ -1356,16 +1540,25 @@ function getSeedRegattas() {
         g: idx % 2 === 0 ? "M" : "F",
         born: 2011 + (idx % 6),
         club: ["CSC", "SAFYC", "RM", "PA", "RSYC CH", "CWSS"][idx % 6],
-        scores: [15 + (idx % 23), 12 + (idx % 27), 10 + (idx % 29), 8 + (idx % 31)]
+        scores: [
+          15 + (idx % 23), 12 + (idx % 27), 10 + (idx % 29), 8 + (idx % 31),
+          15 + (idx % 23), 12 + (idx % 27), 10 + (idx % 29), 8 + (idx % 31),
+          10 + (idx % 25)
+        ]
       };
     })
   ];
 
   const regNames = [
+    { name: "Regatta G", date: "2025-09-15" },
+    { name: "Regatta H", date: "2025-10-15" },
+    { name: "Regatta I", date: "2025-11-15" },
+    { name: "Regatta J", date: "2025-12-15" },
     { name: "CSC Gold", date: "2026-01-26" },
     { name: "Pulau Ujong", date: "2026-02-26" },
     { name: "SYSC", date: "2026-03-05" },
-    { name: "SAFYC", date: "2026-03-20" }
+    { name: "SAFYC", date: "2026-03-20" },
+    { name: "Temasek", date: "2026-06-20" }
   ];
 
   return regNames.map((reg, regIdx) => {
@@ -1376,7 +1569,8 @@ function getSeedRegattas() {
         g: s.g,
         born: s.born,
         club: s.club,
-        nett: s.scores[regIdx]
+        nett: s.scores[regIdx],
+        rank: s.scores[regIdx]
       });
     });
     return { name: reg.name, date: reg.date, sailors };
