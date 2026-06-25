@@ -428,7 +428,11 @@ function parseSheet(data,filename){
 
   if (hasConsolidated) {
     const regColumns = [
-      { name: headers[10] || "CSC", idx: 10, date: "2026-01-26" },
+      { name: headers[6] || "Regatta 1", idx: 6, date: "2025-09-15" },
+      { name: headers[7] || "Regatta 2", idx: 7, date: "2025-10-15" },
+      { name: headers[8] || "Regatta 3", idx: 8, date: "2025-11-15" },
+      { name: headers[9] || "Regatta 4", idx: 9, date: "2025-12-15" },
+      { name: headers[10] || "CSC Gold", idx: 10, date: "2026-01-26" },
       { name: headers[12] || "Pulau Ujong", idx: 12, date: "2026-02-26" },
       { name: headers[14] || "SYSC", idx: 14, date: "2026-03-05" },
       { name: headers[16] || "SAFYC", idx: 16, date: "2026-03-20" },
@@ -1270,12 +1274,33 @@ function renderRegattasPanel() {
         <label class="fl-lbl">Date</label>
         <input type="date" value="${reg.date || ''}" onchange="updateRegattaDate(${idx}, this.value)" style="width:100%;">
       </div>
-      <div style="font-size:11px;color:var(--text3);font-family:var(--mono);">
+      <div style="font-size:11px;color:var(--text3);font-family:var(--mono);margin-bottom:14px;">
         Sailors: ${reg.sailors.length}
+      </div>
+      <div style="display:flex;gap:6px;">
+        <button onclick="viewRegattaResults(${idx})" style="background:var(--accent-l);color:var(--accent);border:1px solid rgba(26,71,42,.2);border-radius:4px;padding:5px 9px;font-size:10px;font-family:var(--mono);cursor:pointer;font-weight:500;">👁 View Results</button>
       </div>
       <button class="rm-btn" onclick="deleteRegatta(${idx})" style="position:absolute;bottom:14px;right:14px;background:var(--red-l);color:var(--red);border-radius:4px;padding:4px 8px;font-size:10px;font-family:var(--mono);height:auto;display:inline-flex;" aria-label="Delete regatta">✕ Delete</button>
     </div>`;
   }).join('');
+}
+
+function viewRegattaResults(idx) {
+  const reg = REGATTAS[idx];
+  if (!reg) return;
+  const sel = document.getElementById('resultsRegattaSelect');
+  if (sel) {
+    sel.value = reg.name;
+    renderSpecificRegattaResults();
+  }
+  const items = document.querySelectorAll('.nav-item');
+  let btn = null;
+  items.forEach(item => {
+    if (item.getAttribute('onclick') && item.getAttribute('onclick').includes('results')) {
+      btn = item;
+    }
+  });
+  switchView('results', btn);
 }
 
 function updateRegattaName(idx, val) {
