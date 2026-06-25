@@ -183,6 +183,7 @@ td{padding:8px 10px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   <nav class="sb-nav">
     <div class="nav-sec">Views</div>
     <button class="nav-item active" onclick="switchView('rankings',this)"><span class="nav-dot dot-n"></span>Rankings</button>
+    <button class="nav-item" onclick="switchView('results',this)"><span class="nav-dot dot-n"></span>Regatta Results</button>
     <button class="nav-item" onclick="switchView('regattas',this)"><span class="nav-dot dot-n"></span>Regattas</button>
     <button class="nav-item" onclick="switchView('simulator',this)"><span class="nav-dot dot-n"></span>Permutation sim</button>
     <button class="nav-item" onclick="switchView('target',this)"><span class="nav-dot dot-n"></span>Squad target</button>
@@ -338,6 +339,35 @@ td{padding:8px 10px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
       </div>
       <div class="sec-lbl" style="margin-top:0">Currently excluded</div>
       <div id="excl-list"><div class="excl-empty">No sailors excluded</div></div>
+    </div>
+    <div class="panel" id="panel-results">
+      <div class="card" style="margin-bottom:18px">
+        <div class="card-title">Regatta Results Viewer</div>
+        <p class="card-desc">Select any uploaded regatta to view its full results list and date.</p>
+        <div class="fl" style="max-width:300px;">
+          <label class="fl-lbl" for="resultsRegattaSelect">Select Regatta</label>
+          <select id="resultsRegattaSelect" onchange="renderSpecificRegattaResults()" style="width:100%;height:32px;"></select>
+        </div>
+      </div>
+      <div class="tbl-wrap" id="specific-regatta-results-wrap" style="display:none;">
+        <div style="padding:12px 18px; border-bottom:1px solid var(--border); display:flex; align-items:center; justify-content:space-between; background:var(--bg2);">
+          <span id="specific-regatta-name" style="font-family:var(--mono); font-weight:600; font-size:13px;"></span>
+          <span id="specific-regatta-date" style="font-family:var(--mono); font-size:11px; color:var(--text2); margin-left:auto;"></span>
+        </div>
+        <table>
+          <thead>
+            <tr>
+              <th style="width:60px">Rank</th>
+              <th>Sailor</th>
+              <th style="width:50px">Gender</th>
+              <th style="width:60px">Born</th>
+              <th>Club</th>
+              <th style="width:80px; text-align:center">Nett Score</th>
+            </tr>
+          </thead>
+          <tbody id="specific-regatta-body"></tbody>
+        </table>
+      </div>
     </div>
     <div class="panel" id="panel-charts">
       <div class="charts-grid">
@@ -547,7 +577,6 @@ function recomputeSailors() {
   const computed = [];
   sailorMap.forEach((s, name) => {
     const validScores = s.scores.map(v => v === null ? DNS : v);
-    // If we have fewer than 5 regattas, pad the scores with DNS to simulate 5 options
     while (validScores.length < 5) {
       validScores.push(DNS);
     }
@@ -602,7 +631,6 @@ function renderRankingsPanel(){
       </tr></thead>
       <tbody id="rank-body"></tbody>
     </table></div>`;
-  document.getElementById('top50').addEventListener('change',renderRankings);
   renderRankings();
 }
 
@@ -632,20 +660,15 @@ function renderRankings(){
     const exclTag=isExcl?`<span class="excl-tag">${EXCLUDED.get(s.name)}</span>`:'';
     
     const validScores = s.scores.map(v => v === null ? DNS : v);
-    while (validScores.length < 5) {
-      validScores.push(DNS);
-    }
-    const sortedIndices = validScores
-      .map((val, idx) => ({ val, idx }))
-      .sort((a, b) => a.val - b.val)
-      .slice(0, 3)
-      .map(item => item.idx);
-    const best3Set = new Set(sortedIndices);
+    const best3Set = new Set(validScores.slice().sort((a, b) => a - b).slice(0, 3));
+    // Re-calculating correctly for highlighting
+    const best3Indices = validScores.map((v, i) => ({v, i})).sort((a,b)=>a.v-b.v).slice(0,3).map(x=>x.i);
+    const isBest3 = new Set(best3Indices);
 
-    const cells = s.scores.map((v, regIdx) => {
-      if(v === null) return '<td style="text-align:center;font-family:var(--mono);font-size:10px;color:var(--text3)">—</td>';
-      const isBest = best3Set.has(regIdx);
-      return `<td style="text-align:center"><span class="pos-tag${isBest?' best':''}">${v}</span></td>`;
+    const cells = latestRegs.map((_, idx) => {
+      const v = s.scores[idx];
+      if(v === null || v === undefined) return '<td style="text-align:center;font-family:var(--mono);font-size:10px;color:var(--text3)">—</td>';
+      return `<td style="text-align:center"><span class="pos-tag${isBest3.has(idx)?' best':''}">${v}</span></td>`;
     }).join('');
 
     return`<tr style="${rowSt}">
@@ -1036,6 +1059,62 @@ function renderExclusions() {
   list.innerHTML = html;
 }
 
+// ── RESULTS ─────────────────────────────────────────────────────────────────
+function populateResultsDropdown() {
+  const sel = document.getElementById('resultsRegattaSelect');
+  if (!sel) return;
+  const cur = sel.value;
+  const sortedRegs = [...REGATTAS].sort((a, b) => {
+    const dA = a.date ? new Date(a.date) : new Date(0);
+    const dB = b.date ? new Date(b.date) : new Date(0);
+    return dA - dB;
+  });
+  
+  sel.innerHTML = sortedRegs.map(r => `<option value="${r.name}">${r.name} (${r.date || 'No Date'})</option>`).join('');
+  if (cur && sortedRegs.some(r => r.name === cur)) {
+    sel.value = cur;
+  } else if (sortedRegs.length > 0) {
+    sel.value = sortedRegs[0].name;
+  }
+  renderSpecificRegattaResults();
+}
+
+function renderSpecificRegattaResults() {
+  const sel = document.getElementById('resultsRegattaSelect');
+  const wrap = document.getElementById('specific-regatta-results-wrap');
+  const body = document.getElementById('specific-regatta-body');
+  if (!sel || !wrap || !body) return;
+  
+  const regName = sel.value;
+  if (!regName) {
+    wrap.style.display = 'none';
+    return;
+  }
+  
+  const reg = REGATTAS.find(r => r.name === regName);
+  if (!reg) {
+    wrap.style.display = 'none';
+    return;
+  }
+  
+  wrap.style.display = 'block';
+  document.getElementById('specific-regatta-name').textContent = reg.name;
+  document.getElementById('specific-regatta-date').textContent = reg.date ? `Date: ${reg.date}` : 'Date: Not Set';
+  
+  const sortedSailors = [...reg.sailors].sort((a, b) => a.nett - b.nett);
+  
+  body.innerHTML = sortedSailors.map((s, idx) => {
+    return `<tr>
+      <td class="rank-c">${idx + 1}</td>
+      <td class="name-c">${s.name}</td>
+      <td class="sub-c">${s.g || '—'}</td>
+      <td class="sub-c">${s.born || '—'}</td>
+      <td class="sub-c" style="font-size:10px">${s.club || '—'}</td>
+      <td style="text-align:center; font-family:var(--mono); font-weight:600; color:var(--accent2)">${s.nett}</td>
+    </tr>`;
+  }).join('');
+}
+
 // ── CHARTS ──────────────────────────────────────────────────────────────────
 function renderCharts() {
   if (!SAILORS.length) return;
@@ -1149,6 +1228,7 @@ function switchView(viewId, btn) {
 
   const titleMap = {
     'rankings': 'Rankings',
+    'results': 'Regatta Results',
     'regattas': 'Regattas',
     'simulator': 'Permutation sim',
     'target': 'Squad target',
