@@ -1,0 +1,1050 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>OP Gold — National Ranking</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500;600&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+:root{
+  --bg:#f2f0eb;--bg2:#e8e5de;--bg3:#dedad2;--card:#faf9f6;
+  --border:#d0ccc4;--border2:#b8b3aa;
+  --text:#1a1916;--text2:#5a564f;--text3:#9a958c;
+  --accent:#1a472a;--accent-l:#e8f2ec;
+  --accent2:#2d4a8a;--accent2-l:#eaeefc;
+  --accent3:#7a3500;--accent3-l:#faeee5;
+  --red:#8a1c1c;--red-l:#faeaea;
+  --mono:'IBM Plex Mono',monospace;--sans:'IBM Plex Sans',sans-serif;
+  --r:6px;--sh:0 1px 3px rgba(0,0,0,.08);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:var(--sans);font-size:13px;line-height:1.5;min-height:100vh}
+.app{display:grid;grid-template-columns:210px 1fr;min-height:100vh}
+.sidebar{background:var(--text);display:flex;flex-direction:column;position:sticky;top:0;height:100vh;overflow:hidden}
+.sb-logo{padding:22px 20px 18px;border-bottom:1px solid rgba(255,255,255,.1)}
+.sb-org{font-family:var(--mono);font-size:8px;letter-spacing:.18em;text-transform:uppercase;color:rgba(255,255,255,.35);margin-bottom:8px}
+.sb-logo h1{font-family:var(--mono);font-size:16px;font-weight:600;line-height:1.25;color:#fff}
+.sb-tag{display:inline-block;font-family:var(--mono);font-size:9px;margin-top:8px;padding:2px 8px;border-radius:3px;background:rgba(255,255,255,.08);color:rgba(255,255,255,.4)}
+.sb-tag.ok{background:rgba(79,209,165,.15);color:#a3c9b0}
+.sb-nav{padding:14px 10px;flex:1;overflow-y:auto}
+.nav-sec{font-family:var(--mono);font-size:8px;letter-spacing:.14em;text-transform:uppercase;color:rgba(255,255,255,.3);padding:0 10px;margin:14px 0 5px}
+.nav-item{display:flex;align-items:center;gap:9px;padding:8px 10px;border-radius:4px;cursor:pointer;color:rgba(255,255,255,.55);font-size:12px;transition:all .12s;border:none;background:none;width:100%;text-align:left;font-family:var(--sans)}
+.nav-item:hover{background:rgba(255,255,255,.07);color:#fff}
+.nav-item.active{background:rgba(255,255,255,.12);color:#fff;font-weight:500}
+.nav-dot{width:5px;height:5px;border-radius:50%;flex-shrink:0}
+.dot-a{background:#4fd1a5}.dot-b{background:#a394f0}.dot-ds{background:#f0b07a}.dot-n{background:rgba(255,255,255,.22)}.dot-r{background:#e05c7a}
+.excl-ct{display:inline-flex;align-items:center;justify-content:center;background:var(--red);color:#fff;font-family:var(--mono);font-size:8px;font-weight:600;border-radius:10px;min-width:15px;height:15px;padding:0 4px;margin-left:4px}
+.sb-footer{padding:12px 20px;border-top:1px solid rgba(255,255,255,.08);font-family:var(--mono);font-size:9px;color:rgba(255,255,255,.22);line-height:1.7}
+.main{overflow-y:auto}
+.topbar{padding:14px 28px 12px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;flex-wrap:wrap;background:var(--card);position:sticky;top:0;z-index:10;box-shadow:var(--sh)}
+.topbar-title{font-family:var(--mono);font-size:14px;font-weight:600;letter-spacing:.02em}
+.topbar-controls{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.topbar-right{display:flex;gap:8px;align-items:center;margin-left:auto}
+.pill-group{display:flex;background:var(--bg2);border:1px solid var(--border);border-radius:5px;overflow:hidden}
+.pill{padding:5px 12px;font-size:11px;font-weight:500;color:var(--text2);background:none;border:none;cursor:pointer;transition:all .12s;font-family:var(--sans)}
+.pill:hover{color:var(--text);background:var(--bg3)}.pill.active{background:var(--text);color:#fff}
+select,input[type=text],input[type=number]{background:var(--card);border:1px solid var(--border);border-radius:var(--r);color:var(--text);font-size:11px;padding:5px 9px;font-family:var(--sans);outline:none;height:30px;transition:border-color .12s}
+select:focus,input:focus{border-color:var(--accent)}
+.upload-btn{display:flex;align-items:center;gap:6px;padding:6px 13px;background:var(--accent);color:#fff;border:none;border-radius:var(--r);font-size:11px;font-family:var(--mono);font-weight:500;cursor:pointer;letter-spacing:.04em;transition:all .15s;white-space:nowrap}
+.upload-btn:hover{background:#1d5533}
+.src-tag{font-family:var(--mono);font-size:9px;color:var(--text3);padding:3px 9px;background:var(--bg2);border-radius:3px;border:1px solid var(--border)}
+.src-tag.ok{color:var(--accent);background:var(--accent-l);border-color:rgba(26,71,42,.2)}
+.content{padding:22px 28px}
+.panel{display:none}.panel.active{display:block}
+.welcome{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:65vh;text-align:center;gap:20px}
+.drop-zone{width:460px;max-width:100%;border:2px dashed var(--border2);border-radius:12px;padding:52px 40px;cursor:pointer;transition:all .2s;background:var(--card)}
+.drop-zone:hover,.drop-zone.over{border-color:var(--accent);background:var(--accent-l)}
+.dz-icon{font-size:44px;margin-bottom:16px;opacity:.4}
+.dz-title{font-family:var(--mono);font-size:15px;font-weight:600;margin-bottom:8px}
+.dz-sub{font-size:12px;color:var(--text2);line-height:1.65}
+.dz-hint{font-family:var(--mono);font-size:10px;color:var(--text3);margin-top:12px}
+.metrics{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:20px}
+.mc{background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:14px 16px;box-shadow:var(--sh);position:relative}
+.mc::after{content:'';position:absolute;bottom:0;left:16px;right:16px;height:2px;border-radius:2px}
+.mc1::after{background:var(--accent)}.mc2::after{background:var(--accent2)}.mc3::after{background:var(--red)}.mc4::after{background:var(--accent3)}.mc5::after{background:#888}
+.mc-lbl{font-family:var(--mono);font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--text3);margin-bottom:6px}
+.mc-val{font-family:var(--mono);font-size:24px;font-weight:600;line-height:1}
+.mc-sub{font-size:11px;color:var(--text3);margin-top:3px}
+.tbl-wrap{background:var(--card);border:1px solid var(--border);border-radius:var(--r);overflow:hidden;box-shadow:var(--sh)}
+table{width:100%;border-collapse:collapse;font-size:12px;table-layout:fixed}
+thead th{background:var(--bg2);padding:8px 10px;text-align:left;font-family:var(--mono);font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--text3);border-bottom:1px solid var(--border);font-weight:400;white-space:nowrap}
+tbody tr{border-bottom:1px solid var(--border);transition:background .08s}
+tbody tr:last-child{border-bottom:none}
+tbody tr:hover{background:var(--bg2)}
+td{padding:8px 10px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rank-c{font-family:var(--mono);font-size:12px;font-weight:600;color:var(--accent)}
+.name-c{font-weight:500}.score-c{font-family:var(--mono);font-weight:600;color:var(--accent2)}
+.sub-c{font-family:var(--mono);font-size:10px;color:var(--text3)}
+.badge{display:inline-block;font-size:8px;padding:2px 6px;border-radius:3px;font-family:var(--mono);letter-spacing:.04em;white-space:nowrap;font-weight:600;text-transform:uppercase}
+.b-a{background:var(--accent-l);color:var(--accent);border:1px solid rgba(26,71,42,.2)}
+.b-b{background:var(--accent2-l);color:var(--accent2);border:1px solid rgba(45,74,138,.2)}
+.b-ds{background:var(--accent3-l);color:var(--accent3);border:1px solid rgba(122,53,0,.15)}
+.b-n{background:var(--bg2);color:var(--text3);border:1px solid var(--border)}
+.pos-tag{display:inline-block;font-family:var(--mono);font-size:10px;padding:1px 5px;background:var(--bg2);border:1px solid var(--border);border-radius:3px}
+.pos-tag.best{background:var(--accent-l);border-color:rgba(26,71,42,.2);color:var(--accent);font-weight:600}
+.excl-tag{font-family:var(--mono);font-size:8px;background:var(--red-l);color:var(--red);border:1px solid rgba(138,28,28,.2);padding:1px 5px;border-radius:3px;margin-left:4px}
+.excl-banner{display:flex;align-items:center;gap:8px;padding:8px 12px;background:rgba(138,28,28,.07);border:1px solid rgba(138,28,28,.18);border-radius:var(--r);margin-bottom:14px;font-size:11px;color:var(--red)}
+.two-col{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:18px}
+.card{background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:18px;box-shadow:var(--sh)}
+.card-title{font-family:var(--mono);font-size:12px;font-weight:600;margin-bottom:4px}
+.card-desc{font-size:11px;color:var(--text2);margin-bottom:14px;line-height:1.55}
+.fl{display:flex;flex-direction:column;gap:3px}
+.fl-lbl{font-family:var(--mono);font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--text3);display:block;margin-bottom:3px}
+.sailor-row{display:grid;grid-template-columns:1fr 80px 28px;gap:6px;align-items:end;margin-bottom:7px;padding:9px;background:var(--bg2);border:1px solid var(--border);border-radius:var(--r)}
+.sailor-row select,.sailor-row input{height:32px;font-size:11px}
+.rm-btn{background:none;border:none;color:var(--text3);cursor:pointer;font-size:14px;padding:3px;height:32px;display:flex;align-items:center;justify-content:center;transition:color .12s}
+.rm-btn:hover{color:var(--red)}
+.add-btn{display:flex;align-items:center;gap:6px;padding:7px 12px;background:none;border:1px dashed var(--border2);border-radius:var(--r);color:var(--text2);font-size:11px;cursor:pointer;transition:all .12s;width:100%;justify-content:center;font-family:var(--sans);margin-bottom:8px}
+.add-btn:hover{border-color:var(--accent);color:var(--accent);background:var(--accent-l)}
+.run-btn{display:flex;align-items:center;gap:7px;padding:8px 18px;background:var(--text);color:#fff;border:none;border-radius:var(--r);font-size:11px;font-weight:600;cursor:pointer;font-family:var(--mono);letter-spacing:.05em;transition:all .12s}
+.run-btn:hover{background:#333;transform:translateY(-1px)}
+.results-wrap{background:var(--card);border:1px solid var(--border);border-radius:var(--r);overflow:hidden;margin-top:16px;box-shadow:0 4px 16px rgba(0,0,0,.08)}
+.results-hdr{padding:12px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;background:var(--bg2)}
+.results-hdr-title{font-family:var(--mono);font-size:12px;font-weight:600}
+.rg-tag{font-family:var(--mono);font-size:9px;color:var(--accent);background:var(--accent-l);padding:2px 8px;border-radius:3px;border:1px solid rgba(26,71,42,.2);text-transform:uppercase;letter-spacing:.06em}
+.res-row{padding:11px 18px;border-bottom:1px solid var(--border);display:grid;grid-template-columns:190px 55px 65px 75px 75px 75px 95px;align-items:center;gap:8px}
+.res-row:last-child{border-bottom:none}.res-row:hover{background:var(--bg)}
+.res-row.hdr{font-family:var(--mono);font-size:9px;text-transform:uppercase;letter-spacing:.07em;color:var(--text3);background:var(--bg3);padding:7px 18px}
+.res-name{font-weight:600;font-size:12px}.res-sub{font-size:10px;color:var(--text3);margin-top:1px}
+.fin-tag{display:inline-block;font-family:var(--mono);font-size:10px;font-weight:600;color:var(--accent3);background:var(--accent3-l);padding:2px 7px;border-radius:3px;border:1px solid rgba(122,53,0,.15)}
+.s-old{font-family:var(--mono);font-size:10px;color:var(--text3);text-decoration:line-through}
+.s-new{font-family:var(--mono);font-size:13px;font-weight:600;color:var(--accent)}
+.rnk-new{font-family:var(--mono);font-size:14px;font-weight:600}
+.rnk-was{font-family:var(--mono);font-size:9px;color:var(--text3);display:block}
+.chg{display:inline-flex;align-items:center;gap:2px;font-family:var(--mono);font-size:9px;padding:2px 6px;border-radius:3px;font-weight:600}
+.chg-up{background:var(--accent-l);color:var(--accent);border:1px solid rgba(26,71,42,.15)}
+.chg-dn{background:var(--red-l);color:var(--red);border:1px solid rgba(138,28,28,.15)}
+.chg-eq{background:var(--bg2);color:var(--text3);border:1px solid var(--border)}
+.tgt-sum{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px}
+.tgt-stat{background:var(--bg2);border-radius:var(--r);padding:12px 14px;border:1px solid var(--border)}
+.tgt-stat-lbl{font-family:var(--mono);font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--text3);margin-bottom:5px}
+.tgt-stat-val{font-family:var(--mono);font-size:20px;font-weight:600;line-height:1}
+.tgt-stat-sub{font-size:11px;color:var(--text2);margin-top:2px}
+.sc-item{padding:11px 13px;background:var(--bg2);border-radius:var(--r);border:1px solid var(--border);display:flex;align-items:flex-start;gap:9px;margin-bottom:7px}
+.sc-icon{font-size:14px;flex-shrink:0;margin-top:1px}
+.sc-title{font-weight:600;font-size:11px;margin-bottom:2px;font-family:var(--mono)}
+.sc-desc{font-size:11px;color:var(--text2);line-height:1.5}
+.impossible{padding:16px;background:var(--red-l);border:1px solid rgba(138,28,28,.2);border-radius:var(--r);color:var(--red);font-size:12px;line-height:1.6;text-align:center}
+.tgt-res{background:var(--card);border:1px solid var(--border);border-radius:var(--r);overflow:hidden;box-shadow:0 4px 16px rgba(0,0,0,.08)}
+.tgt-res-hdr{padding:12px 18px;border-bottom:1px solid var(--border);background:var(--bg2);display:flex;align-items:center;gap:9px;flex-wrap:wrap}
+.tgt-res-hdr h3{font-family:var(--mono);font-size:13px;font-weight:600}
+.tgt-body{padding:18px}
+.goal-tag{display:inline-block;font-family:var(--mono);font-size:9px;padding:2px 8px;border-radius:3px;font-weight:600;letter-spacing:.05em;text-transform:uppercase}
+.gt-a{background:var(--accent-l);color:var(--accent);border:1px solid rgba(26,71,42,.2)}
+.gt-b{background:var(--accent2-l);color:var(--accent2);border:1px solid rgba(45,74,138,.2)}
+.gt-ds{background:var(--accent3-l);color:var(--accent3);border:1px solid rgba(122,53,0,.15)}
+.hi-self{background:#f0f7f3!important}
+.wi-row{display:grid;grid-template-columns:1fr 80px;gap:8px;align-items:center;padding:8px 11px;background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);margin-bottom:6px}
+.wi-name{font-size:12px;font-weight:500}.wi-sub{font-size:10px;color:var(--text3);font-family:var(--mono);margin-top:1px}
+.ct{width:100%}.ct td{padding:5px 9px;font-size:11px;border-bottom:1px solid var(--border)}
+.ct td:first-child{font-family:var(--mono);font-size:10px;color:var(--text2)}
+.ct tr:last-child td{border-bottom:none}
+.ct-hdr td{font-family:var(--mono);font-size:8px;text-transform:uppercase;letter-spacing:.1em;color:var(--text3);background:var(--bg3);padding:4px 9px}
+.excl-item{display:flex;align-items:center;justify-content:space-between;padding:8px 11px;background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);margin-bottom:6px}
+.excl-name{font-size:12px;font-weight:500}.excl-reason{font-size:10px;font-family:var(--mono);margin-top:1px}
+.excl-rm{background:none;border:none;color:var(--text3);cursor:pointer;font-size:13px;padding:2px 6px;border-radius:3px;transition:all .12s}
+.excl-rm:hover{color:var(--red);background:var(--red-l)}
+.excl-empty{font-family:var(--mono);font-size:11px;color:var(--text3);text-align:center;padding:20px}
+.excl-banner{display:flex;align-items:center;gap:8px;padding:8px 12px;background:rgba(138,28,28,.07);border:1px solid rgba(138,28,28,.18);border-radius:var(--r);margin-bottom:14px;font-size:11px;color:var(--red)}
+.reason-btn{padding:5px 10px;font-size:10px;font-family:var(--mono);border:1px solid var(--border);border-radius:3px;background:var(--bg2);color:var(--text2);cursor:pointer;transition:all .12s}
+.reason-btn:hover{border-color:var(--border2);color:var(--text)}
+.reason-btn.active{border-color:var(--red);color:var(--red);background:var(--red-l)}
+.charts-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.chart-card{background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:18px;box-shadow:var(--sh)}
+.chart-card h3{font-family:var(--mono);font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.1em;color:var(--text3);margin-bottom:14px}
+.chart-container{position:relative;height:220px}
+.sec-lbl{font-family:var(--mono);font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:var(--text3);margin-bottom:8px;margin-top:16px}
+#fileInput{display:none}
+.drop-overlay{display:none;position:fixed;inset:0;z-index:100;background:rgba(26,71,42,.92);align-items:center;justify-content:center;flex-direction:column;gap:14px}
+.drop-overlay.show{display:flex}
+.do-text{font-family:var(--mono);font-size:20px;color:#fff;font-weight:600}
+.do-sub{font-family:var(--mono);font-size:12px;color:rgba(255,255,255,.55)}
+::-webkit-scrollbar{width:5px;height:5px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px}
+</style>
+</head>
+<body>
+<div id="dropOverlay" class="drop-overlay">
+  <div style="font-size:48px">📊</div>
+  <div class="do-text">Drop Excel file</div>
+  <div class="do-sub">Release to load ranking data</div>
+</div>
+<input type="file" id="fileInput" accept=".xlsx,.xlsm,.xls">
+<div class="app">
+<aside class="sidebar">
+  <div class="sb-logo">
+    <div class="sb-org">Singapore Sailing</div>
+    <h1>OP Gold<br>Ranking</h1>
+    <span class="sb-tag" id="sb-tag">No file loaded</span>
+  </div>
+  <nav class="sb-nav">
+    <div class="nav-sec">Views</div>
+    <button class="nav-item active" onclick="switchView('rankings',this)"><span class="nav-dot dot-n"></span>Rankings</button>
+    <button class="nav-item" onclick="switchView('simulator',this)"><span class="nav-dot dot-n"></span>Permutation sim</button>
+    <button class="nav-item" onclick="switchView('target',this)"><span class="nav-dot dot-n"></span>Squad target</button>
+    <button class="nav-item" onclick="switchView('exclusions',this)" id="nav-excl"><span class="nav-dot dot-r"></span>Exclusions<span class="excl-ct" id="excl-badge" style="display:none">0</span></button>
+    <button class="nav-item" onclick="switchView('charts',this)"><span class="nav-dot dot-n"></span>Analysis</button>
+    <div class="nav-sec">Quick filters</div>
+    <button class="nav-item" onclick="quickFilter('Nat A')"><span class="nav-dot dot-a"></span>National A</button>
+    <button class="nav-item" onclick="quickFilter('Nat B')"><span class="nav-dot dot-b"></span>National B</button>
+    <button class="nav-item" onclick="quickFilter('DS')"><span class="nav-dot dot-ds"></span>Development</button>
+  </nav>
+  <div class="sb-footer" id="sb-footer">Drop .xlsx to load data</div>
+</aside>
+<main class="main">
+  <div class="topbar">
+    <div class="topbar-title" id="view-title">Rankings</div>
+    <div class="topbar-controls" id="topbar-controls">
+      <div class="pill-group" id="gender-btns">
+        <button class="pill active" onclick="setGender('all',this)">All</button>
+        <button class="pill" onclick="setGender('M',this)">Boys</button>
+        <button class="pill" onclick="setGender('F',this)">Girls</button>
+      </div>
+      <select id="squadFilter" onchange="renderRankings()">
+        <option value="">All squads</option>
+        <option value="Nat A">Nat A</option>
+        <option value="Nat B">Nat B</option>
+        <option value="DS">DS</option>
+      </select>
+      <input type="text" id="nameSearch" placeholder="Search name…" oninput="renderRankings()" style="width:140px">
+      <label style="display:flex;align-items:center;gap:5px;font-size:11px;color:var(--text2);cursor:pointer">
+        <input type="checkbox" id="top50"> Top 50
+      </label>
+    </div>
+    <div class="topbar-right">
+      <span class="src-tag" id="src-tag">No file loaded</span>
+      <button class="upload-btn" onclick="document.getElementById('fileInput').click()">↑ Load .xlsx</button>
+    </div>
+  </div>
+  <div class="content">
+    <div class="panel active" id="panel-rankings">
+      <div id="rankings-content">
+        <div class="welcome">
+          <div class="drop-zone" id="main-dz">
+            <div class="dz-icon">📊</div>
+            <div class="dz-title">Drop your ranking file here</div>
+            <div class="dz-sub">Drag and drop <strong>OP_Gold_for_website.xlsx</strong><br>or any updated version of it</div>
+            <div class="dz-hint">Accepts .xlsx · .xlsm · .xls · Drop again anytime to refresh</div>
+          </div>
+          <p style="font-size:11px;color:var(--text3);font-family:var(--mono)">After each regatta, update col Y in the Excel file and drop it here again.</p>
+        </div>
+      </div>
+    </div>
+    <div class="panel" id="panel-simulator">
+      <div class="two-col">
+        <div class="card">
+          <div class="card-title">Multi-sailor permutation</div>
+          <p class="card-desc">Add sailors and assign hypothetical Temasek finish positions. The simulation adds Temasek as a 5th event and picks best 3 of 5.</p>
+          <div id="sailor-inputs"></div>
+          <button class="add-btn" onclick="addSailorInput()">＋ Add sailor</button>
+          <button class="run-btn" onclick="runSimulation()">▶ RUN</button>
+        </div>
+        <div class="card">
+          <div class="card-title">Squad criteria</div>
+          <p class="card-desc" style="margin-bottom:10px">All sailors must be ≤15yo. Best 3 of 4 regattas (K,M,O,Q). Temasek adds as 5th event.</p>
+          <table class="ct">
+            <tr class="ct-hdr"><td colspan="2">Nat A — top 8 per gender</td></tr>
+            <tr><td>Males</td><td style="font-weight:600">Top 8 ranked males</td></tr>
+            <tr><td>Females</td><td style="font-weight:600">Top 8 ranked females</td></tr>
+            <tr class="ct-hdr"><td colspan="2">Nat B — per age group, max 8 per gender</td></tr>
+            <tr><td>13yo (2013)</td><td style="font-weight:600">2M + 2F</td></tr>
+            <tr><td>12yo (2014)</td><td style="font-weight:600">3M + 3F</td></tr>
+            <tr><td>11&amp;U (2015+)</td><td style="font-weight:600">3M + 3F</td></tr>
+            <tr style="font-size:10px"><td colspan="2" style="color:var(--text3);font-style:italic">Unfilled → next best same-gender</td></tr>
+            <tr class="ct-hdr"><td colspan="2">DS — ≤12yo, max 16</td></tr>
+            <tr><td>12yo (2014)</td><td style="font-weight:600">1M + 1F</td></tr>
+            <tr><td>11yo (2015)</td><td style="font-weight:600">4M + 4F</td></tr>
+            <tr><td>10&amp;U (2016+)</td><td style="font-weight:600">3M + 3F</td></tr>
+            <tr style="font-size:10px"><td colspan="2" style="color:var(--text3);font-style:italic">Unfilled → same-gender 11&amp;U → either-gender 11&amp;U</td></tr>
+          </table>
+        </div>
+      </div>
+      <div class="results-wrap" id="results-panel" style="display:none">
+        <div class="results-hdr">
+          <span class="results-hdr-title">Simulation results</span>
+          <span class="rg-tag">Temasek Jun 2026</span>
+          <button onclick="clearResults()" style="margin-left:auto;background:none;border:none;color:var(--text3);cursor:pointer;font-size:11px;font-family:var(--mono)">✕ clear</button>
+        </div>
+        <div class="res-row hdr"><div>Sailor</div><div>Finish</div><div>Before</div><div>After</div><div>Pts Δ</div><div>New rank</div><div>Squad</div></div>
+        <div id="results-body"></div>
+      </div>
+    </div>
+    <div class="panel" id="panel-target">
+      <div class="two-col">
+        <div class="card">
+          <div class="card-title">Squad target calculator</div>
+          <p class="card-desc">Select a sailor and target squad to see the minimum Temasek finish needed, who blocks them, and what-if scenarios.</p>
+          <div style="display:flex;flex-direction:column;gap:10px">
+            <div class="fl"><label class="fl-lbl">Sailor</label>
+              <select id="targetSailor" onchange="runTarget()" style="height:32px;font-size:11px;width:100%"><option value="">— choose sailor —</option></select></div>
+            <div class="fl"><label class="fl-lbl">Target squad</label>
+              <select id="targetGoal" onchange="runTarget()" style="height:32px;font-size:11px;width:100%">
+                <option value="">— choose goal —</option>
+                <option value="Nat A">National A</option>
+                <option value="Nat B">National B</option>
+                <option value="DS">Development Squad</option>
+              </select></div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-title">How selection works</div>
+          <p class="card-desc">Nat A: age-agnostic top 8 per gender. Nat B: age-group quotas with same-gender backfill. DS: ≤12yo, strict quotas, same-gender then cross-gender backfill.</p>
+          <table class="ct" style="margin-top:0">
+            <tr class="ct-hdr"><td colspan="2">Scoring</td></tr>
+            <tr><td>Events</td><td style="font-weight:600">CSC · PU · SYSC · SAFYC</td></tr>
+            <tr><td>Columns</td><td style="font-weight:600">K · M · O · Q (positions)</td></tr>
+            <tr><td>Score source</td><td style="font-weight:600">Col Y (Best-3-of-4)</td></tr>
+            <tr><td>After Temasek</td><td style="font-weight:600">Best 3 of 5</td></tr>
+          </table>
+        </div>
+      </div>
+      <div id="target-output"></div>
+    </div>
+    <div class="panel" id="panel-exclusions">
+      <div class="two-col" style="margin-bottom:18px">
+        <div class="card">
+          <div class="card-title">Exclude from squad selection</div>
+          <p class="card-desc">Remove sailors who decline or are ineligible. Their spot passes to the next eligible sailor automatically.</p>
+          <div class="fl" style="margin-bottom:10px"><label class="fl-lbl">Sailor</label>
+            <select id="exclSelect" style="height:32px;font-size:11px;width:100%"><option value="">— choose sailor —</option></select></div>
+          <div style="display:flex;gap:6px;margin-bottom:10px" id="reason-btns">
+            <button class="reason-btn active" data-r="Declined" onclick="setReason(this)">Declined</button>
+            <button class="reason-btn" data-r="Non-SGP" onclick="setReason(this)">Non-SGP</button>
+            <button class="reason-btn" data-r="Other" onclick="setReason(this)">Other</button>
+          </div>
+          <button class="run-btn" onclick="addExcl()">＋ Add exclusion</button>
+        </div>
+        <div class="card">
+          <div class="card-title">What exclusions do</div>
+          <p class="card-desc" style="margin-bottom:10px">Excluded sailors are skipped in squad allocation. Session-only — resets on reload.</p>
+          <table class="ct">
+            <tr><td>Rankings</td><td style="font-weight:500">Shown dimmed with reason</td></tr>
+            <tr><td>Squad badge</td><td style="font-weight:500">Shows "Excl."</td></tr>
+            <tr><td>Permutation sim</td><td style="font-weight:500">Excluded from squad calc</td></tr>
+            <tr><td>Squad target</td><td style="font-weight:500">Pool skips excluded sailor</td></tr>
+          </table>
+        </div>
+      </div>
+      <div class="sec-lbl" style="margin-top:0">Currently excluded</div>
+      <div id="excl-list"><div class="excl-empty">No sailors excluded</div></div>
+    </div>
+    <div class="panel" id="panel-charts">
+      <div class="charts-grid">
+        <div class="chart-card"><h3>Avg score by squad</h3><div class="chart-container"><canvas id="distChart"></canvas></div></div>
+        <div class="chart-card"><h3>Rank vs score</h3><div class="chart-container"><canvas id="scatterChart"></canvas></div></div>
+        <div class="chart-card"><h3>Club distribution</h3><div class="chart-container"><canvas id="clubChart"></canvas></div></div>
+        <div class="chart-card"><h3>Birth year distribution</h3><div class="chart-container"><canvas id="yearChart"></canvas></div></div>
+      </div>
+    </div>
+  </div>
+</main>
+</div>
+<script>
+const COMP_YEAR=2026,DNS=84;
+let SAILORS=[],EXCLUDED=new Map(),selectedReason='Declined',genderFilter='all',simCount=0,chartObjs={};
+
+function setupDropZone(){
+  const ov=document.getElementById('dropOverlay'),dz=document.getElementById('main-dz');
+  document.addEventListener('dragover',e=>{e.preventDefault();ov.classList.add('show');});
+  document.addEventListener('dragleave',e=>{if(!e.relatedTarget)ov.classList.remove('show');});
+  document.addEventListener('drop',e=>{e.preventDefault();ov.classList.remove('show');const f=e.dataTransfer?.files[0];if(f)loadFile(f);});
+  if(dz){
+    dz.addEventListener('click',()=>document.getElementById('fileInput').click());
+    dz.addEventListener('dragover',e=>{e.preventDefault();dz.classList.add('over');});
+    dz.addEventListener('dragleave',()=>dz.classList.remove('over'));
+    dz.addEventListener('drop',e=>{e.preventDefault();dz.classList.remove('over');const f=e.dataTransfer?.files[0];if(f)loadFile(f);});
+  }
+  document.getElementById('fileInput').addEventListener('change',e=>{if(e.target.files[0])loadFile(e.target.files[0]);e.target.value='';});
+  document.getElementById('top50').addEventListener('change',renderRankings);
+}
+
+function loadFile(file){
+  const n=file.name.toLowerCase();
+  if(!n.endsWith('.xlsx')&&!n.endsWith('.xlsm')&&!n.endsWith('.xls')){alert('Please drop an Excel file (.xlsx, .xlsm, or .xls).');return;}
+  const reader=new FileReader();
+  reader.onload=e=>{
+    try{
+      const wb=XLSX.read(e.target.result,{type:'array'});
+      const sn=wb.SheetNames.find(n=>/sheet1/i.test(n))||wb.SheetNames[0];
+      parseSheet(XLSX.utils.sheet_to_json(wb.Sheets[sn],{header:1,defval:null}),file.name);
+    }catch(err){alert('Could not read file: '+err.message);}
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+function parseSheet(data,filename){
+  const parseVal = v => {
+    if (v === null || v === undefined) return null;
+    const s = String(v).trim();
+    if (s === '' || isNaN(s)) return null;
+    return parseFloat(s);
+  };
+
+  const raw=[];
+  for(let i=1;i<data.length;i++){
+    const r=data[i];
+    if(!r || !r[0]) continue;
+    const name=String(r[0]).trim();
+    if(!name || name.toLowerCase()==='name') continue;
+    const g=String(r[1]||'').trim().toUpperCase();
+    const born=parseInt(r[2])||0;
+    const club=String(r[4]||'').trim();
+    
+    const csc_raw = parseVal(r[10]);
+    const csc = (csc_raw !== null && csc_raw < DNS) ? csc_raw : null;
+    
+    const pu_raw = parseVal(r[12]);
+    const pu = (pu_raw !== null && pu_raw < DNS) ? pu_raw : null;
+
+    const sysc_raw = parseVal(r[14]);
+    const sysc = (sysc_raw !== null && sysc_raw < DNS) ? sysc_raw : null;
+
+    const safyc_raw = parseVal(r[16]);
+    const safyc = (safyc_raw !== null && safyc_raw < DNS) ? safyc_raw : null;
+
+    const temasek_raw = parseVal(r[18]);
+    const temasek = (temasek_raw !== null && temasek_raw < DNS) ? temasek_raw : null;
+
+    const score_raw = parseVal(r[24]);
+    let score;
+    if(score_raw !== null && score_raw < 900){
+      score = score_raw;
+    } else {
+      const v = [csc, pu, sysc, safyc].filter(x => x !== null).sort((a, b) => a - b);
+      score = v.slice(0, 3).reduce((a, b) => a + b, 0) || 999;
+    }
+    
+    if(!['M','F'].includes(g)) continue;
+    raw.push({name,g,born,club,score,csc,pu,sysc,safyc,temasek});
+  }
+  raw.sort((a,b)=>a.score-b.score);
+  raw.forEach((s,i)=>s.cur=i+1);
+  SAILORS=raw;
+  document.getElementById('sb-tag').textContent=SAILORS.length+' sailors';
+  document.getElementById('sb-tag').className='sb-tag ok';
+  document.getElementById('sb-footer').textContent=filename+' · '+SAILORS.length+' sailors';
+  document.getElementById('src-tag').textContent=filename;
+  document.getElementById('src-tag').className='src-tag ok';
+  populateTargetDropdown();populateSimDropdown();populateExclDropdown();
+  renderRankingsPanel();
+  if(document.getElementById('panel-charts').classList.contains('active'))renderCharts();
+}
+
+function ageGroup(born){const a=COMP_YEAR-born;return a>=13?13:a===12?12:a===11?11:10;}
+
+function computeSquads(sailorList){
+  const res=new Map();
+  ['M','F'].forEach(g=>{
+    const pool=sailorList.filter(s=>s.g===g&&!EXCLUDED.has(s.name)&&s.born>=(COMP_YEAR-15))
+      .map(s=>({...s,_sc:s.simScore!==undefined?s.simScore:s.score})).sort((a,b)=>a._sc-b._sc);
+    pool.slice(0,8).forEach(s=>res.set(s.name,'Nat A'));
+    const rem=()=>pool.filter(s=>!res.has(s.name));
+    let nbF=0;
+    for(const{ag,quota}of[{ag:13,quota:2},{ag:12,quota:3},{ag:11,quota:3}]){
+      if(nbF>=8)break;const av=Math.min(quota,8-nbF);
+      const aged=rem().filter(s=>{const a=COMP_YEAR-s.born;return ag===13?a===13:ag===12?a===12:a<=11;});
+      let f=0;for(const s of aged){if(f>=av)break;res.set(s.name,'Nat B');f++;nbF++;}
+      if(f<av)for(const s of rem()){if(f>=av)break;res.set(s.name,'Nat B');f++;nbF++;}
+    }
+  });
+  const dsEl=g=>sailorList.filter(s=>s.g===g&&!EXCLUDED.has(s.name)&&s.born>=(COMP_YEAR-12)&&!res.has(s.name))
+    .map(s=>({...s,_sc:s.simScore!==undefined?s.simScore:s.score})).sort((a,b)=>a._sc-b._sc);
+  const dsF={M:0,F:0};
+  ['M','F'].forEach(g=>{
+    const pool=dsEl(g);
+    for(const{ag,quota}of[{ag:12,quota:1},{ag:11,quota:4},{ag:10,quota:3}]){
+      if(dsF[g]>=8)break;const av=Math.min(quota,8-dsF[g]);
+      const aged=pool.filter(s=>{const a=COMP_YEAR-s.born;return ag===12?a===12:ag===11?a===11:a<=10;});
+      let f=0;for(const s of aged){if(f>=av||res.has(s.name))break;res.set(s.name,'DS');dsF[g]++;f++;}
+    }
+  });
+  ['M','F'].forEach(g=>{
+    const need=8-dsF[g];if(need<=0)return;let n=0;
+    for(const s of dsEl(g).filter(s=>(COMP_YEAR-s.born)<=11&&!res.has(s.name))){if(n>=need)break;res.set(s.name,'DS');dsF[g]++;n++;}
+  });
+  const tot=dsF.M+dsF.F;
+  if(tot<16){
+    const cross=['M','F'].flatMap(g=>dsEl(g).filter(s=>(COMP_YEAR-s.born)<=11&&!res.has(s.name))).sort((a,b)=>a._sc-b._sc);
+    let n=tot;for(const s of cross){if(n>=16)break;if(res.has(s.name))continue;res.set(s.name,'DS');dsF[s.g]++;n++;}
+  }
+  return res;
+}
+
+function calcNewScore(sailor,pos){
+  const ex=[sailor.csc,sailor.pu,sailor.sysc,sailor.safyc].filter(v=>v);
+  return[...ex,pos].sort((a,b)=>a-b).slice(0,3).reduce((a,b)=>a+b,0);
+}
+
+function squadBadge(sq){
+  if(!sq)return'<span class="badge b-n">—</span>';
+  const cls=sq==='Nat A'?'b-a':sq==='Nat B'?'b-b':sq==='DS'?'b-ds':'b-n';
+  return`<span class="badge ${cls}">${sq}</span>`;
+}
+
+function renderRankingsPanel(){
+  if(!SAILORS.length)return;
+  const sq=computeSquads(SAILORS);
+  const natA=[...sq.values()].filter(v=>v==='Nat A').length;
+  const natB=[...sq.values()].filter(v=>v==='Nat B').length;
+  const ds=[...sq.values()].filter(v=>v==='DS').length;
+  const excl=EXCLUDED.size;
+  document.getElementById('rankings-content').innerHTML=`
+    ${excl>0?`<div class="excl-banner">⚠ <strong>${excl} sailor${excl>1?'s':''} excluded</strong> from squad selection. <a href="#" onclick="switchView('exclusions',document.getElementById('nav-excl'));return false;" style="color:var(--red);margin-left:4px;font-family:var(--mono);font-size:10px">Manage →</a></div>`:''}
+    <div class="metrics">
+      <div class="mc mc1"><div class="mc-lbl">Total ranked</div><div class="mc-val">${SAILORS.length}</div><div class="mc-sub">sailors</div></div>
+      <div class="mc mc2"><div class="mc-lbl">National A</div><div class="mc-val">${natA}</div><div class="mc-sub">top squad</div></div>
+      <div class="mc mc3"><div class="mc-lbl">National B</div><div class="mc-val">${natB}</div><div class="mc-sub">training squad</div></div>
+      <div class="mc mc4"><div class="mc-lbl">Dev Squad</div><div class="mc-val">${ds}</div><div class="mc-sub">development</div></div>
+      <div class="mc mc5"><div class="mc-lbl">Best 3 of</div><div class="mc-val">4</div><div class="mc-sub">K · M · O · Q</div></div>
+    </div>
+    <div class="tbl-wrap"><table>
+      <thead><tr>
+        <th style="width:46px">Rank</th>
+        <th style="width:180px">Sailor</th>
+        <th style="width:32px">G</th>
+        <th style="width:46px">Born</th>
+        <th style="width:62px">Club</th>
+        <th style="width:66px">Squad</th>
+        <th style="width:52px;text-align:center">Score</th>
+        <th style="width:46px;text-align:center">CSC</th>
+        <th style="width:48px;text-align:center">P.Ujong</th>
+        <th style="width:46px;text-align:center">SYSC</th>
+        <th style="width:52px;text-align:center">SAFYC</th>
+      </tr></thead>
+      <tbody id="rank-body"></tbody>
+    </table></div>`;
+  document.getElementById('top50').addEventListener('change',renderRankings);
+  renderRankings();
+}
+
+function renderRankings(){
+  const body=document.getElementById('rank-body');
+  if(!body||!SAILORS.length)return;
+  const sqF=document.getElementById('squadFilter').value;
+  const nm=document.getElementById('nameSearch').value.toLowerCase();
+  const t50=document.getElementById('top50').checked;
+  const sq=computeSquads(SAILORS);
+  const best3E=s=>{
+    const evts=[{k:'csc',v:s.csc},{k:'pu',v:s.pu},{k:'sysc',v:s.sysc},{k:'safyc',v:s.safyc}].filter(e=>e.v).sort((a,b)=>a.v-b.v);
+    return new Set(evts.slice(0,3).map(e=>e.k));
+  };
+  const data=SAILORS.filter(s=>{
+    if(genderFilter!=='all'&&s.g!==genderFilter)return false;
+    const squad=EXCLUDED.has(s.name)?null:(sq.get(s.name)||null);
+    if(sqF&&squad!==sqF)return false;
+    if(nm&&!s.name.toLowerCase().includes(nm))return false;
+    if(t50&&s.cur>50)return false;
+    return true;
+  });
+  body.innerHTML=data.map(s=>{
+    const isExcl=EXCLUDED.has(s.name);
+    const squad=isExcl?null:(sq.get(s.name)||null);
+    const rowSt=isExcl?'opacity:.42;':'';
+    const exclTag=isExcl?`<span class="excl-tag">${EXCLUDED.get(s.name)}</span>`:'';
+    const b3=best3E(s);
+    const cell=(k,v)=>{
+      if(!v)return'<td style="text-align:center;font-family:var(--mono);font-size:10px;color:var(--text3)">—</td>';
+      return`<td style="text-align:center"><span class="pos-tag${b3.has(k)?' best':''}">${v}</span></td>`;
+    };
+    return`<tr style="${rowSt}">
+      <td class="rank-c">${s.cur}</td>
+      <td class="name-c">${s.name}${exclTag}</td>
+      <td class="sub-c">${s.g}</td>
+      <td class="sub-c">${s.born}</td>
+      <td class="sub-c" style="font-size:10px">${s.club}</td>
+      <td>${isExcl?'<span class="badge b-n">Excl.</span>':squadBadge(squad)}</td>
+      <td style="text-align:center;font-family:var(--mono);font-weight:600;color:var(--accent2)">${Math.floor(s.score)}</td>
+      ${cell('csc',s.csc)}${cell('pu',s.pu)}${cell('sysc',s.sysc)}${cell('safyc',s.safyc)}
+    </tr>`;
+  }).join('');
+}
+
+function setGender(g,btn){genderFilter=g;document.querySelectorAll('#gender-btns .pill').forEach(b=>b.classList.remove('active'));btn.classList.add('active');renderRankings();}
+
+function quickFilter(sq){
+  document.querySelectorAll('.nav-item').forEach(b=>b.classList.remove('active'));
+  document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+  document.getElementById('panel-rankings').classList.add('active');
+  document.getElementById('view-title').textContent='Rankings';
+  document.getElementById('topbar-controls').style.display='flex';
+  document.getElementById('squadFilter').value=sq;
+  document.getElementById('top50').checked=false;
+  renderRankings();
+}
+
+function populateSimDropdown(){
+  document.querySelectorAll('.sim-sel').forEach(sel=>{
+    const cur=sel.value;
+    sel.innerHTML='<option value="">— select —</option>'+SAILORS.map(s=>`<option value="${s.name}">${s.cur}. ${s.name} (${s.g}, ${s.born})</option>`).join('');
+    if(cur)sel.value=cur;
+  });
+}
+
+function addSailorInput(){
+  const c=document.getElementById('sailor-inputs');
+  if(c.children.length>=10)return;
+  const id=++simCount;
+  const opts=SAILORS.map(s=>`<option value="${s.name}">${s.cur}. ${s.name} (${s.g}, ${s.born})</option>`).join('');
+  const div=document.createElement('div');
+  div.className='sailor-row';div.id='sr-'+id;
+  div.innerHTML=`<div class="fl"><label class="fl-lbl">Sailor</label><select id="ss-${id}" class="sim-sel" style="width:100%"><option value="">— select —</option>${opts}</select></div>
+    <div class="fl"><label class="fl-lbl">Finish</label><input type="number" id="sp-${id}" min="1" max="200" value="10"></div>
+    <button class="rm-btn" onclick="document.getElementById('sr-'+id).remove()">✕</button>`;
+  c.appendChild(div);
+}
+
+function runSimulation(){
+  if(!SAILORS.length){alert('Load a file first.');return;}
+  const rows=document.querySelectorAll('#sailor-inputs .sailor-row');
+  if(!rows.length){addSailorInput();return;}
+  const entries=[];
+  rows.forEach(row=>{
+    const id=row.id.replace('sr-','');
+    const nm=document.getElementById('ss-'+id).value;
+    const pos=parseInt(document.getElementById('sp-'+id).value)||10;
+    if(!nm)return;
+    const s=SAILORS.find(x=>x.name===nm);
+    if(s)entries.push({sailor:s,pos});
+  });
+  if(!entries.length)return;
+  const simMap=new Map();
+  entries.forEach(e=>simMap.set(e.sailor.name,calcNewScore(e.sailor,e.pos)));
+  const simList=SAILORS.map(s=>({...s,simScore:simMap.has(s.name)?simMap.get(s.name):s.score}));
+  const simSq=computeSquads(simList),baseSq=computeSquads(SAILORS);
+  const sorted=simList.slice().sort((a,b)=>a.simScore-b.simScore);
+  const rankMap=new Map(sorted.map((s,i)=>[s.name,i+1]));
+  const panel=document.getElementById('results-panel');
+  panel.style.display='block';
+  document.getElementById('results-body').innerHTML=entries.map(e=>{
+    const s=e.sailor,ns=simMap.get(s.name),gain=s.score<900?(s.score-ns):0;
+    const newRank=rankMap.get(s.name)||s.cur,rd=s.cur-newRank;
+    const dc=rd>0?'up':rd<0?'dn':'eq',dt=rd>0?'▲'+rd:rd<0?'▼'+Math.abs(rd):'—';
+    const oldSq=baseSq.get(s.name)||null,newSq=simSq.get(s.name)||null;
+    const sqD=oldSq!==newSq?`<span style="opacity:.5;text-decoration:line-through;font-size:9px;font-family:var(--mono)">${oldSq||'—'}</span> ${squadBadge(newSq)}`:squadBadge(newSq);
+    return`<div class="res-row">
+      <div><div class="res-name">${s.name}</div><div class="res-sub">${squadBadge(oldSq)} #${s.cur}</div></div>
+      <div><span class="fin-tag">P${e.pos}</span></div>
+      <div><span class="s-old">${Math.floor(s.score)}</span></div>
+      <div><span class="s-new">${ns}</span></div>
+      <div><span class="chg ${gain>0?'chg-up':gain<0?'chg-dn':'chg-eq'}">${gain>0?'−'+gain:gain<0?'+'+Math.abs(gain):'0'}</span></div>
+      <div><span class="rnk-was">was #${s.cur}</span><span class="rnk-new">#${newRank}</span><span class="chg ${dc}" style="font-size:9px">${dt}</span></div>
+      <div>${sqD}</div>
+    </div>`;
+  }).join('');
+  panel.scrollIntoView({behavior:'smooth',block:'nearest'});
+}
+
+function clearResults(){document.getElementById('results-panel').style.display='none';document.getElementById('results-body').innerHTML='';}
+
+function populateTargetDropdown(){
+  const sel=document.getElementById('targetSailor'),cur=sel.value;
+  sel.innerHTML='<option value="">— choose sailor —</option>'+SAILORS.map(s=>`<option value="${s.name}">${s.cur}. ${s.name} (${s.g==='M'?'Boy':'Girl'}, ${s.born})</option>`).join('');
+  if(cur)sel.value=cur;
+}
+
+function getContextPool(sailor,goal){
+  if(goal==='Nat A'||goal==='Nat B')return SAILORS.filter(s=>s.g===sailor.g&&s.born>=(COMP_YEAR-15)).sort((a,b)=>a.score-b.score);
+  const ag=ageGroup(sailor.born),bkt=ag>=12?12:ag===11?11:10;
+  return SAILORS.filter(s=>{
+    if(s.g!==sailor.g||s.born<(COMP_YEAR-12))return false;
+    const sag=ageGroup(s.born),sb=sag>=12?12:sag===11?11:10;return sb===bkt;
+  }).sort((a,b)=>a.score-b.score);
+}
+
+function runTarget(){
+  if(!SAILORS.length)return;
+  const nm=document.getElementById('targetSailor').value,goal=document.getElementById('targetGoal').value;
+  const out=document.getElementById('target-output');
+  if(!nm||!goal){out.innerHTML='';return;}
+  const sailor=SAILORS.find(s=>s.name===nm);if(!sailor)return;
+  const gl=goal==='Nat A'?'National A':goal==='Nat B'?'National B':'Development Squad';
+  const gpc=goal==='Nat A'?'gt-a':goal==='Nat B'?'gt-b':'gt-ds';
+  const agN=ageGroup(sailor.born),agL=agN>=13?'13yo':agN===12?'12yo':agN===11?'11&U':'10&U';
+  const gL=sailor.g==='M'?'boys':'girls',sqOrd={'Nat A':1,'Nat B':2,'DS':3};
+  const baseSq=computeSquads(SAILORS),curSq=EXCLUDED.has(sailor.name)?null:(baseSq.get(sailor.name)||null);
+  const already=(sqOrd[curSq]||99)<=(sqOrd[goal]||99);
+  let posNeeded=null,projScore=null;
+  for(let pos=1;pos<=200;pos++){
+    const ns=calcNewScore(sailor,pos);
+    const sl=SAILORS.map(s=>s.name===sailor.name?{...s,simScore:ns}:{...s,simScore:s.score});
+    const sq=computeSquads(sl).get(sailor.name);
+    if(sq&&(sqOrd[sq]||99)<=(sqOrd[goal]||99)){posNeeded=pos;projScore=ns;break;}
+  }
+  const pool=getContextPool(sailor,goal);
+  const pIdx=pool.findIndex(s=>s.name===sailor.name);
+  const ctx=pool.slice(Math.max(0,pIdx-2),Math.min(pool.length,pIdx+3));
+  const nsAtN=posNeeded?calcNewScore(sailor,posNeeded):calcNewScore(sailor,1);
+  const simSqM=computeSquads(SAILORS.map(s=>s.name===sailor.name?{...s,simScore:nsAtN}:{...s,simScore:s.score}));
+  const blocking=pool.filter(s=>{if(s.name===sailor.name)return false;const sq=baseSq.get(s.name)||'';return s.score<nsAtN&&(sqOrd[sq]||99)<=(sqOrd[goal]||99);});
+  const ctxT=buildCtxTable(ctx,sailor,baseSq,posNeeded?simSqM:null,posNeeded);
+  const wiS=buildWhatIf(sailor,goal,ctx);
+  let html='';
+  if(already){
+    html=`<div class="tgt-res"><div class="tgt-res-hdr"><h3>${sailor.name}</h3><span class="goal-tag ${gpc}">${gl}</span><span style="font-family:var(--mono);font-size:9px;color:var(--text3)">${agL} · ${gL}</span></div>
+      <div class="tgt-body"><div style="padding:12px 14px;background:var(--accent-l);border:1px solid rgba(26,71,42,.2);border-radius:var(--r);color:var(--accent);font-size:12px;font-weight:600;margin-bottom:14px">✓ Already allocated to <strong>${curSq}</strong> — meets or exceeds ${gl}.</div>
+      <div class="sec-lbl" style="margin-top:0">Pool context</div>${ctxT}${wiS}</div></div>`;
+  }else if(!posNeeded){
+    html=`<div class="tgt-res"><div class="tgt-res-hdr"><h3>${sailor.name}</h3><span class="goal-tag ${gpc}">${gl}</span></div>
+      <div class="tgt-body"><div class="impossible">Even P1 at Temasek cannot reach <strong>${gl}</strong> based on current standings.</div>
+      <div class="sec-lbl">Pool context</div>${ctxT}${wiS}</div></div>`;
+  }else{
+    html=`<div class="tgt-res"><div class="tgt-res-hdr"><h3>${sailor.name}</h3><span class="goal-tag ${gpc}">${gl}</span><span style="font-family:var(--mono);font-size:9px;color:var(--text3)">${agL} · ${gL}</span></div>
+      <div class="tgt-body">
+        <div class="tgt-sum">
+          <div class="tgt-stat"><div class="tgt-stat-lbl">Current squad</div><div class="tgt-stat-val" style="font-size:14px">${curSq||'None'}</div><div class="tgt-stat-sub">score: ${Math.floor(sailor.score)}</div></div>
+          <div class="tgt-stat"><div class="tgt-stat-lbl">Finish needed</div><div class="tgt-stat-val">P${posNeeded}</div><div class="tgt-stat-sub">score → ${projScore}</div></div>
+          <div class="tgt-stat"><div class="tgt-stat-lbl">Age group</div><div class="tgt-stat-val" style="font-size:14px">${agL}</div><div class="tgt-stat-sub">${gL} pool</div></div>
+        </div>
+        <div class="sc-item" style="border-color:rgba(26,71,42,.15);background:var(--accent-l)">
+          <div class="sc-icon">◎</div><div><div class="sc-title">Performance needed</div>
+          <div class="sc-desc">Finish <strong>P${posNeeded} or better</strong> at Temasek. Score: ${Math.floor(sailor.score)} → <strong>${projScore}</strong></div></div>
+        </div>
+        ${blocking.length?`<div class="sc-item" style="border-color:rgba(122,53,0,.15);background:var(--accent3-l)">
+          <div class="sc-icon">⚡</div><div><div class="sc-title">Sailors to displace (${blocking.length})</div>
+          <div class="sc-desc">${blocking.map(b=>`<strong>${b.name}</strong> (score ${Math.floor(b.score)}, ${baseSq.get(b.name)||'—'})`).join('<br>')}
+          <br><span style="color:var(--text3);font-size:10px">Each must finish worse than P${posNeeded} or not compete.</span></div></div></div>`:''}
+        <div class="sec-lbl">Pool context — ${agL} ${gL}</div>${ctxT}${wiS}
+      </div></div>`;
+  }
+  out.innerHTML=html;
+}
+
+function buildCtxTable(ctx,sailor,baseSq,simSqM,posNeeded){
+  const rows=ctx.map((s,i)=>{
+    const isSelf=s.name===sailor.name,isExcl=EXCLUDED.has(s.name);
+    const curSq=isExcl?null:(baseSq.get(s.name)||null);
+    const simSq=simSqM?(simSqM.get(s.name)||null):null;
+    const changed=simSq&&simSq!==curSq;
+    const bg=isSelf?'class="hi-self"':'',rowSt=isExcl&&!isSelf?'opacity:.4;':'';
+    const ns=isSelf&&posNeeded?calcNewScore(s,posNeeded):null;
+    const scoreD=ns!=null?`<span style="color:var(--text3);text-decoration:line-through;font-size:10px">${Math.floor(s.score)}</span> <strong style="color:var(--accent)">${ns}</strong>`:(s.score<900?Math.floor(s.score):'—');
+    const exclTag=isExcl?`<span class="excl-tag">${EXCLUDED.get(s.name)}</span>`:'';
+    const sqCell=isExcl?'<span class="badge b-n">Excl.</span>':changed?`${squadBadge(curSq)}<span style="color:var(--accent);font-family:var(--mono);font-size:9px"> →${simSq}</span>`:squadBadge(curSq);
+    const ev=[s.csc?`CSC ${s.csc}`:null,s.pu?`PU ${s.pu}`:null,s.sysc?`SYSC ${s.sysc}`:null,s.safyc?`SAFYC ${s.safyc}`:null].filter(Boolean).join(' · ');
+    return`<tr ${bg} style="${rowSt}">
+      <td class="sub-c">#${i+1}</td>
+      <td style="font-weight:${isSelf?700:500};color:${isSelf?'var(--accent)':'inherit'}">${s.name}${exclTag}</td>
+      <td class="sub-c">${s.g}</td>
+      <td class="sub-c">${s.born}</td>
+      <td class="sub-c" style="font-size:10px">${s.club}</td>
+      <td>${sqCell}</td>
+      <td style="text-align:center">${scoreD}</td>
+      <td style="font-size:9px;color:var(--text3)">${ev}</td>
+    </tr>`;
+  }).join('');
+  return `<table class="ct">
+    <thead>
+      <tr class="ct-hdr">
+        <td style="width:30px">Pos</td>
+        <td>Sailor</td>
+        <td style="width:20px">G</td>
+        <td style="width:35px">Born</td>
+        <td style="width:50px">Club</td>
+        <td style="width:130px">Squad (Before → Sim)</td>
+        <td style="width:70px;text-align:center">Score</td>
+        <td>History</td>
+      </tr>
+    </thead>
+    <tbody>
+      ${rows}
+    </tbody>
+  </table>`;
+}
+
+function buildWhatIf(sailor, goal, ctx) {
+  const scenarios = [1, 3, 5, 10, 20, 50];
+  const sqOrd = { 'Nat A': 1, 'Nat B': 2, 'DS': 3 };
+  let rows = scenarios.map(pos => {
+    const ns = calcNewScore(sailor, pos);
+    const sl = SAILORS.map(s => s.name === sailor.name ? { ...s, simScore: ns } : { ...s, simScore: s.score });
+    const sq = computeSquads(sl).get(sailor.name);
+    const ok = sq && (sqOrd[sq] || 99) <= (sqOrd[goal] || 99);
+    const bg = ok ? 'style="background:var(--accent-l);"' : '';
+    return `<div class="wi-row" ${bg}>
+      <div>
+        <span class="fin-tag">P${pos}</span>
+        <span style="font-size:11px;margin-left:8px">Score will be <strong>${ns}</strong></span>
+      </div>
+      <div style="text-align:right">
+        ${squadBadge(sq)}
+      </div>
+    </div>`;
+  }).join('');
+  return `<div class="sec-lbl">What-if scenarios for Temasek</div>${rows}`;
+}
+
+// ── EXCLUSIONS ──────────────────────────────────────────────────────────────
+function populateExclDropdown() {
+  const sel = document.getElementById('exclSelect');
+  if (!sel) return;
+  const cur = sel.value;
+  sel.innerHTML = '<option value="">— choose sailor —</option>' +
+    SAILORS.map(s => `<option value="${s.name}">${s.cur}. ${s.name} (${s.g}, ${s.born})</option>`).join('');
+  if (cur) sel.value = cur;
+}
+
+function populateExclDropdownAll() {
+  // Overloaded for target/exclusions
+  populateExclDropdown();
+}
+
+function setReason(btn) {
+  selectedReason = btn.getAttribute('data-r');
+  document.querySelectorAll('#reason-btns .reason-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+}
+
+function addExcl() {
+  const sel = document.getElementById('exclSelect');
+  if (!sel || !sel.value) return;
+  const name = sel.value;
+  EXCLUDED.set(name, selectedReason);
+  sel.value = '';
+  renderExclusions();
+  renderRankingsPanel();
+  runTarget();
+}
+
+function removeExcl(name) {
+  EXCLUDED.delete(name);
+  renderExclusions();
+  renderRankingsPanel();
+  runTarget();
+}
+
+function renderExclusions() {
+  const list = document.getElementById('excl-list');
+  const badge = document.getElementById('excl-badge');
+  if (!list) return;
+  if (EXCLUDED.size === 0) {
+    list.innerHTML = '<div class="excl-empty">No sailors excluded</div>';
+    if (badge) badge.style.display = 'none';
+    return;
+  }
+  if (badge) {
+    badge.style.display = 'inline-flex';
+    badge.textContent = EXCLUDED.size;
+  }
+  let html = '';
+  EXCLUDED.forEach((reason, name) => {
+    html += `<div class="excl-item">
+      <div>
+        <div class="excl-name">${name}</div>
+        <div class="excl-reason">${reason}</div>
+      </div>
+      <button class="excl-rm" onclick="removeExcl('${name.replace(/'/g, "\\'")}')">✕ remove</button>
+    </div>`;
+  });
+  list.innerHTML = html;
+}
+
+// ── CHARTS ──────────────────────────────────────────────────────────────────
+function renderCharts() {
+  if (!SAILORS.length) return;
+  const sq = computeSquads(SAILORS);
+
+  // Dist Chart: Avg score by squad
+  const squadScores = { 'Nat A': [], 'Nat B': [], 'DS': [], 'None': [] };
+  SAILORS.forEach(s => {
+    const squad = EXCLUDED.has(s.name) ? 'None' : (sq.get(s.name) || 'None');
+    squadScores[squad].push(s.score);
+  });
+  const distData = Object.keys(squadScores).map(k => {
+    const vals = squadScores[k];
+    const avg = vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : 0;
+    return { squad: k, avg: Math.round(avg * 10) / 10, count: vals.length };
+  });
+
+  if (chartObjs.dist) chartObjs.dist.destroy();
+  chartObjs.dist = new Chart(document.getElementById('distChart'), {
+    type: 'bar',
+    data: {
+      labels: distData.map(d => d.squad),
+      datasets: [{
+        label: 'Avg Score (lower is better)',
+        data: distData.map(d => d.avg),
+        backgroundColor: ['#1a472a', '#2d4a8a', '#7a3500', '#9a958c']
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: { y: { beginAtZero: true } }
+    }
+  });
+
+  // Scatter Chart: Rank vs score
+  const scatterData = SAILORS.map(s => ({ x: s.cur, y: s.score }));
+  if (chartObjs.scatter) chartObjs.scatter.destroy();
+  chartObjs.scatter = new Chart(document.getElementById('scatterChart'), {
+    type: 'scatter',
+    data: {
+      datasets: [{
+        label: 'Sailors',
+        data: scatterData,
+        backgroundColor: '#2d4a8a'
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      scales: {
+        x: { title: { display: true, text: 'Current Rank' } },
+        y: { title: { display: true, text: 'Points Score' } }
+      }
+    }
+  });
+
+  // Club Chart: Club distribution
+  const clubs = {};
+  SAILORS.forEach(s => { if (s.club) clubs[s.club] = (clubs[s.club] || 0) + 1; });
+  const clubLabels = Object.keys(clubs).sort((a, b) => clubs[b] - clubs[a]).slice(0, 7);
+  const clubValues = clubLabels.map(l => clubs[l]);
+
+  if (chartObjs.club) chartObjs.club.destroy();
+  chartObjs.club = new Chart(document.getElementById('clubChart'), {
+    type: 'pie',
+    data: {
+      labels: clubLabels,
+      datasets: [{
+        data: clubValues,
+        backgroundColor: ['#1a472a', '#2d4a8a', '#7a3500', '#b8b3aa', '#dedad2', '#e8e5de', '#faf9f6']
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false
+    }
+  });
+
+  // Year Chart: Birth year distribution
+  const years = {};
+  SAILORS.forEach(s => { if (s.born) years[s.born] = (years[s.born] || 0) + 1; });
+  const yearLabels = Object.keys(years).sort();
+  const yearValues = yearLabels.map(l => years[l]);
+
+  if (chartObjs.year) chartObjs.year.destroy();
+  chartObjs.year = new Chart(document.getElementById('yearChart'), {
+    type: 'bar',
+    data: {
+      labels: yearLabels,
+      datasets: [{
+        label: 'Number of Sailors',
+        data: yearValues,
+        backgroundColor: '#1a472a'
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } }
+    }
+  });
+}
+
+// ── NAVIGATION & VIEWS ──────────────────────────────────────────────────────
+function switchView(viewId, btn) {
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  const targetPanel = document.getElementById('panel-' + viewId);
+  if (targetPanel) targetPanel.classList.add('active');
+
+  document.querySelectorAll('.nav-item').forEach(item => item.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+
+  const titleMap = {
+    'rankings': 'Rankings',
+    'simulator': 'Permutation sim',
+    'target': 'Squad target',
+    'exclusions': 'Exclusions',
+    'charts': 'Analysis'
+  };
+  const titleEl = document.getElementById('view-title');
+  if (titleEl) titleEl.textContent = titleMap[viewId] || 'OP Gold Ranking';
+
+  const ctrl = document.getElementById('topbar-controls');
+  if (ctrl) {
+    if (viewId === 'rankings') {
+      ctrl.style.display = 'flex';
+    } else {
+      ctrl.style.display = 'none';
+    }
+  }
+
+  if (viewId === 'charts') {
+    renderCharts();
+  }
+}
+
+// ── SEED DATA GENERATOR ─────────────────────────────────────────────────────
+function getSeedSailors() {
+  return [
+    { name: "Anya Alessia Zahedi", g: "F", born: 2013, club: "RM", score: 39, csc: 7, pu: 4, sysc: 3, safyc: 2, temasek: null },
+    { name: "Kevin Ho Jun Yi", g: "M", born: 2012, club: "SAFYC", score: 37, csc: 4, pu: 2, sysc: 7, safyc: 84, temasek: null },
+    { name: "Lyric Li Yuxuan", g: "F", born: 2011, club: "CSC", score: 27, csc: 3, pu: 3, sysc: 107, safyc: 1, temasek: null },
+    { name: "Elijah Ong En Ze", g: "M", born: 2013, club: "SAFYC", score: 43, csc: 12, pu: 7, sysc: 13, safyc: 3, temasek: null },
+    { name: "Tham Yan Lin Ashlyn", g: "F", born: 2012, club: "RM", score: 40, csc: 5, pu: 6, sysc: 2, safyc: 10, temasek: null },
+    { name: "Rahul Rajakanth", g: "M", born: 2012, club: "CWSS", score: 53, csc: 43, pu: 10, sysc: 17, safyc: 5, temasek: null },
+    { name: "Elliot Goh Yik Khai", g: "M", born: 2013, club: "SAFYC", score: 55, csc: 10, pu: 11, sysc: 14, safyc: 7, temasek: null },
+    { name: "Alyssa Wong Li Lin", g: "F", born: 2013, club: "SAFYC", score: 52, csc: 8, pu: 9, sysc: 9, safyc: 15, temasek: null },
+    { name: "Ethan Lee", g: "M", born: 2011, club: "PA", score: 40, csc: 2, pu: 5, sysc: 11, safyc: 23, temasek: null },
+    { name: "Damien Huang", g: "M", born: 2012, club: "SAFYC", score: 63, csc: 11, pu: 20, sysc: 23, safyc: 8, temasek: null },
+    { name: "Lucas Cao Zhihong", g: "M", born: 2011, club: "SAFYC", score: 6, csc: 1, pu: 1, sysc: 18, safyc: 84, temasek: null },
+    { name: "Jairus Teo Xin Jie", g: "M", born: 2012, club: "PA", score: 61, csc: 14, pu: 21, sysc: 39, safyc: 6, temasek: null },
+    { name: "Nathaniel Kaiden Ng", g: "M", born: 2012, club: "PA", score: 58, csc: 13, pu: 12, sysc: 8, safyc: 14, temasek: null },
+    { name: "Jedd Lam Zhi Hao", g: "M", born: 2013, club: "CWSS", score: 59, csc: 9, pu: 14, sysc: 16, safyc: 11, temasek: null },
+    { name: "Nicole Wong Jing Chen", g: "F", born: 2014, club: "RSYC CH", score: 60, csc: 25, pu: 31, sysc: 43, safyc: 4, temasek: null },
+    { name: "Cheong Jia Tio Olivia", g: "F", born: 2013, club: "SAFYC", score: 77, csc: 16, pu: 17, sysc: 28, safyc: 42, temasek: null },
+    { name: "Darian Huang", g: "M", born: 2014, club: "SAFYC", score: 94, csc: 17, pu: 27, sysc: 26, safyc: 16, temasek: null },
+    { name: "Ethan Low Zhi Ren", g: "M", born: 2014, club: "SAFYC", score: 69, csc: 20, pu: 15, sysc: 20, safyc: 32, temasek: null },
+    { name: "Tan En Ting, Kirsten", g: "F", born: 2016, club: "SAFYC", score: 77, csc: 19, pu: 16, sysc: 45, safyc: 36, temasek: null },
+    { name: "Kaelyn Dayna Soh Zhi Yin", g: "F", born: 2012, club: "SAFYC", score: 86, csc: 18, pu: 19, sysc: 35, safyc: 27, temasek: null },
+    ...Array.from({ length: 80 }, (_, i) => {
+      const idx = i + 21;
+      const g = idx % 2 === 0 ? "M" : "F";
+      const born = 2011 + (idx % 6);
+      const clubsList = ["CSC", "SAFYC", "RM", "PA", "RSYC CH", "CWSS"];
+      const club = clubsList[idx % clubsList.length];
+      const csc = 15 + (idx % 23);
+      const pu = 12 + (idx % 27);
+      const sysc = 10 + (idx % 29);
+      const safyc = 8 + (idx % 31);
+      const score = [csc, pu, sysc, safyc].sort((a, b) => a - b).slice(0, 3).reduce((a, b) => a + b, 0);
+      return {
+        name: `Sailor ${idx}`,
+        g,
+        born,
+        club,
+        score,
+        csc,
+        pu,
+        sysc,
+        safyc,
+        temasek: null
+      };
+    })
+  ].sort((a, b) => a.score - b.score).map((s, i) => ({ ...s, cur: i + 1 }));
+}
+
+// ── INITIALIZATION ──────────────────────────────────────────────────────────
+window.onload = function() {
+  setupDropZone();
+  SAILORS = getSeedSailors();
+  document.getElementById('sb-tag').textContent = SAILORS.length + ' sailors';
+  document.getElementById('sb-tag').className = 'sb-tag ok';
+  document.getElementById('sb-footer').textContent = 'Seed Dataset loaded · ' + SAILORS.length + ' sailors';
+  document.getElementById('src-tag').textContent = 'Seed Data';
+  document.getElementById('src-tag').className = 'src-tag ok';
+
+  populateTargetDropdown();
+  populateSimDropdown();
+  populateExclDropdown();
+  renderRankingsPanel();
+};
+</script>
+</body>
+</html>
