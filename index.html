@@ -801,11 +801,13 @@ function recomputeSailors() {
           g: s.g || s.gender,
           born: s.born,
           club: s.club,
-          scores: Array(latestRegs.length).fill(null)
+          scores: Array(latestRegs.length).fill(null),
+          ranks: Array(latestRegs.length).fill(null)
         });
       }
       const sailorObj = sailorMap.get(matchedKey);
       sailorObj.scores[regIdx] = s.nett;
+      sailorObj.ranks[regIdx] = s.rank !== undefined ? s.rank : s.nett;
       if (s.g && !sailorObj.g) sailorObj.g = s.g;
       if (s.born && !sailorObj.born) sailorObj.born = s.born;
       if (s.club && !sailorObj.club) sailorObj.club = s.club;
@@ -827,7 +829,8 @@ function recomputeSailors() {
       born: s.born,
       club: s.club,
       score: score,
-      scores: s.scores
+      scores: s.scores,
+      ranks: s.ranks
     });
   });
 
@@ -904,7 +907,7 @@ function renderRankings(){
     const isBest3 = new Set(best3Indices);
 
     const cells = latestRegs.map((_, idx) => {
-      const v = s.scores[idx];
+      const v = s.ranks[idx];
       if(v === null || v === undefined) return '<td style="text-align:center;font-family:var(--mono);font-size:10px;color:var(--text3)">—</td>';
       return `<td style="text-align:center"><span class="pos-tag${isBest3.has(idx)?' best':''}">${v}</span></td>`;
     }).join('');
