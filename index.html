@@ -571,15 +571,15 @@ function parseSheet(data,filename){
 
   if (hasConsolidated) {
     const regColumns = [
-      { name: headers[6] || "Regatta 1", idx: 6, date: "2025-09-15" },
-      { name: headers[7] || "Regatta 2", idx: 7, date: "2025-10-15" },
-      { name: headers[8] || "Regatta 3", idx: 8, date: "2025-11-15" },
-      { name: headers[9] || "Regatta 4", idx: 9, date: "2025-12-15" },
-      { name: headers[10] || "CSC Gold", idx: 10, date: "2026-01-26" },
-      { name: headers[12] || "Pulau Ujong", idx: 12, date: "2026-02-26" },
-      { name: headers[14] || "SYSC", idx: 14, date: "2026-03-05" },
-      { name: headers[16] || "SAFYC", idx: 16, date: "2026-03-20" },
-      { name: headers[18] || "Temasek", idx: 18, date: "2026-06-20" }
+      { name: headers[6] || "SAFYC Regatta (July 2025)", idx: 6, date: "2025-07-15" },
+      { name: headers[7] || "Pesta Sukan (Aug 2025)", idx: 7, date: "2025-08-10" },
+      { name: headers[8] || "RSYC (Aug 2025)", idx: 8, date: "2025-08-25" },
+      { name: headers[9] || "SNSC (Sep 2025)", idx: 9, date: "2025-09-15" },
+      { name: headers[10] || "CSC Gold (Jan 26)", idx: 10, date: "2026-01-26" },
+      { name: headers[12] || "Pulau Ujong (Feb 26)", idx: 12, date: "2026-02-26" },
+      { name: headers[14] || "SYSC (Mar 26)", idx: 14, date: "2026-03-05" },
+      { name: headers[16] || "SAFYC Regatta (Mar 26)", idx: 16, date: "2026-03-20" },
+      { name: headers[18] || "Temasek Regatta (Jun 26)", idx: 18, date: "2026-06-20" }
     ];
 
     REGATTAS = [];
@@ -593,10 +593,31 @@ function parseSheet(data,filename){
         const g = String(r[1] || '').trim().toUpperCase();
         const born = parseInt(r[2]) || 0;
         const club = String(r[4] || '').trim();
-        const scoreVal = parseVal(r[col.idx]);
-        const rankVal = (col.idx >= 6 && col.idx <= 9) ? scoreVal : parseVal(r[col.idx + 1]);
-        if (scoreVal !== null) {
-          sailors.push({ name, g, born, club, nett: scoreVal, rank: rankVal !== null ? rankVal : scoreVal });
+        
+        let finalNett = null;
+        let finalRank = null;
+        
+        if (col.idx >= 6 && col.idx <= 9) {
+          const val = parseVal(r[col.idx]);
+          finalNett = val;
+          finalRank = val;
+        } else {
+          finalRank = parseVal(r[col.idx]);
+          finalNett = parseVal(r[col.idx + 1]);
+          
+          if (finalNett === null) finalNett = finalRank;
+          if (finalRank === null) finalRank = finalNett;
+        }
+        
+        if (finalNett !== null) {
+          sailors.push({ 
+            name, 
+            g, 
+            born, 
+            club, 
+            nett: finalNett, 
+            rank: finalRank 
+          });
         }
       }
       if (sailors.length > 0) {
