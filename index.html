@@ -241,6 +241,7 @@ td{padding:8px 10px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
       <div class="card" style="margin-bottom:18px">
         <div class="card-title">Manage regattas</div>
         <p class="card-desc">Edit regatta names and dates. Regattas are automatically sorted in chronological order. The overall ranking uses the best 3 of the 5 latest regattas.</p>
+        <button onclick="addUpcomingRegatta()" style="background:var(--accent); color:#fff; border:none; border-radius:var(--r); font-size:11px; padding:6px 12px; font-family:var(--mono); cursor:pointer; font-weight:600; display:inline-flex; align-items:center; gap:6px; transition:all .15s;">＋ Add Upcoming Regatta</button>
       </div>
       <div class="regatta-grid" id="regatta-list" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px;">
         <!-- Regatta cards will be generated here -->
@@ -352,9 +353,10 @@ td{padding:8px 10px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
         </div>
       </div>
       <div class="tbl-wrap" id="specific-regatta-results-wrap" style="display:none;">
-        <div style="padding:12px 18px; border-bottom:1px solid var(--border); display:flex; align-items:center; justify-content:space-between; background:var(--bg2);">
+        <div style="padding:12px 18px; border-bottom:1px solid var(--border); display:flex; align-items:center; justify-content:space-between; background:var(--bg2); flex-wrap:wrap; gap:10px;">
           <span id="specific-regatta-name" style="font-family:var(--mono); font-weight:600; font-size:13px;"></span>
-          <span id="specific-regatta-date" style="font-family:var(--mono); font-size:11px; color:var(--text2); margin-left:auto;"></span>
+          <span id="specific-regatta-date" style="font-family:var(--mono); font-size:11px; color:var(--text2);"></span>
+          <button onclick="addSailorToSpecificRegatta()" style="background:var(--accent); color:#fff; border:none; border-radius:3px; padding:5px 9px; font-size:10px; font-family:var(--mono); cursor:pointer; font-weight:500; margin-left:auto; transition:all .15s;">＋ Add Sailor Result</button>
         </div>
         <table>
           <thead>
@@ -364,8 +366,8 @@ td{padding:8px 10px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
               <th style="width:50px">Gender</th>
               <th style="width:60px">Born</th>
               <th>Club</th>
-              <th style="width:100px; text-align:center">Rank in Reg.</th>
-              <th style="width:100px; text-align:center">Points</th>
+              <th style="width:120px; text-align:center">Rank in Reg.</th>
+              <th style="width:120px; text-align:center">Points</th>
             </tr>
           </thead>
           <tbody id="specific-regatta-body"></tbody>
@@ -397,9 +399,15 @@ td{padding:8px 10px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
               <input type="number" id="sm-born" style="width:100%;">
             </div>
           </div>
-          <div class="fl">
-            <label class="fl-lbl" for="sm-club">Club</label>
-            <input type="text" id="sm-club" style="width:100%;">
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+            <div class="fl">
+              <label class="fl-lbl" for="sm-club">Club</label>
+              <input type="text" id="sm-club" style="width:100%;">
+            </div>
+            <div class="fl">
+              <label class="fl-lbl" for="sm-school">School</label>
+              <input type="text" id="sm-school" style="width:100%;">
+            </div>
           </div>
           
           <div class="sec-lbl" style="margin-top:10px;">Regatta Scores</div>
@@ -449,6 +457,7 @@ function openSailorModal(sailorName) {
   document.getElementById('sm-gender').value = sailor.g || 'M';
   document.getElementById('sm-born').value = sailor.born || '';
   document.getElementById('sm-club').value = sailor.club || '';
+  document.getElementById('sm-school').value = sailor.school || '';
   
   const container = document.getElementById('sm-scores-container');
   container.innerHTML = '';
@@ -475,6 +484,7 @@ function saveSailorProfile() {
   const gender = document.getElementById('sm-gender').value;
   const born = parseInt(document.getElementById('sm-born').value) || 0;
   const club = document.getElementById('sm-club').value.trim();
+  const school = document.getElementById('sm-school').value.trim();
   
   if (!newName) {
     alert("Name cannot be empty.");
@@ -494,6 +504,7 @@ function saveSailorProfile() {
         reg.sailors[sIdx].g = gender;
         reg.sailors[sIdx].born = born;
         reg.sailors[sIdx].club = club;
+        reg.sailors[sIdx].school = school;
         reg.sailors[sIdx].nett = scoreVal;
         reg.sailors[sIdx].rank = scoreVal;
       }
@@ -503,6 +514,7 @@ function saveSailorProfile() {
         g: gender,
         born: born,
         club: club,
+        school: school,
         nett: scoreVal,
         rank: scoreVal
       });
@@ -623,13 +635,14 @@ function parseSheet(data,filename){
         const g = String(r[1] || '').trim().toUpperCase();
         const born = parseInt(r[2]) || 0;
         const club = String(r[4] || '').trim();
+        const school = String(r[5] || '').trim();
         
         let finalNett = null;
         let finalRank = null;
         
         if (col.idx >= 6 && col.idx <= 9) {
           const val = parseVal(r[col.idx]);
-          finalNett = val;
+          finalNett = null;
           finalRank = val;
         } else {
           finalRank = parseVal(r[col.idx]);
@@ -639,12 +652,13 @@ function parseSheet(data,filename){
           if (finalRank === null) finalRank = finalNett;
         }
         
-        if (finalNett !== null) {
+        if (finalRank !== null) {
           sailors.push({ 
             name, 
             g, 
             born, 
             club, 
+            school,
             nett: finalNett, 
             rank: finalRank 
           });
@@ -692,6 +706,9 @@ function parseSheet(data,filename){
     if (nettIdx === -1) nettIdx = headers.length - 1;
     if (rankIdx === -1) rankIdx = headers.length - 1;
 
+    let schoolIdx = headers.findIndex(h => /school|sch/i.test(String(h)));
+    if (schoolIdx === -1) schoolIdx = 5;
+
     const sailors = [];
     for (let i = 1; i < data.length; i++) {
       const r = data[i];
@@ -701,6 +718,7 @@ function parseSheet(data,filename){
       const g = String(r[genderIdx] || '').trim().toUpperCase();
       const born = parseInt(r[bornIdx]) || 0;
       const club = String(r[clubIdx] || '').trim();
+      const school = schoolIdx !== -1 ? String(r[schoolIdx] || '').trim() : '';
       const nett = parseVal(r[nettIdx]);
       const rank = parseVal(r[rankIdx]);
       if (nett !== null || rank !== null) {
@@ -709,6 +727,7 @@ function parseSheet(data,filename){
           g, 
           born, 
           club, 
+          school,
           nett: nett !== null ? nett : rank, 
           rank: rank !== null ? rank : nett 
         });
@@ -801,6 +820,7 @@ function recomputeSailors() {
           g: s.g || s.gender,
           born: s.born,
           club: s.club,
+          school: s.school || '',
           scores: Array(latestRegs.length).fill(null),
           ranks: Array(latestRegs.length).fill(null)
         });
@@ -811,6 +831,7 @@ function recomputeSailors() {
       if (s.g && !sailorObj.g) sailorObj.g = s.g;
       if (s.born && !sailorObj.born) sailorObj.born = s.born;
       if (s.club && !sailorObj.club) sailorObj.club = s.club;
+      if (s.school && !sailorObj.school) sailorObj.school = s.school;
     });
   });
 
@@ -828,13 +849,27 @@ function recomputeSailors() {
       g: s.g,
       born: s.born,
       club: s.club,
+      school: s.school,
       score: score,
       scores: s.scores,
       ranks: s.ranks
     });
   });
 
-  computed.sort((a, b) => a.score - b.score);
+  computed.sort((a, b) => {
+    if (a.score !== b.score) return a.score - b.score;
+    
+    // Tie-breaker: sort individual ranks from best to worst, ignoring nulls (or treating as DNS = 84)
+    const ranksA = a.ranks.map(v => v === null ? DNS : v).sort((x, y) => x - y);
+    const ranksB = b.ranks.map(v => v === null ? DNS : v).sort((x, y) => x - y);
+    
+    for (let i = 0; i < Math.max(ranksA.length, ranksB.length); i++) {
+      const rA = ranksA[i] !== undefined ? ranksA[i] : DNS;
+      const rB = ranksB[i] !== undefined ? ranksB[i] : DNS;
+      if (rA !== rB) return rA - rB;
+    }
+    return 0;
+  });
   computed.forEach((s, i) => s.cur = i + 1);
   SAILORS = computed;
 }
@@ -1044,7 +1079,7 @@ function getContextPool(sailor,goal){
   }).sort((a,b)=>a.score-b.score);
 }
 
-function calcSimScore(sailor, simSailors) {
+function calcSimScore(sailor, simSailors, rankingMode = false) {
   const simEntry = simSailors.find(x => x.name === sailor.name);
   const simPos = simEntry ? simEntry.nett : DNS;
   
@@ -1062,8 +1097,11 @@ function calcSimScore(sailor, simSailors) {
   const latestRegs = sortedRegs.slice(-5);
   const scores = latestRegs.map((reg, regIdx) => {
     if (reg.name === "Simulated Regatta") return simPos;
-    const sInReg = reg.sailors.find(x => x.name === sailor.name);
-    return sInReg ? sInReg.nett : null;
+    const sInReg = reg.sailors.find(x => isSameSailor(x.name, sailor.name));
+    if (rankingMode) {
+      return sInReg ? (sInReg.rank !== undefined && sInReg.rank !== null ? sInReg.rank : (sInReg.nett !== null ? sInReg.nett : DNS)) : null;
+    }
+    return sInReg ? (sInReg.rank !== undefined && sInReg.rank !== null ? sInReg.rank : sInReg.nett) : null;
   });
   
   const validScores = scores.map(v => v === null ? DNS : v);
@@ -1089,38 +1127,72 @@ function runTarget(){
   
   let posNeeded=null,projScore=null;
   for(let pos=1;pos<=200;pos++){
-    const ns=calcSimScore(sailor, [{ name: sailor.name, nett: pos }]);
-    const backupRegattas = JSON.parse(JSON.stringify(REGATTAS));
-    REGATTAS.push({
-      name: "Simulated Regatta",
-      date: "2026-12-31",
-      sailors: [{ name: sailor.name, g: sailor.g, born: sailor.born, club: sailor.club, nett: pos }]
-    });
-    recomputeSailors();
-    const sq=computeSquads(SAILORS).get(sailor.name);
-    REGATTAS = backupRegattas;
-    recomputeSailors();
+    const simSailors = [{ name: sailor.name, nett: pos, rank: pos }];
+    const ns = calcSimScore(sailor, simSailors, true);
     
-    if(sq&&(sqOrd[sq]||99)<=(sqOrd[goal]||99)){posNeeded=pos;projScore=ns;break;}
+    // Simulate all scores in memory
+    const simScores = SAILORS.map(s => {
+      const score = calcSimScore(s, simSailors, true);
+      return { 
+        ...s, 
+        score: score,
+        simScore: score,
+        ranks: [...s.ranks, isSameSailor(s.name, sailor.name) ? pos : null] 
+      };
+    });
+    
+    // Sort simScores with tiebreaker
+    simScores.sort((a, b) => {
+      if (a.score !== b.score) return a.score - b.score;
+      const ranksA = a.ranks.map(v => v === null ? DNS : v).sort((x, y) => x - y);
+      const ranksB = b.ranks.map(v => v === null ? DNS : v).sort((x, y) => x - y);
+      for (let i = 0; i < Math.max(ranksA.length, ranksB.length); i++) {
+        const rA = ranksA[i] !== undefined ? ranksA[i] : DNS;
+        const rB = ranksB[i] !== undefined ? ranksB[i] : DNS;
+        if (rA !== rB) return rA - rB;
+      }
+      return 0;
+    });
+    simScores.forEach((s, idx) => s.cur = idx + 1);
+    
+    const sq = computeSquads(simScores).get(sailor.name);
+    
+    if(sq && (sqOrd[sq]||99)<=(sqOrd[goal]||99)){
+      posNeeded=pos;
+      projScore=ns;
+      break;
+    }
   }
   
   const pool=getContextPool(sailor,goal);
   const pIdx=pool.findIndex(s=>s.name===sailor.name);
   const ctx=pool.slice(Math.max(0,pIdx-2),Math.min(pool.length,pIdx+3));
   
-  const simSailors = posNeeded ? [{ name: sailor.name, nett: posNeeded }] : [{ name: sailor.name, nett: 1 }];
-  const backupRegattas = JSON.parse(JSON.stringify(REGATTAS));
-  REGATTAS.push({
-    name: "Simulated Regatta",
-    date: "2026-12-31",
-    sailors: simSailors.map(ss => ({ ...ss, g: sailor.g, born: sailor.born, club: sailor.club }))
+  const simSailors = posNeeded ? [{ name: sailor.name, nett: posNeeded, rank: posNeeded }] : [{ name: sailor.name, nett: 1, rank: 1 }];
+  const simScoresM = SAILORS.map(s => {
+    const score = calcSimScore(s, simSailors, true);
+    return { 
+      ...s, 
+      score: score,
+      simScore: score,
+      ranks: [...s.ranks, isSameSailor(s.name, sailor.name) ? (posNeeded || 1) : null] 
+    };
   });
-  recomputeSailors();
-  const simSqM=computeSquads(SAILORS);
-  REGATTAS = backupRegattas;
-  recomputeSailors();
+  simScoresM.sort((a, b) => {
+    if (a.score !== b.score) return a.score - b.score;
+    const ranksA = a.ranks.map(v => v === null ? DNS : v).sort((x, y) => x - y);
+    const ranksB = b.ranks.map(v => v === null ? DNS : v).sort((x, y) => x - y);
+    for (let i = 0; i < Math.max(ranksA.length, ranksB.length); i++) {
+      const rA = ranksA[i] !== undefined ? ranksA[i] : DNS;
+      const rB = ranksB[i] !== undefined ? ranksB[i] : DNS;
+      if (rA !== rB) return rA - rB;
+    }
+    return 0;
+  });
+  simScoresM.forEach((s, idx) => s.cur = idx + 1);
+  const simSqM = computeSquads(simScoresM);
   
-  const nsAtN=posNeeded?calcSimScore(sailor, [{ name: sailor.name, nett: posNeeded }]):calcSimScore(sailor, [{ name: sailor.name, nett: 1 }]);
+  const nsAtN=posNeeded?calcSimScore(sailor, [{ name: sailor.name, nett: posNeeded, rank: posNeeded }], true):calcSimScore(sailor, [{ name: sailor.name, nett: 1, rank: 1 }], true);
   const blocking=pool.filter(s=>{if(s.name===sailor.name)return false;const sq=baseSq.get(s.name)||'';return s.score<nsAtN&&(sqOrd[sq]||99)<=(sqOrd[goal]||99);});
   const ctxT=buildCtxTable(ctx,sailor,baseSq,simSqM,posNeeded);
   const wiS=buildWhatIf(sailor,goal,ctx);
@@ -1165,7 +1237,7 @@ function buildCtxTable(ctx,sailor,baseSq,simSqM,posNeeded){
     
     let ns = null;
     if (isSelf && posNeeded) {
-      ns = calcSimScore(s, [{ name: s.name, nett: posNeeded }]);
+      ns = calcSimScore(s, [{ name: s.name, nett: posNeeded, rank: posNeeded }], true);
     }
     const scoreD=ns!=null?`<span style="color:var(--text3);text-decoration:line-through;font-size:10px">${Math.floor(s.score)}</span> <strong style="color:var(--accent)">${ns}</strong>`:(s.score<900?Math.floor(s.score):'—');
     const exclTag=isExcl?`<span class="excl-tag">${EXCLUDED.get(s.name)}</span>`:'';
@@ -1174,7 +1246,8 @@ function buildCtxTable(ctx,sailor,baseSq,simSqM,posNeeded){
     const latestRegs = REGATTAS.slice(-5);
     const ev = latestRegs.map(reg => {
       const sInReg = reg.sailors.find(x => x.name === s.name);
-      return sInReg ? `${reg.name.substring(0, 5)} ${sInReg.nett}` : null;
+      const val = sInReg ? (sInReg.rank !== undefined && sInReg.rank !== null ? sInReg.rank : sInReg.nett) : null;
+      return sInReg ? `${reg.name.substring(0, 5)} ${val}` : null;
     }).filter(Boolean).join(' · ');
 
     return`<tr ${bg} style="${rowSt}">
@@ -1211,19 +1284,34 @@ function buildWhatIf(sailor, goal, ctx) {
   const scenarios = [1, 3, 5, 10, 20, 50];
   const sqOrd = { 'Nat A': 1, 'Nat B': 2, 'DS': 3 };
   let rows = scenarios.map(pos => {
-    const ns = calcSimScore(sailor, [{ name: sailor.name, nett: pos }]);
+    const simSailors = [{ name: sailor.name, nett: pos, rank: pos }];
+    const ns = calcSimScore(sailor, simSailors, true);
     
-    const backupRegattas = JSON.parse(JSON.stringify(REGATTAS));
-    REGATTAS.push({
-      name: "Simulated Regatta",
-      date: "2026-12-31",
-      sailors: [{ name: sailor.name, g: sailor.g, born: sailor.born, club: sailor.club, nett: pos }]
+    // Simulate all scores in memory
+    const simScores = SAILORS.map(s => {
+      const score = calcSimScore(s, simSailors, true);
+      return { 
+        ...s, 
+        score: score,
+        simScore: score,
+        ranks: [...s.ranks, isSameSailor(s.name, sailor.name) ? pos : null] 
+      };
     });
-    recomputeSailors();
-    const sq = computeSquads(SAILORS).get(sailor.name);
-    REGATTAS = backupRegattas;
-    recomputeSailors();
-
+    
+    simScores.sort((a, b) => {
+      if (a.score !== b.score) return a.score - b.score;
+      const ranksA = a.ranks.map(v => v === null ? DNS : v).sort((x, y) => x - y);
+      const ranksB = b.ranks.map(v => v === null ? DNS : v).sort((x, y) => x - y);
+      for (let i = 0; i < Math.max(ranksA.length, ranksB.length); i++) {
+        const rA = ranksA[i] !== undefined ? ranksA[i] : DNS;
+        const rB = ranksB[i] !== undefined ? ranksB[i] : DNS;
+        if (rA !== rB) return rA - rB;
+      }
+      return 0;
+    });
+    simScores.forEach((s, idx) => s.cur = idx + 1);
+    
+    const sq = computeSquads(simScores).get(sailor.name);
     const ok = sq && (sqOrd[sq] || 99) <= (sqOrd[goal] || 99);
     const bg = ok ? 'style="background:var(--accent-l);"' : '';
     return `<div class="wi-row" ${bg}>
@@ -1344,14 +1432,24 @@ function renderSpecificRegattaResults() {
   const sortedSailors = [...reg.sailors].sort((a, b) => (a.rank !== undefined ? a.rank : a.nett) - (b.rank !== undefined ? b.rank : b.nett));
   
   body.innerHTML = sortedSailors.map((s, idx) => {
+    const rankVal = s.rank !== undefined && s.rank !== null ? s.rank : '';
+    const pointsVal = s.nett !== undefined && s.nett !== null ? s.nett : '';
     return `<tr>
       <td class="rank-c">${idx + 1}</td>
       <td class="name-c" onclick="openSailorModal('${s.name.replace(/'/g, "\\'")}')" style="cursor:pointer; color:var(--accent); font-weight:600; text-decoration:underline;">${s.name}</td>
       <td class="sub-c">${s.g || '—'}</td>
       <td class="sub-c">${s.born || '—'}</td>
       <td class="sub-c" style="font-size:10px">${s.club || '—'}</td>
-      <td style="text-align:center; font-family:var(--mono); color:var(--text2)">${s.rank !== undefined && s.rank !== null ? s.rank : (s.nett !== undefined ? s.nett : '—')}</td>
-      <td style="text-align:center; font-family:var(--mono); font-weight:600; color:var(--accent2)">${s.nett !== undefined && s.nett !== null ? s.nett : '—'}</td>
+      <td style="text-align:center;">
+        <input type="number" value="${rankVal}" 
+               onchange="updateRegattaSailorRank('${reg.name.replace(/'/g, "\\'")}', '${s.name.replace(/'/g, "\\'")}', this.value)" 
+               style="width:70px; height:24px; text-align:center; padding:2px; font-family:var(--mono);">
+      </td>
+      <td style="text-align:center;">
+        <input type="number" value="${pointsVal}" 
+               onchange="updateRegattaSailorPoints('${reg.name.replace(/'/g, "\\'")}', '${s.name.replace(/'/g, "\\'")}', this.value)" 
+               style="width:70px; height:24px; text-align:center; padding:2px; font-family:var(--mono); font-weight:600; color:var(--accent2);">
+      </td>
     </tr>`;
   }).join('');
 }
@@ -1617,12 +1715,13 @@ function getSeedRegattas() {
   return regNames.map((reg, regIdx) => {
     const sailors = [];
     sailorsList.forEach(s => {
+      const isPointsEmptyReg = regIdx >= 0 && regIdx <= 3;
       sailors.push({
         name: s.name,
         g: s.g,
         born: s.born,
         club: s.club,
-        nett: s.scores[regIdx],
+        nett: isPointsEmptyReg ? null : s.scores[regIdx],
         rank: s.scores[regIdx]
       });
     });
@@ -1666,6 +1765,78 @@ window.onload = function() {
 
   renderAll();
 };
+
+function addUpcomingRegatta() {
+  const name = prompt("Enter upcoming regatta name:", `Upcoming Regatta ${REGATTAS.length + 1}`);
+  if (!name) return;
+  const date = prompt("Enter regatta date (YYYY-MM-DD):", new Date().toISOString().split('T')[0]);
+  if (!date) return;
+  
+  REGATTAS.push({
+    name: name.trim(),
+    date: date.trim(),
+    sailors: []
+  });
+  
+  recomputeSailors();
+  saveData();
+  renderAll();
+}
+
+function addSailorToSpecificRegatta() {
+  const sel = document.getElementById('resultsRegattaSelect');
+  if (!sel) return;
+  const regName = sel.value;
+  if (!regName) return;
+  const reg = REGATTAS.find(r => r.name === regName);
+  if (!reg) return;
+  
+  const name = prompt("Enter sailor name to add to this regatta:");
+  if (!name) return;
+  const rank = parseFloat(prompt("Enter Rank in Regatta:", "1")) || 1;
+  const points = prompt("Enter Points (leave blank if none):");
+  const pointsVal = points !== '' && points !== null ? parseFloat(points) : null;
+  
+  const existing = SAILORS.find(s => isSameSailor(s.name, name));
+  
+  reg.sailors.push({
+    name: name.trim(),
+    g: existing ? existing.g : "M",
+    born: existing ? existing.born : 2012,
+    club: existing ? existing.club : "",
+    school: existing ? existing.school : "",
+    rank: rank,
+    nett: pointsVal
+  });
+  
+  recomputeSailors();
+  saveData();
+  renderAll();
+}
+
+function updateRegattaSailorRank(regName, sailorName, val) {
+  const reg = REGATTAS.find(r => r.name === regName);
+  if (!reg) return;
+  const s = reg.sailors.find(x => isSameSailor(x.name, sailorName));
+  if (s) {
+    s.rank = val !== '' ? parseFloat(val) : null;
+    recomputeSailors();
+    saveData();
+    renderAll();
+  }
+}
+
+function updateRegattaSailorPoints(regName, sailorName, val) {
+  const reg = REGATTAS.find(r => r.name === regName);
+  if (!reg) return;
+  const s = reg.sailors.find(x => isSameSailor(x.name, sailorName));
+  if (s) {
+    s.nett = val !== '' ? parseFloat(val) : null;
+    recomputeSailors();
+    saveData();
+    renderAll();
+  }
+}
 </script>
 </body>
 </html>
