@@ -816,7 +816,7 @@ function recomputeSailors() {
 
   const computed = [];
   sailorMap.forEach((s, name) => {
-    const validScores = s.scores.map(v => v === null ? DNS : v);
+    const validScores = s.ranks.map(v => v === null ? DNS : v);
     while (validScores.length < 5) {
       validScores.push(DNS);
     }
@@ -867,7 +867,7 @@ function renderRankingsPanel(){
         <th style="width:46px">Born</th>
         <th style="width:62px">Club</th>
         <th style="width:66px">Squad</th>
-        <th style="width:52px;text-align:center">Score</th>
+        <th style="width:80px;text-align:center">Best 3 of 5</th>
         ${regHeaders}
       </tr></thead>
       <tbody id="rank-body"></tbody>
@@ -900,10 +900,9 @@ function renderRankings(){
     const rowSt=isExcl?'opacity:.42;':'';
     const exclTag=isExcl?`<span class="excl-tag">${EXCLUDED.get(s.name)}</span>`:'';
     
-    const validScores = s.scores.map(v => v === null ? DNS : v);
-    const best3Set = new Set(validScores.slice().sort((a, b) => a - b).slice(0, 3));
-    // Re-calculating correctly for highlighting
-    const best3Indices = validScores.map((v, i) => ({v, i})).sort((a,b)=>a.v-b.v).slice(0,3).map(x=>x.i);
+    const validRanks = s.ranks.map(v => v === null ? DNS : v);
+    // Re-calculating correctly for highlighting best 3 ranks
+    const best3Indices = validRanks.map((v, i) => ({v, i})).sort((a,b)=>a.v-b.v).slice(0,3).map(x=>x.i);
     const isBest3 = new Set(best3Indices);
 
     const cells = latestRegs.map((_, idx) => {
