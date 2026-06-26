@@ -218,7 +218,8 @@ td{padding:8px 10px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
     </div>
     <div class="topbar-right">
       <span class="src-tag" id="src-tag">No file loaded</span>
-      <button onclick="resetDatabaseToSeed()" style="background:var(--red-l);color:var(--red);border:1px solid rgba(138,28,28,.2);border-radius:var(--r);font-size:11px;padding:6px 10px;font-family:var(--mono);cursor:pointer;font-weight:500;height:30px;transition:all .15s;margin-right:4px;">↺ Reset Data</button>
+      <button onclick="clearAllData()" style="background:var(--red-l);color:var(--red);border:1px solid rgba(138,28,28,.2);border-radius:var(--r);font-size:11px;padding:6px 10px;font-family:var(--mono);cursor:pointer;font-weight:500;height:30px;transition:all .15s;margin-right:4px;">✕ Clear Data</button>
+      <button onclick="resetDatabaseToSeed()" style="background:var(--bg2);color:var(--text2);border:1px solid var(--border);border-radius:var(--r);font-size:11px;padding:6px 10px;font-family:var(--mono);cursor:pointer;font-weight:500;height:30px;transition:all .15s;margin-right:4px;">↺ Load Seed</button>
       <button class="upload-btn" onclick="document.getElementById('fileInput').click()">↑ Load .xlsx</button>
     </div>
   </div>
@@ -526,6 +527,35 @@ function resetDatabaseToSeed() {
     loadData();
     renderAll();
     alert("Database reset to default seed data.");
+  }
+}
+
+function clearAllData() {
+  if (confirm("Are you sure you want to clear all database results? This will wipe the rankings and regattas so you can upload a new sheet from scratch.")) {
+    REGATTAS = [];
+    SAILORS = [];
+    saveData();
+    
+    document.getElementById('sb-tag').textContent = 'No file loaded';
+    document.getElementById('sb-tag').className = 'sb-tag';
+    document.getElementById('sb-footer').textContent = 'Drop .xlsx to load data';
+    document.getElementById('src-tag').textContent = 'No file loaded';
+    document.getElementById('src-tag').className = 'src-tag';
+    
+    document.getElementById('rankings-content').innerHTML = `
+        <div class="welcome">
+          <div class="drop-zone" id="main-dz">
+            <div class="dz-icon">📊</div>
+            <div class="dz-title">Drop your ranking file here</div>
+            <div class="dz-sub">Drag and drop <strong>OP_Gold_for_website.xlsx</strong><br>or any updated version of it</div>
+            <div class="dz-hint">Accepts .xlsx · .xlsm · .xls · Drop again anytime to refresh</div>
+          </div>
+          <p style="font-size:11px;color:var(--text3);font-family:var(--mono)">After each regatta, update col Y in the Excel file and drop it here again.</p>
+        </div>
+    `;
+    setupDropZone();
+    renderAll();
+    alert("Platform cleared successfully. Ready for your Excel upload!");
   }
 }
 
