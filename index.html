@@ -1464,7 +1464,7 @@ function runTarget(){
   const already=(sqOrd[curSq]||99)<=(sqOrd[goal]||99);
   
   let posNeeded=null,projScore=null;
-  for(let pos=1;pos<=200;pos++){
+  for(let pos=200;pos>=1;pos--){
     const simSailors = [{ name: sailor.name, nett: pos, rank: pos }];
     const ns = calcSimScore(sailor, simSailors, true);
     
@@ -1504,7 +1504,8 @@ function runTarget(){
   
   const pool=getContextPool(sailor,goal);
   const pIdx=pool.findIndex(s=>s.name===sailor.name);
-  const ctx=pool.slice(Math.max(0,pIdx-2),Math.min(pool.length,pIdx+3));
+  const windowSize = goal === 'Nat A' ? 3 : 2;
+  const ctx = pool.slice(Math.max(0, pIdx - windowSize), Math.min(pool.length, pIdx + windowSize + 1));
   
   const simSailors = posNeeded ? [{ name: sailor.name, nett: posNeeded, rank: posNeeded }] : [{ name: sailor.name, nett: 1, rank: 1 }];
   const simScoresM = SAILORS.map(s => {
@@ -1538,11 +1539,11 @@ function runTarget(){
   if(already){
     html=`<div class="tgt-res"><div class="tgt-res-hdr"><h3>${sailor.name}</h3><span class="goal-tag ${gpc}">${gl}</span><span style="font-family:var(--mono);font-size:9px;color:var(--text3)">${agL} · ${gL}</span></div>
       <div class="tgt-body"><div style="padding:12px 14px;background:var(--accent-l);border:1px solid rgba(26,71,42,.2);border-radius:var(--r);color:var(--accent);font-size:12px;font-weight:600;margin-bottom:14px">✓ Already allocated to <strong>${curSq}</strong> — meets or exceeds ${gl}.</div>
-      <div class="sec-lbl" style="margin-top:0">Pool context</div>${ctxT}${wiS}</div></div>`;
+      <div class="sec-lbl" style="margin-top:0">Pool context — ${goal === 'Nat A' ? gL.toUpperCase() : (agL + ' ' + gL).toUpperCase()}</div>${ctxT}${wiS}</div></div>`;
   }else if(!posNeeded){
     html=`<div class="tgt-res"><div class="tgt-res-hdr"><h3>${sailor.name}</h3><span class="goal-tag ${gpc}">${gl}</span></div>
       <div class="tgt-body"><div class="impossible">Even P1 at the next regatta cannot reach <strong>${gl}</strong> based on current standings.</div>
-      <div class="sec-lbl">Pool context</div>${ctxT}${wiS}</div></div>`;
+      <div class="sec-lbl">Pool context — ${goal === 'Nat A' ? gL.toUpperCase() : (agL + ' ' + gL).toUpperCase()}</div>${ctxT}${wiS}</div></div>`;
   }else{
     html=`<div class="tgt-res"><div class="tgt-res-hdr"><h3>${sailor.name}</h3><span class="goal-tag ${gpc}">${gl}</span><span style="font-family:var(--mono);font-size:9px;color:var(--text3)">${agL} · ${gL}</span></div>
       <div class="tgt-body">
@@ -1559,7 +1560,7 @@ function runTarget(){
           <div class="sc-icon">⚡</div><div><div class="sc-title">Sailors to displace (${blocking.length})</div>
           <div class="sc-desc">${blocking.map(b=>`<strong>${b.name}</strong> (score ${Math.floor(b.score)}, ${baseSq.get(b.name)||'—'})`).join('<br>')}
           <br><span style="color:var(--text3);font-size:10px">Each must finish worse than P${posNeeded} or not compete.</span></div></div></div>`:''}
-        <div class="sec-lbl">Pool context — ${agL} ${gL}</div>${ctxT}${wiS}
+        <div class="sec-lbl">Pool context — ${goal === 'Nat A' ? gL.toUpperCase() : (agL + ' ' + gL).toUpperCase()}</div>${ctxT}${wiS}
       </div></div>`;
   }
   out.innerHTML=html;
