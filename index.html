@@ -392,7 +392,11 @@ td{padding:8px 10px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
               </div>
             </div>
           </div>
-          <button class="run-btn" onclick="addNewFleetSailor()">＋ Add New Sailor</button>
+          <div style="display:flex; gap:8px; align-items:center;">
+            <button class="run-btn" onclick="addNewFleetSailor()">＋ Add New Sailor</button>
+            <button class="run-btn" onclick="document.getElementById('fleetFileInput').click()" style="background:var(--bg2); color:var(--text2); border:1px solid var(--border);">↑ Upload Fleet Excel</button>
+            <input type="file" id="fleetFileInput" accept=".xlsx,.xlsm,.xls" style="display:none;" onchange="uploadFleetExcel(this)">
+          </div>
         </div>
         <div class="card">
           <div class="card-title">Fleet Reshuffle Guidelines</div>
@@ -443,6 +447,24 @@ td{padding:8px 10px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
         <div style="display:flex; justify-content:flex-end; gap:8px;">
           <button onclick="closeAddRegattaModal()" style="padding:7px 14px; background:var(--bg2); border:1px solid var(--border); border-radius:var(--r); font-size:11px; cursor:pointer; font-family:var(--mono);">Cancel</button>
           <button onclick="saveNewRegatta()" style="padding:7px 16px; background:var(--accent); color:#fff; border:none; border-radius:var(--r); font-size:11px; font-weight:600; cursor:pointer; font-family:var(--mono);">Add Regatta</button>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Import Confirmation Modal -->
+    <div id="importConfirmModal" class="drop-overlay" style="background:rgba(0,0,0,.6); align-items:center; justify-content:center; display:none; position:fixed; inset:0; z-index:300;">
+      <div class="card" style="width:650px; max-width:95%; max-height:85vh; background:var(--card); border:1px solid var(--border); box-shadow:0 10px 30px rgba(0,0,0,.3); display:flex; flex-direction:column; padding:24px; border-radius:12px; position:relative;">
+        <button onclick="closeImportModal()" style="position:absolute; top:16px; right:16px; background:none; border:none; color:var(--text3); font-size:16px; cursor:pointer;" aria-label="Close modal">✕</button>
+        <div class="card-title" style="font-size:16px; margin-bottom:12px; font-family:var(--mono);">Confirm Spreadsheet Import</div>
+        <p class="card-desc" style="margin-bottom:16px;">We compared the uploaded spreadsheet with your database. The following changes were detected:</p>
+        
+        <div id="import-changes-container" style="flex:1; overflow-y:auto; margin-bottom:20px; display:flex; flex-direction:column; gap:16px; padding-right:6px;">
+          <!-- Change categories will be rendered here dynamically -->
+        </div>
+        
+        <div style="display:flex; justify-content:flex-end; gap:8px; border-top:1px solid var(--border); padding-top:14px;">
+          <button onclick="closeImportModal()" style="padding:7px 14px; background:var(--bg2); border:1px solid var(--border); border-radius:var(--r); font-size:11px; cursor:pointer; font-family:var(--mono);">Cancel & Discard</button>
+          <button onclick="confirmPendingImport()" style="padding:7px 16px; background:var(--accent); color:#fff; border:none; border-radius:var(--r); font-size:11px; font-weight:600; cursor:pointer; font-family:var(--mono);">Confirm & Apply Changes</button>
         </div>
       </div>
     </div>
@@ -745,6 +767,7 @@ function parseVal(v) {
 function parseSheet(data,filename){
   const headers = data[0] || [];
   const hasConsolidated = headers[10] && headers[12] && headers[14] && headers[16];
+  const parsedRegs = [];
 
   if (hasConsolidated) {
     const regColumns = [
@@ -799,28 +822,11 @@ function parseSheet(data,filename){
         }
       }
       if (sailors.length > 0) {
-        const existing = REGATTAS.find(r => r.name.toLowerCase() === col.name.toLowerCase());
-        if (existing) {
-          sailors.forEach(newSailor => {
-            const sIdx = existing.sailors.findIndex(x => isSameSailor(x.name, newSailor.name));
-            if (sIdx !== -1) {
-              existing.sailors[sIdx].nett = newSailor.nett;
-              existing.sailors[sIdx].rank = newSailor.rank;
-              if (newSailor.g) existing.sailors[sIdx].g = newSailor.g;
-              if (newSailor.born) existing.sailors[sIdx].born = newSailor.born;
-              if (newSailor.club) existing.sailors[sIdx].club = newSailor.club;
-              if (newSailor.school) existing.sailors[sIdx].school = newSailor.school;
-            } else {
-              existing.sailors.push(newSailor);
-            }
-          });
-        } else {
-          REGATTAS.push({
-            name: col.name,
-            date: col.date,
-            sailors: sailors
-          });
-        }
+        parsedRegs.push({
+          name: col.name,
+          date: col.date,
+          sailors: sailors
+        });
       }
     });
   } else {
@@ -886,34 +892,17 @@ function parseSheet(data,filename){
     }
     if (sailors.length > 0) {
       const cleanName = filename.replace(/\.[^/.]+$/, "").replace(/_/g, ' ');
-      const existing = REGATTAS.find(r => r.name.toLowerCase() === cleanName.toLowerCase());
-      if (existing) {
-        sailors.forEach(newSailor => {
-          const sIdx = existing.sailors.findIndex(x => isSameSailor(x.name, newSailor.name));
-          if (sIdx !== -1) {
-            existing.sailors[sIdx].nett = newSailor.nett;
-            existing.sailors[sIdx].rank = newSailor.rank;
-            if (newSailor.g) existing.sailors[sIdx].g = newSailor.g;
-            if (newSailor.born) existing.sailors[sIdx].born = newSailor.born;
-            if (newSailor.club) existing.sailors[sIdx].club = newSailor.club;
-            if (newSailor.school) existing.sailors[sIdx].school = newSailor.school;
-          } else {
-            existing.sailors.push(newSailor);
-          }
-        });
-      } else {
-        REGATTAS.push({
-          name: cleanName,
-          date: new Date().toISOString().split('T')[0],
-          sailors: sailors
-        });
-      }
+      parsedRegs.push({
+        name: cleanName,
+        date: new Date().toISOString().split('T')[0],
+        sailors: sailors
+      });
     }
   }
-
-  recomputeSailors();
-  saveData();
-  renderAll();
+  
+  if (parsedRegs.length > 0) {
+    showImportConfirmation(parsedRegs);
+  }
 }
 
 function ageGroup(born){const a=COMP_YEAR-born;return a>=13?13:a===12?12:a===11?11:10;}
@@ -2353,6 +2342,252 @@ function updateRegattaSailorPoints(regName, sailorName, val) {
     saveData();
     renderAll();
   }
+}
+
+let PENDING_IMPORT_DATA = null;
+
+function showImportConfirmation(parsedRegs) {
+  PENDING_IMPORT_DATA = parsedRegs;
+  
+  const newRegattas = [];
+  const newSailors = [];
+  const scoreUpdates = [];
+  
+  const currentSailors = getAllSailorsInSystem();
+  
+  parsedRegs.forEach(parsedReg => {
+    const existingReg = REGATTAS.find(r => r.name.toLowerCase() === parsedReg.name.toLowerCase());
+    if (!existingReg) {
+      newRegattas.push({ name: parsedReg.name, sailorsCount: parsedReg.sailors.length });
+    }
+    
+    parsedReg.sailors.forEach(parsedSailor => {
+      const isSystemNew = !currentSailors.some(s => isSameSailor(s.name, parsedSailor.name));
+      if (isSystemNew && !newSailors.some(s => isSameSailor(s.name, parsedSailor.name))) {
+        newSailors.push(parsedSailor);
+      }
+      
+      if (existingReg) {
+        const existingSailor = existingReg.sailors.find(x => isSameSailor(x.name, parsedSailor.name));
+        if (existingSailor) {
+          const rankChanged = existingSailor.rank !== parsedSailor.rank;
+          const nettChanged = existingSailor.nett !== parsedSailor.nett;
+          if (rankChanged || nettChanged) {
+            scoreUpdates.push({
+              sailorName: parsedSailor.name,
+              regattaName: existingReg.name,
+              oldRank: existingSailor.rank,
+              newRank: parsedSailor.rank,
+              oldNett: existingSailor.nett,
+              newNett: parsedSailor.nett
+            });
+          }
+        } else {
+          scoreUpdates.push({
+            sailorName: parsedSailor.name,
+            regattaName: existingReg.name,
+            oldRank: null,
+            newRank: parsedSailor.rank,
+            oldNett: null,
+            newNett: parsedSailor.nett,
+            isNewEntry: true
+          });
+        }
+      }
+    });
+  });
+
+  const container = document.getElementById('import-changes-container');
+  if (!container) return;
+  
+  let html = '';
+  
+  if (newRegattas.length > 0) {
+    html += `<div>
+      <div style="font-weight:600; font-family:var(--mono); font-size:11px; color:var(--accent); margin-bottom:8px; display:flex; align-items:center; gap:6px;">🟩 NEW REGATTAS TO ADD (${newRegattas.length})</div>
+      <div style="display:flex; flex-direction:column; gap:4px; padding-left:12px;">
+        ${newRegattas.map(r => `<div style="font-size:11.5px;">• <strong>${r.name}</strong> (${r.sailorsCount} sailors)</div>`).join('')}
+      </div>
+    </div>`;
+  }
+  
+  if (newSailors.length > 0) {
+    html += `<div>
+      <div style="font-weight:600; font-family:var(--mono); font-size:11px; color:var(--accent2); margin-bottom:8px; display:flex; align-items:center; gap:6px;">🟦 NEW SAILORS DETECTED (Will add to active rankings, ${newSailors.length})</div>
+      <div style="display:flex; flex-direction:column; gap:4px; padding-left:12px; max-height:150px; overflow-y:auto;">
+        ${newSailors.map(s => `<div style="font-size:11.5px;">• <strong>${s.name}</strong> (${s.g}, born ${s.born}, Club: ${s.club || 'None'}, School: ${s.school || 'None'})</div>`).join('')}
+      </div>
+    </div>`;
+  }
+  
+  if (scoreUpdates.length > 0) {
+    const updateRows = scoreUpdates.map(u => {
+      const rankCell = u.oldRank === u.newRank 
+        ? `<span style="color:var(--text2);">${u.newRank || '—'}</span>`
+        : `<span style="color:var(--text3); text-decoration:line-through; font-size:10px;">${u.oldRank || '—'}</span> → <strong style="color:var(--accent);">${u.newRank || '—'}</strong>`;
+      
+      const nettCell = u.oldNett === u.newNett
+        ? `<span style="color:var(--text2);">${u.newNett || '—'}</span>`
+        : `<span style="color:var(--text3); text-decoration:line-through; font-size:10px;">${u.oldNett || '—'}</span> → <strong style="color:var(--accent2);">${u.newNett || '—'}</strong>`;
+        
+      const statusLabel = u.isNewEntry 
+        ? '<span class="badge b-a" style="font-size:8px; padding:1px 4px;">New Entry</span>'
+        : '<span class="badge b-ds" style="font-size:8px; padding:1px 4px; background:var(--accent3-l); color:var(--accent3);">Update</span>';
+
+      return `<tr>
+        <td style="font-weight:600;">${u.sailorName}</td>
+        <td class="sub-c">${u.regattaName}</td>
+        <td style="text-align:center;">${rankCell}</td>
+        <td style="text-align:center;">${nettCell}</td>
+        <td style="text-align:center;">${statusLabel}</td>
+      </tr>`;
+    }).join('');
+
+    html += `<div>
+      <div style="font-weight:600; font-family:var(--mono); font-size:11px; color:var(--accent3); margin-bottom:8px; display:flex; align-items:center; gap:6px;">🟧 SCORE & RANK CHANGES (${scoreUpdates.length})</div>
+      <div class="tbl-wrap" style="max-height: 250px; overflow-y:auto;">
+        <table>
+          <thead>
+            <tr class="ct-hdr">
+              <td>Sailor</td>
+              <td>Regatta</td>
+              <td style="text-align:center; width:95px;">Rank</td>
+              <td style="text-align:center; width:95px;">Points</td>
+              <td style="text-align:center; width:80px;">Type</td>
+            </tr>
+          </thead>
+          <tbody>
+            ${updateRows}
+          </tbody>
+        </table>
+      </div>
+    </div>`;
+  }
+
+  if (newRegattas.length === 0 && newSailors.length === 0 && scoreUpdates.length === 0) {
+    html = `<div style="text-align:center; padding:32px; color:var(--text3); font-family:var(--mono);">
+      ✓ No changes detected. The uploaded file is fully identical to your current database.
+    </div>`;
+  }
+
+  container.innerHTML = html;
+  document.getElementById('importConfirmModal').style.display = 'flex';
+}
+
+function closeImportModal() {
+  document.getElementById('importConfirmModal').style.display = 'none';
+  PENDING_IMPORT_DATA = null;
+}
+
+function confirmPendingImport() {
+  if (!PENDING_IMPORT_DATA) return;
+  
+  PENDING_IMPORT_DATA.forEach(col => {
+    const existing = REGATTAS.find(r => r.name.toLowerCase() === col.name.toLowerCase());
+    if (existing) {
+      col.sailors.forEach(newSailor => {
+        const sIdx = existing.sailors.findIndex(x => isSameSailor(x.name, newSailor.name));
+        if (sIdx !== -1) {
+          existing.sailors[sIdx].nett = newSailor.nett;
+          existing.sailors[sIdx].rank = newSailor.rank;
+          if (newSailor.g) existing.sailors[sIdx].g = newSailor.g;
+          if (newSailor.born) existing.sailors[sIdx].born = newSailor.born;
+          if (newSailor.club) existing.sailors[sIdx].club = newSailor.club;
+          if (newSailor.school) existing.sailors[sIdx].school = newSailor.school;
+        } else {
+          existing.sailors.push(newSailor);
+        }
+      });
+    } else {
+      REGATTAS.push({
+        name: col.name,
+        date: col.date,
+        sailors: col.sailors
+      });
+    }
+  });
+
+  recomputeSailors();
+  saveData();
+  renderAll();
+  closeImportModal();
+  alert("Spreadsheet imported successfully!");
+}
+
+function uploadFleetExcel(input) {
+  const file = input.files[0];
+  if (!file) return;
+  
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const wb = XLSX.read(e.target.result, { type: 'array' });
+      const sn = wb.SheetNames[0];
+      const rows = XLSX.utils.sheet_to_json(wb.Sheets[sn], { header: 1, defval: null });
+      
+      const headers = rows[0] || [];
+      let nameIdx = -1, genderIdx = -1, bornIdx = -1, clubIdx = -1, schoolIdx = -1;
+      
+      for (let c = 0; c < headers.length; c++) {
+        const h = String(headers[c] || '').toLowerCase().trim();
+        if (h === 'name' || h === 'sailor') nameIdx = c;
+        else if (h === 'gender' || h === 'g' || h === 'sex') genderIdx = c;
+        else if (h === 'born' || h === 'birth year' || h === 'year') bornIdx = c;
+        else if (h === 'club') clubIdx = c;
+        else if (h === 'school' || h === 'sch') schoolIdx = c;
+      }
+      
+      if (nameIdx === -1) nameIdx = 0;
+      if (genderIdx === -1) genderIdx = 1;
+      if (bornIdx === -1) bornIdx = 2;
+      if (clubIdx === -1) clubIdx = 4;
+      if (schoolIdx === -1) schoolIdx = 5;
+      
+      let importedCount = 0;
+      const currentSystemSailors = getAllSailorsInSystem();
+      
+      for (let i = 1; i < rows.length; i++) {
+        const r = rows[i];
+        if (!r || !r[nameIdx]) continue;
+        const name = String(r[nameIdx]).trim();
+        if (!name || name.toLowerCase() === 'name') continue;
+        
+        const gender = String(r[genderIdx] || 'M').trim().toUpperCase();
+        const born = parseInt(r[bornIdx]) || 2013;
+        const club = String(r[clubIdx] || '').trim();
+        const school = String(r[schoolIdx] || '').trim();
+        
+        DROPPED_SAILORS.delete(name);
+        
+        const existing = currentSystemSailors.find(s => isSameSailor(s.name, name));
+        if (!existing) {
+          if (REGATTAS.length > 0) {
+            const latestReg = REGATTAS[REGATTAS.length - 1];
+            latestReg.sailors.push({
+              name,
+              g: gender,
+              born,
+              club,
+              school,
+              nett: null,
+              rank: null
+            });
+          }
+        }
+        importedCount++;
+      }
+      
+      recomputeSailors();
+      saveData();
+      renderAll();
+      renderFleetPanel();
+      alert(`Successfully processed fleet Excel. Activated / Promoted ${importedCount} sailors!`);
+    } catch (err) {
+      alert('Could not read fleet Excel file: ' + err.message);
+    }
+    input.value = '';
+  };
+  reader.readAsArrayBuffer(file);
 }
 </script>
 </body>
