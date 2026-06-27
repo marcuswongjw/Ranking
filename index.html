@@ -1142,9 +1142,8 @@ function squadBadge(sq){
 
 function recomputeSailors() {
   REGATTAS.forEach(reg => {
-    const parsedDate = getRegattaDateByName(reg.name);
-    if (parsedDate !== new Date().toISOString().split('T')[0]) {
-      reg.date = parsedDate;
+    if (!reg.date) {
+      reg.date = getRegattaDateByName(reg.name);
     }
   });
 
@@ -1943,6 +1942,19 @@ function handleChartClick(chartId, label, datasetLabel) {
 
 function renderCharts() {
   try {
+    if (typeof Chart === 'undefined') {
+      const containerIds = ['distChart', 'scatterChart', 'clubChart', 'yearChart', 'dominanceChart'];
+      containerIds.forEach(id => {
+        const el = document.getElementById(id);
+        if (el && el.parentElement) {
+          el.parentElement.innerHTML = `<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;color:var(--text3);font-size:11px;font-family:var(--mono);text-align:center;padding:10px;">
+            <div>⚠️ Chart.js offline</div>
+            <div style="font-size:9px;margin-top:4px;">Cannot load CDN library. Check internet connection.</div>
+          </div>`;
+        }
+      });
+      return;
+    }
     if (!SAILORS.length) return;
     const sq = computeSquads(SAILORS);
 
@@ -2266,6 +2278,7 @@ function viewRegattaResults(idx) {
 
 function updateRegattaName(idx, val) {
   REGATTAS[idx].name = val.trim() || `Regatta ${idx + 1}`;
+  REGATTAS[idx].date = getRegattaDateByName(REGATTAS[idx].name);
   saveData();
   recomputeSailors();
   renderAll();
