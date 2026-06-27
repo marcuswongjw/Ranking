@@ -759,7 +759,6 @@ function parseSheet(data,filename){
       { name: headers[18] || "Temasek Regatta (Jun 26)", idx: 18, date: "2026-06-20" }
     ];
 
-    REGATTAS = [];
     regColumns.forEach(col => {
       const sailors = [];
       for (let i = 1; i < data.length; i++) {
@@ -800,11 +799,28 @@ function parseSheet(data,filename){
         }
       }
       if (sailors.length > 0) {
-        REGATTAS.push({
-          name: col.name,
-          date: col.date,
-          sailors: sailors
-        });
+        const existing = REGATTAS.find(r => r.name.toLowerCase() === col.name.toLowerCase());
+        if (existing) {
+          sailors.forEach(newSailor => {
+            const sIdx = existing.sailors.findIndex(x => isSameSailor(x.name, newSailor.name));
+            if (sIdx !== -1) {
+              existing.sailors[sIdx].nett = newSailor.nett;
+              existing.sailors[sIdx].rank = newSailor.rank;
+              if (newSailor.g) existing.sailors[sIdx].g = newSailor.g;
+              if (newSailor.born) existing.sailors[sIdx].born = newSailor.born;
+              if (newSailor.club) existing.sailors[sIdx].club = newSailor.club;
+              if (newSailor.school) existing.sailors[sIdx].school = newSailor.school;
+            } else {
+              existing.sailors.push(newSailor);
+            }
+          });
+        } else {
+          REGATTAS.push({
+            name: col.name,
+            date: col.date,
+            sailors: sailors
+          });
+        }
       }
     });
   } else {
@@ -870,11 +886,28 @@ function parseSheet(data,filename){
     }
     if (sailors.length > 0) {
       const cleanName = filename.replace(/\.[^/.]+$/, "").replace(/_/g, ' ');
-      REGATTAS.push({
-        name: cleanName,
-        date: new Date().toISOString().split('T')[0],
-        sailors: sailors
-      });
+      const existing = REGATTAS.find(r => r.name.toLowerCase() === cleanName.toLowerCase());
+      if (existing) {
+        sailors.forEach(newSailor => {
+          const sIdx = existing.sailors.findIndex(x => isSameSailor(x.name, newSailor.name));
+          if (sIdx !== -1) {
+            existing.sailors[sIdx].nett = newSailor.nett;
+            existing.sailors[sIdx].rank = newSailor.rank;
+            if (newSailor.g) existing.sailors[sIdx].g = newSailor.g;
+            if (newSailor.born) existing.sailors[sIdx].born = newSailor.born;
+            if (newSailor.club) existing.sailors[sIdx].club = newSailor.club;
+            if (newSailor.school) existing.sailors[sIdx].school = newSailor.school;
+          } else {
+            existing.sailors.push(newSailor);
+          }
+        });
+      } else {
+        REGATTAS.push({
+          name: cleanName,
+          date: new Date().toISOString().split('T')[0],
+          sailors: sailors
+        });
+      }
     }
   }
 
