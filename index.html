@@ -607,7 +607,7 @@ td{padding:8px 10px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
     </div>
     <!-- Sailor Edit Modal -->
     <div id="sailorModal" class="drop-overlay" style="background:rgba(0,0,0,.6); align-items:center; justify-content:center; display:none; position:fixed; inset:0; z-index:200;">
-      <div class="card" style="width:820px; max-width:95%; background:var(--card); border:1px solid var(--border); box-shadow:0 10px 30px rgba(0,0,0,.3); display:grid; grid-template-columns:1.2fr 1fr; gap:24px; padding:24px; border-radius:12px; position:relative;">
+      <div class="card" style="width:820px; max-width:95%; max-height:95vh; overflow-y:auto; background:var(--card); border:1px solid var(--border); box-shadow:0 10px 30px rgba(0,0,0,.3); display:grid; grid-template-columns:1.2fr 1fr; gap:24px; padding:24px; border-radius:12px; position:relative;">
         <button onclick="closeSailorModal()" style="position:absolute; top:16px; right:16px; background:none; border:none; color:var(--text3); font-size:16px; cursor:pointer;" aria-label="Close modal">✕</button>
         
         <div>
@@ -668,7 +668,17 @@ td{padding:8px 10px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
                 <div class="tgt-stat-val" id="sm-stat-avg">—</div>
               </div>
             </div>
-            <div style="background:var(--bg2); padding:10px; border-radius:var(--r); border:1px solid var(--border); font-size:11px; flex:1;">
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; font-size:11px;">
+              <div style="background:var(--bg2); padding:10px; border-radius:var(--r); border:1px solid var(--border);">
+                <div style="font-weight:600; font-family:var(--mono); margin-bottom:6px; color:var(--text2); text-transform:uppercase">Gold Fleet History</div>
+                <div id="sm-stat-progress" style="font-family:var(--mono); line-height:1.6; font-size:10.5px;"></div>
+              </div>
+              <div style="background:var(--bg2); padding:10px; border-radius:var(--r); border:1px solid var(--border);">
+                <div style="font-weight:600; font-family:var(--mono); margin-bottom:6px; color:var(--text2); text-transform:uppercase">Venue Profile</div>
+                <div id="sm-stat-profile" style="font-family:var(--mono); line-height:1.6; font-size:10.5px;"></div>
+              </div>
+            </div>
+            <div style="background:var(--bg2); padding:10px; border-radius:var(--r); border:1px solid var(--border); font-size:11px;">
               <div style="font-weight:600; font-family:var(--mono); margin-bottom:6px; color:var(--text2);">CHRONOLOGICAL RESULTS</div>
               <div id="sm-stat-history" style="max-height:100px; overflow-y:auto; font-family:var(--mono); line-height:1.6; font-size:10.5px;"></div>
             </div>
@@ -1626,11 +1636,27 @@ function renderTargetSimulation(simulatedPos) {
   if (already) {
     html = `<div class="tgt-res"><div class="tgt-res-hdr"><h3>${sailor.name}</h3><span class="goal-tag ${gpc}">${gl}</span><span style="font-family:var(--mono);font-size:9px;color:var(--text3)">${agL} · ${gL}</span></div>
       <div class="tgt-body"><div style="padding:12px 14px;background:var(--accent-l);border:1px solid rgba(26,71,42,.2);border-radius:var(--r);color:var(--accent);font-size:12px;font-weight:600;margin-bottom:14px">✓ Already allocated to <strong>${curSq}</strong> — meets or exceeds ${gl}.</div>
-      <div class="sec-lbl" style="margin-top:0">Pool context — ${goal === 'Nat A' ? gL.toUpperCase() : (agL + ' ' + gL).toUpperCase()}</div>${ctxT}${wiS}</div></div>`;
+      <div style="display:flex; gap:20px; flex-wrap:wrap; margin-top:16px; align-items:flex-start;">
+        <div style="flex: 2; min-width:320px;">
+          <div class="sec-lbl" style="margin-top:0">Pool context — ${goal === 'Nat A' ? gL.toUpperCase() : (agL + ' ' + gL).toUpperCase()}</div>
+          ${ctxT}
+        </div>
+        <div style="flex: 1; min-width:240px;">
+          ${wiS}
+        </div>
+      </div></div></div>`;
   } else if (!posNeeded) {
     html = `<div class="tgt-res"><div class="tgt-res-hdr"><h3>${sailor.name}</h3><span class="goal-tag ${gpc}">${gl}</span></div>
       <div class="tgt-body"><div class="impossible">Even P1 at the next regatta cannot reach <strong>${gl}</strong> based on current standings.</div>
-      <div class="sec-lbl">Pool context — ${goal === 'Nat A' ? gL.toUpperCase() : (agL + ' ' + gL).toUpperCase()}</div>${ctxT}${wiS}</div></div>`;
+      <div style="display:flex; gap:20px; flex-wrap:wrap; margin-top:16px; align-items:flex-start;">
+        <div style="flex: 2; min-width:320px;">
+          <div class="sec-lbl" style="margin-top:0">Pool context — ${goal === 'Nat A' ? gL.toUpperCase() : (agL + ' ' + gL).toUpperCase()}</div>
+          ${ctxT}
+        </div>
+        <div style="flex: 1; min-width:240px;">
+          ${wiS}
+        </div>
+      </div></div></div>`;
   } else {
     const isCustom = simulatedPos !== posNeeded;
     const alertBg = isCustom ? 'var(--bg2)' : 'var(--accent-l)';
@@ -1654,7 +1680,15 @@ function renderTargetSimulation(simulatedPos) {
           <div class="sc-icon">⚡</div><div><div class="sc-title">Sailors displaced (${blocking.length})</div>
           <div class="sc-desc">${blocking.map(b => `<strong>${b.name}</strong> (score ${Math.floor(b.score)}, ${baseSq.get(b.name) || '—'})`).join('<br>')}
           <br><span style="color:var(--text3);font-size:10px">Each must finish worse than P${simulatedPos} or not compete to be displaced.</span></div></div>` : ''}
-        <div class="sec-lbl">Pool context — ${goal === 'Nat A' ? gL.toUpperCase() : (agL + ' ' + gL).toUpperCase()}</div>${ctxT}${wiS}
+        <div style="display:flex; gap:20px; flex-wrap:wrap; margin-top:16px; align-items:flex-start;">
+          <div style="flex: 2; min-width:320px;">
+            <div class="sec-lbl" style="margin-top:0">Pool context — ${goal === 'Nat A' ? gL.toUpperCase() : (agL + ' ' + gL).toUpperCase()}</div>
+            ${ctxT}
+          </div>
+          <div style="flex: 1; min-width:240px;">
+            ${wiS}
+          </div>
+        </div>
       </div></div>`;
   }
   out.innerHTML = html;
@@ -2646,6 +2680,122 @@ function addNewFleetSailor() {
   alert(`Sailor "${name}" successfully added to the active fleet.`);
 }
 
+function getVenueFromName(regName) {
+  const nameUpper = regName.toUpperCase();
+  if (nameUpper.includes('SAFYC')) return 'SAFYC';
+  if (nameUpper.includes('CSC')) return 'CSC';
+  if (nameUpper.includes('RSYC')) return 'RSYC';
+  if (nameUpper.includes('TEMASEK')) return 'Temasek';
+  const words = regName.split(' ');
+  return words[0] || 'Unknown';
+}
+
+function getHistoricalRank(sailorName, dateStr) {
+  const cutoff = new Date(dateStr);
+  const eligibleRegs = REGATTAS.filter(r => r.date && new Date(r.date) <= cutoff);
+  if (eligibleRegs.length === 0) return '—';
+  
+  // Sort and pick top 5
+  const sortedRegs = [...eligibleRegs].sort((a,b) => new Date(a.date) - new Date(b.date));
+  const activeRegs = sortedRegs.slice(-5);
+  
+  // Calculate scores for all active sailors up to this cutoff
+  const sysSailors = [];
+  const systemNames = new Set();
+  eligibleRegs.forEach(reg => reg.sailors.forEach(s => systemNames.add(s.name)));
+  
+  systemNames.forEach(name => {
+    // Find details
+    let g="M", born=2013, club="";
+    eligibleRegs.forEach(reg => {
+      const found = reg.sailors.find(x => isSameSailor(x.name, name));
+      if (found) {
+        if (found.g) g = found.g;
+        if (found.born) born = found.born;
+        if (found.club) club = found.club;
+      }
+    });
+    
+    if (DROPPED_SAILORS.has(name)) return;
+    if (born && born <= (COMP_YEAR - 16)) return;
+    
+    // Scores
+    const scores = activeRegs.map(reg => {
+      const sInReg = reg.sailors.find(x => isSameSailor(x.name, name));
+      return sInReg ? (sInReg.rank !== undefined && sInReg.rank !== null ? sInReg.rank : sInReg.nett) : null;
+    });
+    
+    const validScores = scores.map(v => v === null ? DNS : v);
+    while (validScores.length < 5) validScores.push(DNS);
+    const sorted = validScores.sort((a,b)=>a-b);
+    const score = sorted.slice(0,3).reduce((a,b)=>a+b,0);
+    
+    sysSailors.push({ name, score, ranks: validScores, born });
+  });
+  
+  // Sort standings
+  sysSailors.sort((a,b) => {
+    if (a.score !== b.score) return a.score - b.score;
+    const rA = [...a.ranks].sort((x,y)=>x-y);
+    const rB = [...b.ranks].sort((x,y)=>x-y);
+    for (let i=0; i<5; i++) {
+      if ((rA[i]||DNS) !== (rB[i]||DNS)) return (rA[i]||DNS) - (rB[i]||DNS);
+    }
+    return 0;
+  });
+  
+  const rankIdx = sysSailors.findIndex(x => isSameSailor(x.name, sailorName));
+  return rankIdx !== -1 ? `#${rankIdx + 1}` : '—';
+}
+
+function getHistoricalRank(sailorName, dateStr) {
+  const cutoff = new Date(dateStr);
+  const eligibleRegs = REGATTAS.filter(r => r.date && new Date(r.date) <= cutoff);
+  if (eligibleRegs.length === 0) return '—';
+  
+  const sortedRegs = [...eligibleRegs].sort((a,b) => {
+    const dA = a.date ? new Date(a.date) : new Date(0);
+    const dB = b.date ? new Date(b.date) : new Date(0);
+    return dA - dB;
+  });
+  
+  const activeRegs = sortedRegs.filter(r => r.sailors && r.sailors.length > 0).slice(-5);
+  if (activeRegs.length === 0) return '—';
+  
+  const sysSailors = [];
+  const systemNames = new Set();
+  activeRegs.forEach(reg => reg.sailors.forEach(s => systemNames.add(s.name)));
+  
+  systemNames.forEach(name => {
+    const scores = activeRegs.map(reg => {
+      const sInReg = reg.sailors.find(x => isSameSailor(x.name, name));
+      return sInReg ? (sInReg.rank !== undefined && sInReg.rank !== null ? sInReg.rank : sInReg.nett) : null;
+    });
+    
+    const validScores = scores.map(v => v === null ? DNS : v);
+    while (validScores.length < 5) validScores.push(DNS);
+    const sorted = validScores.sort((a,b)=>a-b);
+    const score = sorted.slice(0,3).reduce((a,b)=>a+b,0);
+    
+    sysSailors.push({ name, score, ranks: validScores });
+  });
+  
+  sysSailors.sort((a,b) => {
+    if (a.score !== b.score) return a.score - b.score;
+    const rA = [...a.ranks].sort((x,y)=>(x===null?DNS:x) - (y===null?DNS:y));
+    const rB = [...b.ranks].sort((x,y)=>(x===null?DNS:x) - (y===null?DNS:y));
+    for (let i=0; i<5; i++) {
+      const valA = rA[i] !== undefined && rA[i] !== null ? rA[i] : DNS;
+      const valB = rB[i] !== undefined && rB[i] !== null ? rB[i] : DNS;
+      if (valA !== valB) return valA - valB;
+    }
+    return 0;
+  });
+  
+  const rankIdx = sysSailors.findIndex(x => isSameSailor(x.name, sailorName));
+  return rankIdx !== -1 ? `#${rankIdx + 1}` : '—';
+}
+
 function renderSailorPerformanceChart(sailor) {
   const sortedRegs = [...REGATTAS].sort((a, b) => {
     const dA = a.date ? new Date(a.date) : new Date(0);
@@ -2661,6 +2811,9 @@ function renderSailorPerformanceChart(sailor) {
   let sum = 0;
   let count = 0;
 
+  const allFinishes = [];
+  const venueScores = {};
+
   sortedRegs.forEach(reg => {
     const sInReg = reg.sailors.find(x => isSameSailor(x.name, sailor.name));
     if (sInReg) {
@@ -2673,15 +2826,75 @@ function renderSailorPerformanceChart(sailor) {
         sum += r;
         count++;
 
+        allFinishes.push(r);
+        const venue = getVenueFromName(reg.name);
+        if (!venueScores[venue]) {
+          venueScores[venue] = [];
+        }
+        venueScores[venue].push(r);
+
+        const pct = reg.sailors.length > 0 ? (r / reg.sailors.length) * 100 : 100;
+        let pctLabel, pctColor, pctBg;
+        if (pct <= 25) { pctLabel = 'Top 25%'; pctColor = 'var(--accent)'; pctBg = 'var(--accent-l)'; }
+        else if (pct <= 50) { pctLabel = 'Top 50%'; pctColor = 'var(--accent2)'; pctBg = 'var(--accent2-l)'; }
+        else if (pct <= 75) { pctLabel = 'Top 75%'; pctColor = 'var(--accent3)'; pctBg = 'var(--accent3-l)'; }
+        else { pctLabel = 'Bottom 25%'; pctColor = 'var(--red)'; pctBg = 'var(--red-l)'; }
+        const pctTag = `<span style="font-size:9px;padding:1px 4px;border-radius:2px;font-weight:600;color:${pctColor};background:${pctBg};border:1px solid ${pctColor}20;margin-left:6px">${pctLabel}</span>`;
+        
         const ptsStr = sInReg.nett !== null ? `(${sInReg.nett} pts)` : '';
-        historyHtml.push(`<div>📅 ${reg.date || 'No Date'} — <strong>${reg.name}</strong>: Rank ${r} ${ptsStr}</div>`);
+        historyHtml.push(`<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px"><div>📅 ${reg.date || 'No Date'} — <strong>${reg.name}</strong>: Rank ${r} ${ptsStr}</div>${pctTag}</div>`);
       }
     }
   });
 
+  // Calculate venue profile
+  const venueAvgs = [];
+  for (const [venue, scores] of Object.entries(venueScores)) {
+    const avg = scores.reduce((a, b) => a + b, 0) / scores.length;
+    venueAvgs.push({ venue, avg });
+  }
+  venueAvgs.sort((a, b) => a.avg - b.avg);
+  
+  const bestVenue = venueAvgs.length > 0 ? `${venueAvgs[0].venue} (Avg: ${venueAvgs[0].avg.toFixed(1)})` : '—';
+  const worstVenue = venueAvgs.length > 0 ? `${venueAvgs[venueAvgs.length - 1].venue} (Avg: ${venueAvgs[venueAvgs.length - 1].avg.toFixed(1)})` : '—';
+
+  // Calculate Nett vs Gross scores and averages
+  let nettScoreSum = 0;
+  let grossScoreSum = 0;
+  let nettAvg = DNS;
+  let grossAvg = DNS;
+  if (allFinishes.length > 0) {
+    const validScoresForNett = allFinishes.map(v => v === null ? DNS : v);
+    while (validScoresForNett.length < 5) validScoresForNett.push(DNS);
+    const sortedForNett = [...validScoresForNett].sort((a, b) => a - b);
+    nettScoreSum = sortedForNett.slice(0, 3).reduce((a, b) => a + b, 0);
+    nettAvg = nettScoreSum / 3;
+
+    grossScoreSum = allFinishes.reduce((a, b) => a + b, 0);
+    grossAvg = grossScoreSum / allFinishes.length;
+  }
+
+  // Calculate half-yearly rankings
+  const rankJun25 = getHistoricalRank(sailor.name, '2025-06-30');
+  const rankDec25 = getHistoricalRank(sailor.name, '2025-12-31');
+  const rankJun26 = getHistoricalRank(sailor.name, '2026-06-30');
+
   document.getElementById('sm-stat-best').textContent = best !== Infinity ? `P${best}` : '—';
   document.getElementById('sm-stat-avg').textContent = count > 0 ? `P${Math.round((sum / count) * 10) / 10}` : '—';
   document.getElementById('sm-stat-history').innerHTML = historyHtml.length > 0 ? historyHtml.join('') : '<span style="color:var(--text3)">No results recorded.</span>';
+
+  document.getElementById('sm-stat-progress').innerHTML = `
+    <div>Jun 2025: <strong>${rankJun25}</strong></div>
+    <div style="margin-top:2px;">Dec 2025: <strong>${rankDec25}</strong></div>
+    <div style="margin-top:2px;">Jun 2026: <strong>${rankJun26}</strong></div>
+  `;
+
+  document.getElementById('sm-stat-profile').innerHTML = `
+    <div style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${bestVenue}">Best: <strong>${bestVenue}</strong></div>
+    <div style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap; margin-top:2px;" title="${worstVenue}">Worst: <strong>${worstVenue}</strong></div>
+    <div style="margin-top:2px; font-size:10px;">Nett: <strong>${nettScoreSum}</strong> (Avg: <strong>${nettAvg.toFixed(1)}</strong>)</div>
+    <div style="margin-top:2px; font-size:10px;">Gross: <strong>${grossScoreSum}</strong> (Avg: <strong>${grossAvg.toFixed(1)}</strong>)</div>
+  `;
 
   if (sailorChartObj) {
     sailorChartObj.destroy();
@@ -2709,7 +2922,19 @@ function renderSailorPerformanceChart(sailor) {
       responsive: true,
       maintainAspectRatio: false,
       plugins: {
-        legend: { display: false }
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            label: function(context) {
+              const r = context.parsed.y;
+              const regName = context.label;
+              const reg = REGATTAS.find(x => x.name === regName);
+              const total = reg ? reg.sailors.length : 0;
+              const pct = total > 0 ? Math.round((r / total) * 100) : 100;
+              return `Rank: P${r} (Top ${pct}%)`;
+            }
+          }
+        }
       },
       scales: {
         y: {
