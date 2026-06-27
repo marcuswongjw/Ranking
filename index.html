@@ -387,6 +387,10 @@ td{padding:8px 10px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
                 <option value="Nat B">National B</option>
                 <option value="DS">Development Squad</option>
               </select></div>
+            <div class="fl" id="target-slider-container" style="display:none; margin-top: 5px;">
+              <label class="fl-lbl" id="target-slider-label" style="display:flex; justify-content:space-between;"><span>Next Regatta simulated finish</span><strong id="target-slider-val" style="color:var(--accent);">P50</strong></label>
+              <input type="range" id="targetSlider" min="1" max="150" value="50" oninput="updateTargetSliderVal(this.value)" style="width:100%; cursor:pointer;">
+            </div>
           </div>
         </div>
         <div class="card">
@@ -650,6 +654,7 @@ td{padding:8px 10px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
         <div class="chart-card"><h3>Rank vs score</h3><div class="chart-container"><canvas id="scatterChart"></canvas></div></div>
         <div class="chart-card"><h3>Club distribution</h3><div class="chart-container"><canvas id="clubChart"></canvas></div></div>
         <div class="chart-card"><h3>Birth year distribution</h3><div class="chart-container"><canvas id="yearChart"></canvas></div></div>
+        <div class="chart-card"><h3>Club Dominance (Squad Allocations)</h3><div class="chart-container"><canvas id="dominanceChart"></canvas></div></div>
       </div>
     </div>
   </div>
@@ -1450,11 +1455,18 @@ function calcSimScore(sailor, simSailors, rankingMode = false) {
   return sorted.slice(0,3).reduce((a,b)=>a+b,0);
 }
 
+let targetCachedData = null;
+
 function runTarget(){
   if(!SAILORS.length)return;
   const nm=document.getElementById('targetSailor').value,goal=document.getElementById('targetGoal').value;
   const out=document.getElementById('target-output');
-  if(!nm||!goal){out.innerHTML='';return;}
+  const sliderContainer = document.getElementById('target-slider-container');
+  if(!nm||!goal){
+    out.innerHTML='';
+    if (sliderContainer) sliderContainer.style.display = 'none';
+    return;
+  }
   const sailor=SAILORS.find(s=>s.name===nm);if(!sailor)return;
   const gl=goal==='Nat A'?'National A':goal==='Nat B'?'National B':'Development Squad';
   const gpc=goal==='Nat A'?'gt-a':goal==='Nat B'?'gt-b':'gt-ds';
@@ -1462,13 +1474,9 @@ function runTarget(){
   const gL=sailor.g==='M'?'boys':'girls',sqOrd={'Nat A':1,'Nat B':2,'DS':3};
   const baseSq=computeSquads(SAILORS),curSq=EXCLUDED.has(sailor.name)?null:(baseSq.get(sailor.name)||null);
   const already=(sqOrd[curSq]||99)<=(sqOrd[goal]||99);
-  
-  let posNeeded=null,projScore=null;
-  for(let pos=200;pos>=1;pos--){
+
+  function testQualify(pos) {
     const simSailors = [{ name: sailor.name, nett: pos, rank: pos }];
-    const ns = calcSimScore(sailor, simSailors, true);
-    
-    // Simulate all scores in memory
     const simScores = SAILORS.map(s => {
       const score = calcSimScore(s, simSailors, true);
       return { 
@@ -1479,7 +1487,6 @@ function runTarget(){
       };
     });
     
-    // Sort simScores with tiebreaker
     simScores.sort((a, b) => {
       if (a.score !== b.score) return a.score - b.score;
       const ranksA = a.ranks.map(v => v === null ? DNS : v).sort((x, y) => x - y);
@@ -1494,27 +1501,67 @@ function runTarget(){
     simScores.forEach((s, idx) => s.cur = idx + 1);
     
     const sq = computeSquads(simScores).get(sailor.name);
-    
-    if(sq && (sqOrd[sq]||99)<=(sqOrd[goal]||99)){
-      posNeeded=pos;
-      projScore=ns;
-      break;
+    return sq && (sqOrd[sq]||99)<=(sqOrd[goal]||99);
+  }
+
+  // Optimize target search to O(log N) iterations with Binary Search
+  let posNeeded = null;
+  let low = 1, high = 200;
+  while(low <= high) {
+    const mid = Math.floor((low + high) / 2);
+    if(testQualify(mid)) {
+      posNeeded = mid;
+      low = mid + 1;
+    } else {
+      high = mid - 1;
     }
   }
-  
+
   const pool=getContextPool(sailor,goal);
   const pIdx=pool.findIndex(s=>s.name===sailor.name);
   const windowSize = goal === 'Nat A' ? 3 : 2;
   const ctx = pool.slice(Math.max(0, pIdx - windowSize), Math.min(pool.length, pIdx + windowSize + 1));
-  
-  const simSailors = posNeeded ? [{ name: sailor.name, nett: posNeeded, rank: posNeeded }] : [{ name: sailor.name, nett: 1, rank: 1 }];
+
+  targetCachedData = {
+    sailor, goal, gl, gpc, agL, gL, sqOrd, baseSq, curSq, already, posNeeded, ctx, out, pool
+  };
+
+  if (posNeeded && !already) {
+    if (sliderContainer) {
+      sliderContainer.style.display = 'block';
+      const slider = document.getElementById('targetSlider');
+      if (slider) {
+        slider.max = Math.max(150, posNeeded + 20);
+        slider.value = posNeeded;
+        document.getElementById('target-slider-val').textContent = 'P' + posNeeded;
+      }
+    }
+  } else {
+    if (sliderContainer) sliderContainer.style.display = 'none';
+  }
+
+  renderTargetSimulation(posNeeded || 1);
+}
+
+function updateTargetSliderVal(val) {
+  document.getElementById('target-slider-val').textContent = 'P' + val;
+  renderTargetSimulation(parseInt(val));
+}
+
+function renderTargetSimulation(simulatedPos) {
+  if (!targetCachedData) return;
+  const { sailor, goal, gl, gpc, agL, gL, sqOrd, baseSq, curSq, already, posNeeded, ctx, out, pool } = targetCachedData;
+
+  const simSailors = [{ name: sailor.name, nett: simulatedPos, rank: simulatedPos }];
+  const projScore = calcSimScore(sailor, simSailors, true);
+
   const simScoresM = SAILORS.map(s => {
     const score = calcSimScore(s, simSailors, true);
     return { 
       ...s, 
       score: score,
       simScore: score,
-      ranks: [...s.ranks, isSameSailor(s.name, sailor.name) ? (posNeeded || 1) : null] 
+      ranks: [...s.ranks, isSameSailor(s.name, sailor.name) ? simulatedPos : null] 
     };
   });
   simScoresM.sort((a, b) => {
@@ -1531,39 +1578,51 @@ function runTarget(){
   simScoresM.forEach((s, idx) => s.cur = idx + 1);
   const simSqM = computeSquads(simScoresM);
   
-  const nsAtN=posNeeded?calcSimScore(sailor, [{ name: sailor.name, nett: posNeeded, rank: posNeeded }], true):calcSimScore(sailor, [{ name: sailor.name, nett: 1, rank: 1 }], true);
-  const blocking=pool.filter(s=>{if(s.name===sailor.name)return false;const sq=baseSq.get(s.name)||'';return s.score>nsAtN&&(sqOrd[sq]||99)<=(sqOrd[goal]||99);});
-  const ctxT=buildCtxTable(ctx,sailor,baseSq,simSqM,posNeeded);
-  const wiS=buildWhatIf(sailor,goal,ctx);
-  let html='';
-  if(already){
-    html=`<div class="tgt-res"><div class="tgt-res-hdr"><h3>${sailor.name}</h3><span class="goal-tag ${gpc}">${gl}</span><span style="font-family:var(--mono);font-size:9px;color:var(--text3)">${agL} · ${gL}</span></div>
+  const blocking = pool.filter(s => {
+    if (s.name === sailor.name) return false;
+    const sq = baseSq.get(s.name) || '';
+    return s.score > projScore && (sqOrd[sq] || 99) <= (sqOrd[goal] || 99);
+  });
+  
+  const ctxT = buildCtxTable(ctx, sailor, baseSq, simSqM, simulatedPos);
+  const wiS = buildWhatIf(sailor, goal, ctx);
+  
+  let html = '';
+  if (already) {
+    html = `<div class="tgt-res"><div class="tgt-res-hdr"><h3>${sailor.name}</h3><span class="goal-tag ${gpc}">${gl}</span><span style="font-family:var(--mono);font-size:9px;color:var(--text3)">${agL} · ${gL}</span></div>
       <div class="tgt-body"><div style="padding:12px 14px;background:var(--accent-l);border:1px solid rgba(26,71,42,.2);border-radius:var(--r);color:var(--accent);font-size:12px;font-weight:600;margin-bottom:14px">✓ Already allocated to <strong>${curSq}</strong> — meets or exceeds ${gl}.</div>
       <div class="sec-lbl" style="margin-top:0">Pool context — ${goal === 'Nat A' ? gL.toUpperCase() : (agL + ' ' + gL).toUpperCase()}</div>${ctxT}${wiS}</div></div>`;
-  }else if(!posNeeded){
-    html=`<div class="tgt-res"><div class="tgt-res-hdr"><h3>${sailor.name}</h3><span class="goal-tag ${gpc}">${gl}</span></div>
+  } else if (!posNeeded) {
+    html = `<div class="tgt-res"><div class="tgt-res-hdr"><h3>${sailor.name}</h3><span class="goal-tag ${gpc}">${gl}</span></div>
       <div class="tgt-body"><div class="impossible">Even P1 at the next regatta cannot reach <strong>${gl}</strong> based on current standings.</div>
       <div class="sec-lbl">Pool context — ${goal === 'Nat A' ? gL.toUpperCase() : (agL + ' ' + gL).toUpperCase()}</div>${ctxT}${wiS}</div></div>`;
-  }else{
-    html=`<div class="tgt-res"><div class="tgt-res-hdr"><h3>${sailor.name}</h3><span class="goal-tag ${gpc}">${gl}</span><span style="font-family:var(--mono);font-size:9px;color:var(--text3)">${agL} · ${gL}</span></div>
+  } else {
+    const isCustom = simulatedPos !== posNeeded;
+    const alertBg = isCustom ? 'var(--bg2)' : 'var(--accent-l)';
+    const alertBorder = isCustom ? 'var(--border)' : 'rgba(26,71,42,.15)';
+    const alertText = isCustom 
+      ? `Simulated Scenario: finish of <strong>P${simulatedPos}</strong> yields score <strong>${projScore}</strong>` 
+      : `Finish <strong>P${posNeeded} or better</strong> at the next regatta. Score: ${Math.floor(sailor.score)} → <strong>${projScore}</strong>`;
+
+    html = `<div class="tgt-res"><div class="tgt-res-hdr"><h3>${sailor.name}</h3><span class="goal-tag ${gpc}">${gl}</span><span style="font-family:var(--mono);font-size:9px;color:var(--text3)">${agL} · ${gL}</span></div>
       <div class="tgt-body">
         <div class="tgt-sum">
-          <div class="tgt-stat"><div class="tgt-stat-lbl">Current squad</div><div class="tgt-stat-val" style="font-size:14px">${curSq||'None'}</div><div class="tgt-stat-sub">score: ${Math.floor(sailor.score)}</div></div>
-          <div class="tgt-stat"><div class="tgt-stat-lbl">Finish needed</div><div class="tgt-stat-val">P${posNeeded}</div><div class="tgt-stat-sub">score → ${projScore}</div></div>
+          <div class="tgt-stat"><div class="tgt-stat-lbl">Current squad</div><div class="tgt-stat-val" style="font-size:14px">${curSq || 'None'}</div><div class="tgt-stat-sub">score: ${Math.floor(sailor.score)}</div></div>
+          <div class="tgt-stat"><div class="tgt-stat-lbl">Target Minimum</div><div class="tgt-stat-val">P${posNeeded}</div><div class="tgt-stat-sub">score needed → ${projScore}</div></div>
           <div class="tgt-stat"><div class="tgt-stat-lbl">Age group</div><div class="tgt-stat-val" style="font-size:14px">${agL}</div><div class="tgt-stat-sub">${gL} pool</div></div>
         </div>
-        <div class="sc-item" style="border-color:rgba(26,71,42,.15);background:var(--accent-l)">
-          <div class="sc-icon">◎</div><div><div class="sc-title">Performance needed</div>
-          <div class="sc-desc">Finish <strong>P${posNeeded} or better</strong> at the next regatta. Score: ${Math.floor(sailor.score)} → <strong>${projScore}</strong></div></div>
+        <div class="sc-item" style="border-color:${alertBorder};background:${alertBg}">
+          <div class="sc-icon">${isCustom ? '⚙' : '◎'}</div><div><div class="sc-title">${isCustom ? 'Simulated scenario' : 'Performance needed'}</div>
+          <div class="sc-desc">${alertText}</div></div>
         </div>
-        ${blocking.length?`<div class="sc-item" style="border-color:rgba(122,53,0,.15);background:var(--accent3-l)">
-          <div class="sc-icon">⚡</div><div><div class="sc-title">Sailors to displace (${blocking.length})</div>
-          <div class="sc-desc">${blocking.map(b=>`<strong>${b.name}</strong> (score ${Math.floor(b.score)}, ${baseSq.get(b.name)||'—'})`).join('<br>')}
-          <br><span style="color:var(--text3);font-size:10px">Each must finish worse than P${posNeeded} or not compete.</span></div></div></div>`:''}
+        ${blocking.length ? `<div class="sc-item" style="border-color:rgba(122,53,0,.15);background:var(--accent3-l)">
+          <div class="sc-icon">⚡</div><div><div class="sc-title">Sailors displaced (${blocking.length})</div>
+          <div class="sc-desc">${blocking.map(b => `<strong>${b.name}</strong> (score ${Math.floor(b.score)}, ${baseSq.get(b.name) || '—'})`).join('<br>')}
+          <br><span style="color:var(--text3);font-size:10px">Each must finish worse than P${simulatedPos} or not compete to be displaced.</span></div></div>` : ''}
         <div class="sec-lbl">Pool context — ${goal === 'Nat A' ? gL.toUpperCase() : (agL + ' ' + gL).toUpperCase()}</div>${ctxT}${wiS}
       </div></div>`;
   }
-  out.innerHTML=html;
+  out.innerHTML = html;
 }
 
 function buildCtxTable(ctx,sailor,baseSq,simSqM,posNeeded){
@@ -1800,6 +1859,7 @@ function renderCharts() {
   if (!SAILORS.length) return;
   const sq = computeSquads(SAILORS);
 
+  // 1. Avg, Min, Max score by squad
   const squadScores = { 'Nat A': [], 'Nat B': [], 'DS': [], 'None': [] };
   SAILORS.forEach(s => {
     const squad = EXCLUDED.has(s.name) ? 'None' : (sq.get(s.name) || 'None');
@@ -1808,7 +1868,15 @@ function renderCharts() {
   const distData = Object.keys(squadScores).map(k => {
     const vals = squadScores[k];
     const avg = vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : 0;
-    return { squad: k, avg: Math.round(avg * 10) / 10, count: vals.length };
+    const min = vals.length ? Math.min(...vals) : 0;
+    const max = vals.length ? Math.max(...vals) : 0;
+    return { 
+      squad: k, 
+      avg: Math.round(avg * 10) / 10, 
+      min: min, 
+      max: max, 
+      count: vals.length 
+    };
   });
 
   if (chartObjs.dist) chartObjs.dist.destroy();
@@ -1816,20 +1884,37 @@ function renderCharts() {
     type: 'bar',
     data: {
       labels: distData.map(d => d.squad),
-      datasets: [{
-        label: 'Avg Score (lower is better)',
-        data: distData.map(d => d.avg),
-        backgroundColor: ['#1a472a', '#2d4a8a', '#7a3500', '#9a958c']
-      }]
+      datasets: [
+        {
+          label: 'Min Score',
+          data: distData.map(d => d.min),
+          backgroundColor: '#a3c9b0'
+        },
+        {
+          label: 'Avg Score',
+          data: distData.map(d => d.avg),
+          backgroundColor: '#2d4a8a'
+        },
+        {
+          label: 'Max Score',
+          data: distData.map(d => d.max),
+          backgroundColor: '#f0b07a'
+        }
+      ]
     },
     options: {
       responsive: true,
       maintainAspectRatio: false,
-      plugins: { legend: { display: false } },
-      scales: { y: { beginAtZero: true } }
+      scales: { 
+        y: { 
+          beginAtZero: true,
+          title: { display: true, text: 'Points (lower is better)' }
+        } 
+      }
     }
   });
 
+  // 2. Rank vs Score Scatter
   const scatterData = SAILORS.map(s => ({ x: s.cur, y: s.score }));
   if (chartObjs.scatter) chartObjs.scatter.destroy();
   chartObjs.scatter = new Chart(document.getElementById('scatterChart'), {
@@ -1851,6 +1936,7 @@ function renderCharts() {
     }
   });
 
+  // 3. Club Distribution Pie
   const clubs = {};
   SAILORS.forEach(s => { if (s.club) clubs[s.club] = (clubs[s.club] || 0) + 1; });
   const clubLabels = Object.keys(clubs).sort((a, b) => clubs[b] - clubs[a]).slice(0, 7);
@@ -1872,27 +1958,90 @@ function renderCharts() {
     }
   });
 
+  // 4. Birth Year Distribution grouped by Gender (Boys vs Girls)
   const years = {};
-  SAILORS.forEach(s => { if (s.born) years[s.born] = (years[s.born] || 0) + 1; });
+  SAILORS.forEach(s => { 
+    if (s.born) {
+      if (!years[s.born]) years[s.born] = { M: 0, F: 0 };
+      years[s.born][s.g]++;
+    }
+  });
   const yearLabels = Object.keys(years).sort();
-  const yearValues = yearLabels.map(l => years[l]);
+  const boysValues = yearLabels.map(l => years[l].M);
+  const girlsValues = yearLabels.map(l => years[l].F);
 
   if (chartObjs.year) chartObjs.year.destroy();
   chartObjs.year = new Chart(document.getElementById('yearChart'), {
     type: 'bar',
     data: {
       labels: yearLabels,
-      datasets: [{
-        label: 'Number of Sailors',
-        data: yearValues,
-        backgroundColor: '#1a472a'
-      }]
+      datasets: [
+        {
+          label: 'Boys (M)',
+          data: boysValues,
+          backgroundColor: '#3b82f6'
+        },
+        {
+          label: 'Girls (F)',
+          data: girlsValues,
+          backgroundColor: '#ec4899'
+        }
+      ]
     },
     options: {
       responsive: true,
       maintainAspectRatio: false,
-      plugins: { legend: { display: false } },
-      scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } }
+      scales: { 
+        x: { stacked: false },
+        y: { beginAtZero: true, ticks: { stepSize: 1 } } 
+      }
+    }
+  });
+
+  // 5. Club Dominance (Squad Allocations per Club) Stacked Bar Chart
+  const clubSquads = {};
+  SAILORS.forEach(s => {
+    if (s.club) {
+      if (!clubSquads[s.club]) {
+        clubSquads[s.club] = { 'Nat A': 0, 'Nat B': 0, 'DS': 0, 'None': 0 };
+      }
+      const squad = EXCLUDED.has(s.name) ? 'None' : (sq.get(s.name) || 'None');
+      clubSquads[s.club][squad]++;
+    }
+  });
+  
+  const sortedClubs = Object.keys(clubSquads).sort((a, b) => {
+    const totalA = clubSquads[a]['Nat A'] + clubSquads[a]['Nat B'] + clubSquads[a]['DS'];
+    const totalB = clubSquads[b]['Nat A'] + clubSquads[b]['Nat B'] + clubSquads[b]['DS'];
+    return totalB - totalA;
+  }).slice(0, 6);
+
+  const dominanceData = {
+    'Nat A': sortedClubs.map(c => clubSquads[c]['Nat A']),
+    'Nat B': sortedClubs.map(c => clubSquads[c]['Nat B']),
+    'DS': sortedClubs.map(c => clubSquads[c]['DS']),
+    'None': sortedClubs.map(c => clubSquads[c]['None'])
+  };
+
+  if (chartObjs.dominance) chartObjs.dominance.destroy();
+  chartObjs.dominance = new Chart(document.getElementById('dominanceChart'), {
+    type: 'bar',
+    data: {
+      labels: sortedClubs,
+      datasets: [
+        { label: 'Nat A', data: dominanceData['Nat A'], backgroundColor: '#1a472a' },
+        { label: 'Nat B', data: dominanceData['Nat B'], backgroundColor: '#2d4a8a' },
+        { label: 'DS', data: dominanceData['DS'], backgroundColor: '#7a3500' },
+        { label: 'None', data: dominanceData['None'], backgroundColor: '#9a958c' }
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      scales: {
+        x: { stacked: true },
+        y: { stacked: true, beginAtZero: true }
+      }
     }
   });
 }
