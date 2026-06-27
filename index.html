@@ -451,20 +451,22 @@ td{padding:8px 10px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
       </div>
     </div>
     
-    <!-- Import Confirmation Modal -->
-    <div id="importConfirmModal" class="drop-overlay" style="background:rgba(0,0,0,.6); align-items:center; justify-content:center; display:none; position:fixed; inset:0; z-index:300;">
-      <div class="card" style="width:650px; max-width:95%; max-height:85vh; background:var(--card); border:1px solid var(--border); box-shadow:0 10px 30px rgba(0,0,0,.3); display:flex; flex-direction:column; padding:24px; border-radius:12px; position:relative;">
-        <button onclick="closeImportModal()" style="position:absolute; top:16px; right:16px; background:none; border:none; color:var(--text3); font-size:16px; cursor:pointer;" aria-label="Close modal">✕</button>
-        <div class="card-title" style="font-size:16px; margin-bottom:12px; font-family:var(--mono);">Confirm Spreadsheet Import</div>
-        <p class="card-desc" style="margin-bottom:16px;">We compared the uploaded spreadsheet with your database. The following changes were detected:</p>
-        
-        <div id="import-changes-container" style="flex:1; overflow-y:auto; margin-bottom:20px; display:flex; flex-direction:column; gap:16px; padding-right:6px;">
-          <!-- Change categories will be rendered here dynamically -->
+    <!-- Import Confirmation Modal (Full Screen) -->
+    <div id="importConfirmModal" style="background:var(--bg); display:none; flex-direction:column; position:fixed; inset:0; z-index:300; padding:32px; overflow:hidden;">
+      <div style="max-width:1440px; width:100%; margin:0 auto; display:flex; flex-direction:column; gap:20px; height:100%;">
+        <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border); padding-bottom:16px; flex-shrink:0;">
+          <div>
+            <h2 style="font-size:22px; font-weight:700; color:var(--text); margin:0;">Spreadsheet Import Verification</h2>
+            <p style="font-size:12px; color:var(--text3); margin:4px 0 0 0;">Compare and reconcile the uploaded spreadsheet with the active database before confirming.</p>
+          </div>
+          <div style="display:flex; gap:12px;">
+            <button onclick="closeImportModal()" style="padding:8px 16px; background:var(--bg2); border:1px solid var(--border); border-radius:var(--r); font-size:12px; font-weight:600; cursor:pointer; font-family:var(--mono);">✕ Cancel & Discard</button>
+            <button onclick="confirmPendingImport()" style="padding:8px 20px; background:var(--accent); color:#fff; border:none; border-radius:var(--r); font-size:12px; font-weight:600; cursor:pointer; font-family:var(--mono);">✓ Confirm & Apply Import</button>
+          </div>
         </div>
-        
-        <div style="display:flex; justify-content:flex-end; gap:8px; border-top:1px solid var(--border); padding-top:14px;">
-          <button onclick="closeImportModal()" style="padding:7px 14px; background:var(--bg2); border:1px solid var(--border); border-radius:var(--r); font-size:11px; cursor:pointer; font-family:var(--mono);">Cancel & Discard</button>
-          <button onclick="confirmPendingImport()" style="padding:7px 16px; background:var(--accent); color:#fff; border:none; border-radius:var(--r); font-size:11px; font-weight:600; cursor:pointer; font-family:var(--mono);">Confirm & Apply Changes</button>
+
+        <div id="import-changes-container" style="display:grid; grid-template-columns:1fr 1.2fr 1.5fr; gap:24px; flex:1; min-height:0; overflow:hidden; padding-bottom:20px;">
+          <!-- 3 Columns will be dynamically populated here -->
         </div>
       </div>
     </div>
@@ -794,12 +796,20 @@ function parseSheet(data,filename){
   const parsedRegs = [];
 
   if (hasConsolidated) {
-    const profileKeywords = ['name', 'sailor', 'gender', 'g', 'sex', 'born', 'birth year', 'year', 'sail number', 'sail no', 'no.', 'club', 'school', 'sch', 'squad', 'group', 'age'];
+    const isProfileHeader = (header) => {
+      const h = String(header || '').toLowerCase().trim();
+      if (!h) return false;
+      const exacts = ['name', 'sailor', 'gender', 'g', 'sex', 'born', 'birth year', 'year', 'club', 'school', 'sch', 'squad', 'group', 'age', 'sail no', 'sail number', 'sailno', 'no', 'no.'];
+      if (exacts.includes(h)) return true;
+      if (h.startsWith('name') || h.startsWith('sailor') || h.startsWith('gender') || h.startsWith('club') || h.startsWith('school')) return true;
+      return false;
+    };
+
     let startCol = 6;
     for (let c = 0; c < headers.length; c++) {
       const h = String(headers[c] || '').toLowerCase().trim();
       if (!h) continue;
-      const isProfile = profileKeywords.some(kw => h.includes(kw));
+      const isProfile = isProfileHeader(h);
       if (!isProfile && c >= 5) {
         startCol = c;
         break;
@@ -2406,7 +2416,7 @@ let PENDING_IMPORT_DATA = null;
 function showImportConfirmation(parsedRegs) {
   PENDING_IMPORT_DATA = parsedRegs;
   
-  const newRegattas = [];
+  const regattaStatuses = [];
   const newSailors = [];
   const scoreUpdates = [];
   
@@ -2416,7 +2426,9 @@ function showImportConfirmation(parsedRegs) {
   parsedRegs.forEach(parsedReg => {
     const existingReg = REGATTAS.find(r => r.name.toLowerCase() === parsedReg.name.toLowerCase());
     if (!existingReg) {
-      newRegattas.push({ name: parsedReg.name, sailorsCount: parsedReg.sailors.length });
+      regattaStatuses.push({ name: parsedReg.name, status: 'New', sailorsCount: parsedReg.sailors.length });
+    } else {
+      regattaStatuses.push({ name: parsedReg.name, status: 'Existing', sailorsCount: parsedReg.sailors.length });
     }
     
     parsedReg.sailors.forEach(parsedSailor => {
@@ -2455,97 +2467,105 @@ function showImportConfirmation(parsedRegs) {
     });
   });
 
+  regattaStatuses.sort((a, b) => {
+    if (a.status === 'New' && b.status !== 'New') return -1;
+    if (a.status !== 'New' && b.status === 'New') return 1;
+    return a.name.localeCompare(b.name);
+  });
+
   const container = document.getElementById('import-changes-container');
   if (!container) return;
   
-  let html = '';
-  
-  if (newRegattas.length > 0) {
-    html += `<div>
-      <div style="font-weight:600; font-family:var(--mono); font-size:11px; color:var(--accent); margin-bottom:8px; display:flex; align-items:center; gap:6px;">🟩 NEW REGATTAS TO ADD (${newRegattas.length})</div>
-      <div style="display:flex; flex-direction:column; gap:4px; padding-left:12px;">
-        ${newRegattas.map(r => `<div style="font-size:11.5px;">• <strong>${r.name}</strong> (${r.sailorsCount} sailors)</div>`).join('')}
-      </div>
-    </div>`;
-  }
-  
-  if (newSailors.length > 0) {
-    const sailorListHtml = newSailors.map(s => {
-      const options = [`<option value="">No, create as new sailor</option>`];
-      sortedCurrentSailors.forEach(curr => {
-        options.push(`<option value="${curr.name}">Merge with ${curr.name}</option>`);
-      });
-      
-      return `<div style="display:flex; justify-content:space-between; align-items:center; gap:12px; font-size:11.5px; border-bottom:1px dashed var(--border); padding:6px 0;">
-        <div>• <strong>${s.name}</strong> (${s.g}, born ${s.born}, Club: ${s.club || 'None'})</div>
-        <div style="display:flex; align-items:center; gap:6px;">
-          <span style="font-size:9.5px; color:var(--text3);">Is this an existing sailor?</span>
-          <select class="sailor-merge-select" data-new-name="${s.name.replace(/"/g, '&quot;')}" style="height:24px; font-size:10px; font-family:var(--sans); width:180px;">
-            ${options.join('')}
-          </select>
-        </div>
-      </div>`;
-    }).join('');
+  let col1Html = `<div class="card" style="display:flex; flex-direction:column; height:100%; overflow:hidden; padding:18px;">
+    <div style="font-weight:600; font-family:var(--mono); font-size:12px; color:var(--accent); margin-bottom:12px; display:flex; align-items:center; gap:6px; border-bottom:1px solid var(--border); padding-bottom:8px; flex-shrink:0;">
+      🟩 PART 1: CONFIRM REGATTAS (${regattaStatuses.length})
+    </div>
+    <div style="flex:1; overflow-y:auto; display:flex; flex-direction:column; gap:8px; padding-right:4px;">
+      ${regattaStatuses.map(r => {
+        const badgeClass = r.status === 'New' ? 'badge b-a' : 'badge b-ds';
+        const badgeLabel = r.status === 'New' ? 'New Regatta' : 'Existing (Merge)';
+        const styleText = r.status === 'New' ? 'font-weight:600; color:var(--accent);' : 'color:var(--text);';
+        return `<div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--bg2); padding:6px 0;">
+          <div>
+            <div style="${styleText} font-size:12px;">${r.name}</div>
+            <div style="font-size:10px; color:var(--text3);">${r.sailorsCount} sailors in sheet</div>
+          </div>
+          <span class="${badgeClass}" style="font-size:9px; padding:2px 6px;">${badgeLabel}</span>
+        </div>`;
+      }).join('')}
+    </div>
+  </div>`;
 
-    html += `<div>
-      <div style="font-weight:600; font-family:var(--mono); font-size:11px; color:var(--accent2); margin-bottom:8px; display:flex; align-items:center; gap:6px;">🟦 NEW SAILORS DETECTED (${newSailors.length})</div>
-      <div style="display:flex; flex-direction:column; gap:2px; padding-left:12px; max-height:150px; overflow-y:auto; border:1px solid var(--border); border-radius:4px; padding:6px 12px;">
-        ${sailorListHtml}
-      </div>
-    </div>`;
-  }
-  
-  if (scoreUpdates.length > 0) {
-    const updateRows = scoreUpdates.map(u => {
-      const rankCell = u.oldRank === u.newRank 
-        ? `<span style="color:var(--text2);">${u.newRank || '—'}</span>`
-        : `<span style="color:var(--text3); text-decoration:line-through; font-size:10px;">${u.oldRank || '—'}</span> → <strong style="color:var(--accent);">${u.newRank || '—'}</strong>`;
-      
-      const nettCell = u.oldNett === u.newNett
-        ? `<span style="color:var(--text2);">${u.newNett || '—'}</span>`
-        : `<span style="color:var(--text3); text-decoration:line-through; font-size:10px;">${u.oldNett || '—'}</span> → <strong style="color:var(--accent2);">${u.newNett || '—'}</strong>`;
+  let col2Html = `<div class="card" style="display:flex; flex-direction:column; height:100%; overflow:hidden; padding:18px;">
+    <div style="font-weight:600; font-family:var(--mono); font-size:12px; color:var(--accent2); margin-bottom:12px; display:flex; align-items:center; gap:6px; border-bottom:1px solid var(--border); padding-bottom:8px; flex-shrink:0;">
+      🟦 PART 2: SAILOR RECONCILIATION (${newSailors.length})
+    </div>
+    <div style="flex:1; overflow-y:auto; display:flex; flex-direction:column; gap:8px; padding-right:4px;">
+      ${newSailors.length === 0 ? '<div style="text-align:center; padding:32px; color:var(--text3); font-size:11px; font-family:var(--mono);">✓ All sailors matched to existing profiles.</div>' : 
+      newSailors.map(s => {
+        const options = [`<option value="">No, create as new sailor</option>`];
+        sortedCurrentSailors.forEach(curr => {
+          options.push(`<option value="${curr.name}">Merge with ${curr.name}</option>`);
+        });
         
-      const statusLabel = u.isNewEntry 
-        ? '<span class="badge b-a" style="font-size:8px; padding:1px 4px;">New Entry</span>'
-        : '<span class="badge b-ds" style="font-size:8px; padding:1px 4px; background:var(--accent3-l); color:var(--accent3);">Update</span>';
+        return `<div style="border-bottom:1px dashed var(--border); padding:8px 0; display:flex; flex-direction:column; gap:6px;">
+          <div style="font-size:11.5px; font-weight:600;">• ${s.name} <span style="font-weight:normal; font-size:10px; color:var(--text3);">(${s.g || 'M'}, Born ${s.born || '—'})</span></div>
+          <div style="display:flex; align-items:center; justify-content:space-between; gap:8px;">
+            <span style="font-size:9.5px; color:var(--text3);">Action:</span>
+            <select class="sailor-merge-select" data-new-name="${s.name.replace(/"/g, '&quot;')}" style="height:24px; font-size:10.5px; font-family:var(--sans); width:190px; border:1px solid var(--border); border-radius:4px;">
+              ${options.join('')}
+            </select>
+          </div>
+        </div>`;
+      }).join('')}
+    </div>
+  </div>`;
 
-      return `<tr>
-        <td style="font-weight:600;">${u.sailorName}</td>
-        <td class="sub-c">${u.regattaName}</td>
-        <td style="text-align:center;">${rankCell}</td>
-        <td style="text-align:center;">${nettCell}</td>
-        <td style="text-align:center;">${statusLabel}</td>
-      </tr>`;
-    }).join('');
-
-    html += `<div>
-      <div style="font-weight:600; font-family:var(--mono); font-size:11px; color:var(--accent3); margin-bottom:8px; display:flex; align-items:center; gap:6px;">🟧 SCORE & RANK CHANGES (${scoreUpdates.length})</div>
-      <div class="tbl-wrap" style="max-height: 200px; overflow-y:auto;">
-        <table>
+  let col3Html = `<div class="card" style="display:flex; flex-direction:column; height:100%; overflow:hidden; padding:18px;">
+    <div style="font-weight:600; font-family:var(--mono); font-size:12px; color:var(--accent3); margin-bottom:12px; display:flex; align-items:center; gap:6px; border-bottom:1px solid var(--border); padding-bottom:8px; flex-shrink:0;">
+      🟧 PART 3: REVISED SCORES & RANKS (${scoreUpdates.length})
+    </div>
+    <div style="flex:1; overflow-y:auto; padding-right:4px;">
+      ${scoreUpdates.length === 0 ? '<div style="text-align:center; padding:32px; color:var(--text3); font-size:11px; font-family:var(--mono);">✓ No score or rank changes detected.</div>' : `
+        <table style="width:100%; border-collapse:collapse; font-size:11px;">
           <thead>
-            <tr class="ct-hdr">
-              <td>Sailor</td>
-              <td>Regatta</td>
-              <td style="text-align:center; width:95px;">Rank</td>
-              <td style="text-align:center; width:95px;">Points</td>
-              <td style="text-align:center; width:80px;">Type</td>
+            <tr style="background:var(--bg2); font-family:var(--mono); font-size:10px; text-transform:uppercase; color:var(--text2); height:28px;">
+              <th style="text-align:left; padding-left:6px;">Sailor</th>
+              <th style="text-align:left;">Regatta</th>
+              <th style="text-align:center; width:80px;">Rank</th>
+              <th style="text-align:center; width:80px;">Points</th>
+              <th style="text-align:center; width:70px;">Type</th>
             </tr>
           </thead>
           <tbody>
-            ${updateRows}
+            ${scoreUpdates.map(u => {
+              const rankCell = u.oldRank === u.newRank 
+                ? `<span>${u.newRank || '—'}</span>`
+                : `<span style="color:var(--text3); text-decoration:line-through; font-size:9.5px; margin-right:4px;">${u.oldRank || '—'}</span>➔<strong style="color:var(--accent); margin-left:4px;">${u.newRank || '—'}</strong>`;
+              
+              const nettCell = u.oldNett === u.newNett
+                ? `<span>${u.newNett || '—'}</span>`
+                : `<span style="color:var(--text3); text-decoration:line-through; font-size:9.5px; margin-right:4px;">${u.oldNett || '—'}</span>➔<strong style="color:var(--accent2); margin-left:4px;">${u.newNett || '—'}</strong>`;
+                
+              const statusLabel = u.isNewEntry 
+                ? '<span class="badge b-a" style="font-size:8px; padding:1px 4px;">New</span>'
+                : '<span class="badge b-ds" style="font-size:8px; padding:1px 4px; background:var(--accent3-l); color:var(--accent3);">Diff</span>';
+
+              return `<tr style="border-bottom:1px solid var(--border); height:32px;">
+                <td style="font-weight:600; padding-left:6px;">${u.sailorName}</td>
+                <td>${u.regattaName}</td>
+                <td style="text-align:center;">${rankCell}</td>
+                <td style="text-align:center;">${nettCell}</td>
+                <td style="text-align:center;">${statusLabel}</td>
+              </tr>`;
+            }).join('')}
           </tbody>
         </table>
-      </div>
-    </div>`;
-  }
+      `}
+    </div>
+  </div>`;
 
-  if (newRegattas.length === 0 && newSailors.length === 0 && scoreUpdates.length === 0) {
-    html = `<div style="text-align:center; padding:32px; color:var(--text3); font-family:var(--mono);">
-      ✓ No changes detected. The uploaded file is fully identical to your current database.
-    </div>`;
-  }
-
-  container.innerHTML = html;
+  container.innerHTML = col1Html + col2Html + col3Html;
   document.getElementById('importConfirmModal').style.display = 'flex';
 }
 
