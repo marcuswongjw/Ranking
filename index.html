@@ -422,7 +422,7 @@ td{padding:8px 10px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
         </div>
         <div class="card">
           <div class="card-title">What exclusions do</div>
-          <p class="card-desc" style="margin-bottom:10px">Excluded sailors are skipped in squad allocation. Session-only — resets on reload.</p>
+          <p class="card-desc" style="margin-bottom:10px">Excluded sailors are skipped in squad allocation. Persisted in local storage.</p>
           <table class="ct">
             <tr><td>Rankings</td><td style="font-weight:500">Shown dimmed with reason</td></tr>
             <tr><td>Squad badge</td><td style="font-weight:500">Shows "Excl."</td></tr>
@@ -524,6 +524,7 @@ td{padding:8px 10px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
           <button onclick="closeAddRegattaModal()" style="padding:7px 14px; background:var(--bg2); border:1px solid var(--border); border-radius:var(--r); font-size:11px; cursor:pointer; font-family:var(--mono);">Cancel</button>
           <button onclick="saveNewRegatta()" style="padding:7px 16px; background:var(--accent); color:#fff; border:none; border-radius:var(--r); font-size:11px; font-weight:600; cursor:pointer; font-family:var(--mono);">Add Regatta</button>
         </div>
+    </div>
     </div>
     
     <!-- Chart Click Sailors List Modal -->
@@ -1669,7 +1670,7 @@ function buildCtxTable(ctx,sailor,baseSq,simSqM,posNeeded){
     
     const latestRegs = getActiveRegattas();
     const ev = latestRegs.map(reg => {
-      const sInReg = reg.sailors.find(x => x.name === s.name);
+      const sInReg = reg.sailors.find(x => isSameSailor(x.name, s.name));
       const val = sInReg ? (sInReg.rank !== undefined && sInReg.rank !== null ? sInReg.rank : sInReg.nett) : null;
       return sInReg ? `${reg.name.substring(0, 5)} ${val}` : null;
     }).filter(Boolean).join(' · ');
@@ -2742,6 +2743,7 @@ function loadData() {
 function renderAll() {
   renderRankingsPanel();
   renderRegattasPanel();
+  renderExclusions();
   populateTargetDropdown();
   populateSimDropdown();
   populateExclDropdown();
