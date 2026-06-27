@@ -189,6 +189,7 @@ td{padding:8px 10px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
     <button class="nav-item" onclick="switchView('target',this)"><span class="nav-dot dot-n"></span>Squad target</button>
     <button class="nav-item" onclick="switchView('exclusions',this)" id="nav-excl"><span class="nav-dot dot-r"></span>Exclusions<span class="excl-ct" id="excl-badge" style="display:none">0</span></button>
     <button class="nav-item" onclick="switchView('charts',this)"><span class="nav-dot dot-n"></span>Analysis</button>
+    <button class="nav-item" onclick="switchView('fleet',this)"><span class="nav-dot dot-n"></span>Manage Fleet</button>
     <div class="nav-sec">Quick filters</div>
     <button class="nav-item" onclick="quickFilter('Nat A')"><span class="nav-dot dot-a"></span>National A</button>
     <button class="nav-item" onclick="quickFilter('Nat B')"><span class="nav-dot dot-b"></span>National B</button>
@@ -212,6 +213,20 @@ td{padding:8px 10px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
         <option value="DS">DS</option>
       </select>
       <input type="text" id="nameSearch" placeholder="Search name…" oninput="renderRankings()" style="width:140px">
+      
+      <div style="position:relative; display:inline-block;" id="regatta-select-container">
+        <button onclick="toggleRegattaDropdown()" class="pill" style="border:1px solid var(--border); background:var(--card); height:30px; display:flex; align-items:center; gap:6px; cursor:pointer;" id="regatta-select-btn">
+          📅 Regattas <span id="regatta-select-count" style="font-weight:600;">(5/5)</span>
+        </button>
+        <div id="regatta-select-dropdown" style="display:none; position:absolute; top:34px; left:0; background:var(--card); border:1px solid var(--border); border-radius:var(--r); box-shadow:0 4px 16px rgba(0,0,0,.15); width:260px; z-index:100; max-height:300px; overflow-y:auto; padding:8px;">
+          <div style="font-weight:600; font-size:10px; text-transform:uppercase; color:var(--text3); padding:4px 8px; border-bottom:1px solid var(--border); margin-bottom:6px; display:flex; justify-content:space-between; align-items:center; font-family:var(--mono);">
+            <span>Select Regattas</span>
+            <a href="#" onclick="resetRegattasToDefault(event)" style="font-size:9px; text-decoration:underline; color:var(--accent);">Reset Default</a>
+          </div>
+          <div id="regatta-checkboxes-list"></div>
+        </div>
+      </div>
+
       <label style="display:flex;align-items:center;gap:5px;font-size:11px;color:var(--text2);cursor:pointer">
         <input type="checkbox" id="top50"> Top 50
       </label>
@@ -343,6 +358,95 @@ td{padding:8px 10px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
       <div class="sec-lbl" style="margin-top:0">Currently excluded</div>
       <div id="excl-list"><div class="excl-empty">No sailors excluded</div></div>
     </div>
+    <div class="panel" id="panel-fleet">
+      <div class="two-col" style="margin-bottom:18px">
+        <div class="card">
+          <div class="card-title">Promote / Add New Sailor</div>
+          <p class="card-desc">Add a new sailor to the active fleet. They will be included in the rankings system and can receive scores.</p>
+          <div style="display:flex; flex-direction:column; gap:10px; margin-bottom:12px;">
+            <div class="fl">
+              <label class="fl-lbl" for="fleet-add-name">Sailor Name</label>
+              <input type="text" id="fleet-add-name" style="width:100%;">
+            </div>
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+              <div class="fl">
+                <label class="fl-lbl" for="fleet-add-gender">Gender</label>
+                <select id="fleet-add-gender" style="width:100%; height:30px;">
+                  <option value="M">Male (M)</option>
+                  <option value="F">Female (F)</option>
+                </select>
+              </div>
+              <div class="fl">
+                <label class="fl-lbl" for="fleet-add-born">Birth Year</label>
+                <input type="number" id="fleet-add-born" value="2013" style="width:100%;">
+              </div>
+            </div>
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+              <div class="fl">
+                <label class="fl-lbl" for="fleet-add-club">Club</label>
+                <input type="text" id="fleet-add-club" style="width:100%;">
+              </div>
+              <div class="fl">
+                <label class="fl-lbl" for="fleet-add-school">School</label>
+                <input type="text" id="fleet-add-school" style="width:100%;">
+              </div>
+            </div>
+          </div>
+          <button class="run-btn" onclick="addNewFleetSailor()">＋ Add New Sailor</button>
+        </div>
+        <div class="card">
+          <div class="card-title">Fleet Reshuffle Guidelines</div>
+          <p class="card-desc" style="margin-bottom:10px">The fleet is typically reshuffled in January and July each year. Dropping a sailor prevents them from appearing in overall rankings while preserving their historical scores in the system.</p>
+          <table class="ct">
+            <tr><td>Active Fleet</td><td style="font-weight:500">Currently ranked on dashboard</td></tr>
+            <tr><td>Dropped Fleet</td><td style="font-weight:500">Hidden from rankings, history kept</td></tr>
+            <tr><td>Promotions</td><td style="font-weight:500">Promoted silver sailors show in rankings</td></tr>
+          </table>
+        </div>
+      </div>
+      
+      <div class="two-col">
+        <div class="card">
+          <div class="card-title">Active Sailors</div>
+          <p class="card-desc">Click 'Drop' to remove a sailor from active rankings.</p>
+          <div style="margin-bottom:10px;">
+            <input type="text" id="fleet-search-active" placeholder="Filter active sailors..." oninput="renderFleetPanel()" style="width:100%;">
+          </div>
+          <div id="fleet-active-list" style="max-height:350px; overflow-y:auto; display:flex; flex-direction:column; gap:6px;"></div>
+        </div>
+        <div class="card">
+          <div class="card-title">Dropped Sailors</div>
+          <p class="card-desc">Click 'Add / Re-promote' to restore them to active rankings.</p>
+          <div style="margin-bottom:10px;">
+            <input type="text" id="fleet-search-dropped" placeholder="Filter dropped sailors..." oninput="renderFleetPanel()" style="width:100%;">
+          </div>
+          <div id="fleet-dropped-list" style="max-height:350px; overflow-y:auto; display:flex; flex-direction:column; gap:6px;"></div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Add Regatta Modal -->
+    <div id="addRegattaModal" class="drop-overlay" style="background:rgba(0,0,0,.6); align-items:center; justify-content:center; display:none; position:fixed; inset:0; z-index:200;">
+      <div class="card" style="width:350px; max-width:90%; background:var(--card); border:1px solid var(--border); box-shadow:0 10px 30px rgba(0,0,0,.3); display:flex; flex-direction:column; padding:24px; border-radius:12px; position:relative;">
+        <button onclick="closeAddRegattaModal()" style="position:absolute; top:16px; right:16px; background:none; border:none; color:var(--text3); font-size:16px; cursor:pointer;" aria-label="Close modal">✕</button>
+        <div class="card-title" style="font-size:16px; margin-bottom:16px; font-family:var(--mono);">Add Upcoming Regatta</div>
+        <div style="display:flex; flex-direction:column; gap:12px; margin-bottom:20px;">
+          <div class="fl">
+            <label class="fl-lbl" for="ar-name">Regatta Name</label>
+            <input type="text" id="ar-name" style="width:100%;">
+          </div>
+          <div class="fl">
+            <label class="fl-lbl" for="ar-date">Date</label>
+            <input type="date" id="ar-date" style="width:100%;">
+          </div>
+        </div>
+        <div style="display:flex; justify-content:flex-end; gap:8px;">
+          <button onclick="closeAddRegattaModal()" style="padding:7px 14px; background:var(--bg2); border:1px solid var(--border); border-radius:var(--r); font-size:11px; cursor:pointer; font-family:var(--mono);">Cancel</button>
+          <button onclick="saveNewRegatta()" style="padding:7px 16px; background:var(--accent); color:#fff; border:none; border-radius:var(--r); font-size:11px; font-weight:600; cursor:pointer; font-family:var(--mono);">Add Regatta</button>
+        </div>
+      </div>
+    </div>
+
     <div class="panel" id="panel-results">
       <div class="card" style="margin-bottom:18px">
         <div class="card-title">Regatta Results Viewer</div>
@@ -376,49 +480,72 @@ td{padding:8px 10px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
     </div>
     <!-- Sailor Edit Modal -->
     <div id="sailorModal" class="drop-overlay" style="background:rgba(0,0,0,.6); align-items:center; justify-content:center; display:none; position:fixed; inset:0; z-index:200;">
-      <div class="card" style="width:450px; max-width:90%; background:var(--card); border:1px solid var(--border); box-shadow:0 10px 30px rgba(0,0,0,.3); display:flex; flex-direction:column; padding:24px; border-radius:12px; position:relative;">
+      <div class="card" style="width:820px; max-width:95%; background:var(--card); border:1px solid var(--border); box-shadow:0 10px 30px rgba(0,0,0,.3); display:grid; grid-template-columns:1.2fr 1fr; gap:24px; padding:24px; border-radius:12px; position:relative;">
         <button onclick="closeSailorModal()" style="position:absolute; top:16px; right:16px; background:none; border:none; color:var(--text3); font-size:16px; cursor:pointer;" aria-label="Close modal">✕</button>
-        <div class="card-title" style="font-size:16px; margin-bottom:16px; font-family:var(--mono);" id="sm-title">Edit Sailor Profile</div>
         
-        <div style="display:flex; flex-direction:column; gap:12px; margin-bottom:20px;">
-          <input type="hidden" id="sm-orig-name">
-          <div class="fl">
-            <label class="fl-lbl" for="sm-name">Sailor Name</label>
-            <input type="text" id="sm-name" style="width:100%;">
+        <div>
+          <div class="card-title" style="font-size:16px; margin-bottom:16px; font-family:var(--mono);" id="sm-title">Edit Sailor Profile</div>
+          <div style="display:flex; flex-direction:column; gap:12px; margin-bottom:20px;">
+            <input type="hidden" id="sm-orig-name">
+            <div class="fl">
+              <label class="fl-lbl" for="sm-name">Sailor Name</label>
+              <input type="text" id="sm-name" style="width:100%;">
+            </div>
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+              <div class="fl">
+                <label class="fl-lbl" for="sm-gender">Gender</label>
+                <select id="sm-gender" style="width:100%;">
+                  <option value="M">Male (M)</option>
+                  <option value="F">Female (F)</option>
+                </select>
+              </div>
+              <div class="fl">
+                <label class="fl-lbl" for="sm-born">Birth Year</label>
+                <input type="number" id="sm-born" style="width:100%;">
+              </div>
+            </div>
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+              <div class="fl">
+                <label class="fl-lbl" for="sm-club">Club</label>
+                <input type="text" id="sm-club" style="width:100%;">
+              </div>
+              <div class="fl">
+                <label class="fl-lbl" for="sm-school">School</label>
+                <input type="text" id="sm-school" style="width:100%;">
+              </div>
+            </div>
+            <div class="sec-lbl" style="margin-top:10px;">Regatta Scores</div>
+            <div id="sm-scores-container" style="max-height:180px; overflow-y:auto; display:flex; flex-direction:column; gap:8px; padding-right:4px;">
+              <!-- Regatta scores inputs will be generated here -->
+            </div>
           </div>
-          <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
-            <div class="fl">
-              <label class="fl-lbl" for="sm-gender">Gender</label>
-              <select id="sm-gender" style="width:100%;">
-                <option value="M">Male (M)</option>
-                <option value="F">Female (F)</option>
-              </select>
-            </div>
-            <div class="fl">
-              <label class="fl-lbl" for="sm-born">Birth Year</label>
-              <input type="number" id="sm-born" style="width:100%;">
-            </div>
-          </div>
-          <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
-            <div class="fl">
-              <label class="fl-lbl" for="sm-club">Club</label>
-              <input type="text" id="sm-club" style="width:100%;">
-            </div>
-            <div class="fl">
-              <label class="fl-lbl" for="sm-school">School</label>
-              <input type="text" id="sm-school" style="width:100%;">
-            </div>
-          </div>
-          
-          <div class="sec-lbl" style="margin-top:10px;">Regatta Scores</div>
-          <div id="sm-scores-container" style="max-height:180px; overflow-y:auto; display:flex; flex-direction:column; gap:8px; padding-right:4px;">
-            <!-- Regatta scores inputs will be generated here -->
+          <div style="display:flex; justify-content:flex-end; gap:8px;">
+            <button onclick="closeSailorModal()" style="padding:7px 14px; background:var(--bg2); border:1px solid var(--border); border-radius:var(--r); font-size:11px; cursor:pointer; font-family:var(--mono);">Cancel</button>
+            <button onclick="saveSailorProfile()" style="padding:7px 16px; background:var(--accent); color:#fff; border:none; border-radius:var(--r); font-size:11px; font-weight:600; cursor:pointer; font-family:var(--mono);">Save Changes</button>
           </div>
         </div>
-        
-        <div style="display:flex; justify-content:flex-end; gap:8px;">
-          <button onclick="closeSailorModal()" style="padding:7px 14px; background:var(--bg2); border:1px solid var(--border); border-radius:var(--r); font-size:11px; cursor:pointer; font-family:var(--mono);">Cancel</button>
-          <button onclick="saveSailorProfile()" style="padding:7px 16px; background:var(--accent); color:#fff; border:none; border-radius:var(--r); font-size:11px; font-weight:600; cursor:pointer; font-family:var(--mono);">Save Changes</button>
+
+        <div style="display:flex; flex-direction:column; border-left:1px solid var(--border); padding-left:24px;">
+          <div class="card-title" style="font-size:16px; margin-bottom:16px; font-family:var(--mono);">Performance Analysis</div>
+          <div style="flex:1; display:flex; flex-direction:column; gap:16px;">
+            <div class="chart-container" style="position:relative; height:180px;">
+              <canvas id="sailorPerformanceChart"></canvas>
+            </div>
+            <div class="tgt-sum" style="grid-template-columns:1fr 1fr; margin-bottom:0;">
+              <div class="tgt-stat" style="padding:10px; background:var(--bg2);">
+                <div class="tgt-stat-lbl">Best Finish</div>
+                <div class="tgt-stat-val" id="sm-stat-best">—</div>
+              </div>
+              <div class="tgt-stat" style="padding:10px; background:var(--bg2);">
+                <div class="tgt-stat-lbl">Avg Finish</div>
+                <div class="tgt-stat-val" id="sm-stat-avg">—</div>
+              </div>
+            </div>
+            <div style="background:var(--bg2); padding:10px; border-radius:var(--r); border:1px solid var(--border); font-size:11px; flex:1;">
+              <div style="font-weight:600; font-family:var(--mono); margin-bottom:6px; color:var(--text2);">CHRONOLOGICAL RESULTS</div>
+              <div id="sm-stat-history" style="max-height:100px; overflow-y:auto; font-family:var(--mono); line-height:1.6; font-size:10.5px;"></div>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -449,7 +576,8 @@ function isSameSailor(nameA, nameB) {
 }
 
 function openSailorModal(sailorName) {
-  const sailor = SAILORS.find(s => isSameSailor(s.name, sailorName));
+  const allSystem = getAllSailorsInSystem();
+  const sailor = allSystem.find(s => isSameSailor(s.name, sailorName));
   if (!sailor) return;
   
   document.getElementById('sm-orig-name').value = sailor.name;
@@ -472,10 +600,17 @@ function openSailorModal(sailorName) {
   });
   
   document.getElementById('sailorModal').style.display = 'flex';
+  setTimeout(() => {
+    renderSailorPerformanceChart(sailor);
+  }, 50);
 }
 
 function closeSailorModal() {
   document.getElementById('sailorModal').style.display = 'none';
+  if (sailorChartObj) {
+    sailorChartObj.destroy();
+    sailorChartObj = null;
+  }
 }
 
 function saveSailorProfile() {
@@ -801,11 +936,27 @@ function recomputeSailors() {
     return dA - dB;
   });
 
-  const latestRegs = REGATTAS.slice(-5);
+  const latestRegs = getActiveRegattas();
   const sailorMap = new Map();
+  
+  // Pre-populate with all active (non-dropped) system sailors
+  const allSystemSailors = getAllSailorsInSystem();
+  allSystemSailors.forEach(s => {
+    if (DROPPED_SAILORS.has(s.name)) return;
+    sailorMap.set(s.name, {
+      name: s.name,
+      g: s.g,
+      born: s.born,
+      club: s.club,
+      school: s.school || '',
+      scores: Array(latestRegs.length).fill(null),
+      ranks: Array(latestRegs.length).fill(null)
+    });
+  });
   
   latestRegs.forEach((reg, regIdx) => {
     reg.sailors.forEach(s => {
+      if (DROPPED_SAILORS.has(s.name)) return;
       let matchedKey = null;
       for (const existingName of sailorMap.keys()) {
         if (isSameSailor(existingName, s.name)) {
@@ -882,7 +1033,7 @@ function renderRankingsPanel(){
   const ds=[...sq.values()].filter(v=>v==='DS').length;
   const excl=EXCLUDED.size;
 
-  const latestRegs = REGATTAS.slice(-5);
+  const latestRegs = getActiveRegattas();
   const regHeaders = latestRegs.map(r => `<th style="text-align:center">${r.name}</th>`).join('');
 
   document.getElementById('rankings-content').innerHTML=`
@@ -892,7 +1043,7 @@ function renderRankingsPanel(){
       <div class="mc mc2"><div class="mc-lbl">National A</div><div class="mc-val">${natA}</div><div class="mc-sub">top squad</div></div>
       <div class="mc mc3"><div class="mc-lbl">National B</div><div class="mc-val">${natB}</div><div class="mc-sub">training squad</div></div>
       <div class="mc mc4"><div class="mc-lbl">Dev Squad</div><div class="mc-val">${ds}</div><div class="mc-sub">development</div></div>
-      <div class="mc mc5"><div class="mc-lbl">Latest Regattas</div><div class="mc-val">${REGATTAS.length}</div><div class="mc-sub">total loaded</div></div>
+      <div class="mc mc5"><div class="mc-lbl">Active Regattas</div><div class="mc-val">${latestRegs.length}</div><div class="mc-sub">considered</div></div>
     </div>
     <div class="tbl-wrap"><table>
       <thead><tr>
@@ -902,7 +1053,7 @@ function renderRankingsPanel(){
         <th style="width:46px">Born</th>
         <th style="width:62px">Club</th>
         <th style="width:66px">Squad</th>
-        <th style="width:80px;text-align:center">Best 3 of 5</th>
+        <th style="width:80px;text-align:center">Best 3 of ${latestRegs.length}</th>
         ${regHeaders}
       </tr></thead>
       <tbody id="rank-body"></tbody>
@@ -918,7 +1069,7 @@ function renderRankings(){
   const t50=document.getElementById('top50').checked;
   const sq=computeSquads(SAILORS);
   
-  const latestRegs = REGATTAS.slice(-5);
+  const latestRegs = getActiveRegattas();
 
   const data=SAILORS.filter(s=>{
     if(genderFilter!=='all'&&s.g!==genderFilter)return false;
@@ -1243,7 +1394,7 @@ function buildCtxTable(ctx,sailor,baseSq,simSqM,posNeeded){
     const exclTag=isExcl?`<span class="excl-tag">${EXCLUDED.get(s.name)}</span>`:'';
     const sqCell=isExcl?'<span class="badge b-n">Excl.</span>':changed?`${squadBadge(curSq)}<span style="color:var(--accent);font-family:var(--mono);font-size:9px"> →${simSq}</span>`:squadBadge(curSq);
     
-    const latestRegs = REGATTAS.slice(-5);
+    const latestRegs = getActiveRegattas();
     const ev = latestRegs.map(reg => {
       const sInReg = reg.sailors.find(x => x.name === s.name);
       const val = sInReg ? (sInReg.rank !== undefined && sInReg.rank !== null ? sInReg.rank : sInReg.nett) : null;
@@ -1572,7 +1723,8 @@ function switchView(viewId, btn) {
     'simulator': 'Permutation sim',
     'target': 'Squad target',
     'exclusions': 'Exclusions',
-    'charts': 'Analysis'
+    'charts': 'Analysis',
+    'fleet': 'Manage Fleet'
   };
   const titleEl = document.getElementById('view-title');
   if (titleEl) titleEl.textContent = titleMap[viewId] || 'OP Gold Ranking';
@@ -1588,6 +1740,8 @@ function switchView(viewId, btn) {
 
   if (viewId === 'charts') {
     renderCharts();
+  } else if (viewId === 'fleet') {
+    renderFleetPanel();
   }
 }
 
@@ -1729,8 +1883,309 @@ function getSeedRegattas() {
   });
 }
 
+let SELECTED_REGATTA_NAMES = null;
+let DROPPED_SAILORS = new Set();
+let sailorChartObj = null;
+
+function getActiveRegattas() {
+  const sorted = [...REGATTAS].sort((a, b) => {
+    const dA = a.date ? new Date(a.date) : new Date(0);
+    const dB = b.date ? new Date(b.date) : new Date(0);
+    return dA - dB;
+  });
+  if (SELECTED_REGATTA_NAMES === null) {
+    const regWithResults = sorted.filter(r => r.sailors && r.sailors.length > 0);
+    return regWithResults.slice(-5);
+  }
+  return sorted.filter(r => SELECTED_REGATTA_NAMES.includes(r.name));
+}
+
+function getAllSailorsInSystem() {
+  const allNames = new Map();
+  REGATTAS.forEach(reg => {
+    reg.sailors.forEach(s => {
+      let matchedKey = null;
+      for (const existingName of allNames.keys()) {
+        if (isSameSailor(existingName, s.name)) {
+          matchedKey = existingName;
+          break;
+        }
+      }
+      if (!matchedKey) {
+        allNames.set(s.name, {
+          name: s.name,
+          g: s.g,
+          born: s.born,
+          club: s.club,
+          school: s.school || ''
+        });
+      } else {
+        const obj = allNames.get(matchedKey);
+        if (s.g && !obj.g) obj.g = s.g;
+        if (s.born && !obj.born) obj.born = s.born;
+        if (s.club && !obj.club) obj.club = s.club;
+        if (s.school && !obj.school) obj.school = s.school;
+      }
+    });
+  });
+  return Array.from(allNames.values());
+}
+
+function populateRegattaCheckboxList() {
+  const container = document.getElementById('regatta-checkboxes-list');
+  if (!container) return;
+  
+  const sorted = [...REGATTAS].sort((a, b) => {
+    const dA = a.date ? new Date(a.date) : new Date(0);
+    const dB = b.date ? new Date(b.date) : new Date(0);
+    return dA - dB;
+  });
+
+  const regWithResults = sorted.filter(r => r.sailors && r.sailors.length > 0);
+  const defaultRegs = new Set(regWithResults.slice(-5).map(r => r.name));
+
+  container.innerHTML = sorted.map((reg) => {
+    const isChecked = SELECTED_REGATTA_NAMES === null 
+      ? defaultRegs.has(reg.name) 
+      : SELECTED_REGATTA_NAMES.includes(reg.name);
+    
+    return `<label style="display:flex; align-items:center; gap:8px; padding:6px 8px; cursor:pointer; font-size:11px; font-family:var(--sans); border-radius:4px; margin-bottom:2px;" class="regatta-cb-row">
+      <input type="checkbox" value="${reg.name}" ${isChecked ? 'checked' : ''} onchange="onRegattaCheckboxChange()">
+      <span style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap; flex:1;">${reg.name}</span>
+      <span style="font-size:9.5px; font-family:var(--mono); color:var(--text3);">${reg.date || 'No Date'}</span>
+    </label>`;
+  }).join('');
+  
+  if (!document.getElementById('regatta-cb-style')) {
+    const style = document.createElement('style');
+    style.id = 'regatta-cb-style';
+    style.innerHTML = '.regatta-cb-row:hover { background: var(--bg2); }';
+    document.head.appendChild(style);
+  }
+
+  const activeCount = getActiveRegattas().length;
+  document.getElementById('regatta-select-count').textContent = `(${activeCount}/${REGATTAS.length})`;
+}
+
+function toggleRegattaDropdown() {
+  const dropdown = document.getElementById('regatta-select-dropdown');
+  if (dropdown) {
+    const isHidden = dropdown.style.display === 'none';
+    dropdown.style.display = isHidden ? 'block' : 'none';
+  }
+}
+
+document.addEventListener('click', function(event) {
+  const container = document.getElementById('regatta-select-container');
+  const dropdown = document.getElementById('regatta-select-dropdown');
+  if (container && dropdown && !container.contains(event.target)) {
+    dropdown.style.display = 'none';
+  }
+});
+
+function onRegattaCheckboxChange() {
+  const checkboxes = document.querySelectorAll('#regatta-checkboxes-list input[type="checkbox"]');
+  const selected = [];
+  checkboxes.forEach(cb => {
+    if (cb.checked) {
+      selected.push(cb.value);
+    }
+  });
+  SELECTED_REGATTA_NAMES = selected;
+  localStorage.setItem('op_ranking_selected_regattas_v3', JSON.stringify(SELECTED_REGATTA_NAMES));
+  recomputeSailors();
+  renderAll();
+}
+
+function resetRegattasToDefault(event) {
+  if (event) event.preventDefault();
+  SELECTED_REGATTA_NAMES = null;
+  localStorage.removeItem('op_ranking_selected_regattas_v3');
+  recomputeSailors();
+  renderAll();
+}
+
+function renderFleetPanel() {
+  const activeList = document.getElementById('fleet-active-list');
+  const droppedList = document.getElementById('fleet-dropped-list');
+  if (!activeList || !droppedList) return;
+  
+  const searchActive = document.getElementById('fleet-search-active').value.toLowerCase();
+  const searchDropped = document.getElementById('fleet-search-dropped').value.toLowerCase();
+  
+  const allSystem = getAllSailorsInSystem();
+  
+  const activeSailors = allSystem.filter(s => !DROPPED_SAILORS.has(s.name) && s.name.toLowerCase().includes(searchActive));
+  activeList.innerHTML = activeSailors.map(s => {
+    return `<div class="excl-item" style="margin-bottom:4px;">
+      <div>
+        <div class="excl-name" onclick="openSailorModal('${s.name.replace(/'/g, "\\'")}')" style="cursor:pointer; color:var(--accent); text-decoration:underline; font-weight:600;">${s.name}</div>
+        <div class="excl-reason">${s.g} · ${s.born} · ${s.club || 'No Club'}</div>
+      </div>
+      <button class="excl-rm" onclick="dropSailor('${s.name.replace(/'/g, "\\'")}')" style="background:var(--red-l); color:var(--red); border:1px solid rgba(138,28,28,.15); min-width:65px; height:24px; padding:0 8px;">✕ Drop</button>
+    </div>`;
+  }).join('') || '<div class="excl-empty">No active sailors.</div>';
+
+  const droppedSailors = allSystem.filter(s => DROPPED_SAILORS.has(s.name) && s.name.toLowerCase().includes(searchDropped));
+  droppedList.innerHTML = droppedSailors.map(s => {
+    return `<div class="excl-item" style="margin-bottom:4px; opacity:0.8;">
+      <div>
+        <div class="excl-name" onclick="openSailorModal('${s.name.replace(/'/g, "\\'")}')" style="cursor:pointer; color:var(--accent); text-decoration:underline; font-weight:600;">${s.name}</div>
+        <div class="excl-reason">${s.g} · ${s.born} · ${s.club || 'No Club'}</div>
+      </div>
+      <button class="excl-rm" onclick="promoteSailor('${s.name.replace(/'/g, "\\'")}')" style="background:var(--accent-l); color:var(--accent); border:1px solid rgba(26,71,42,.15); min-width:90px; height:24px; padding:0 8px;">＋ Re-promote</button>
+    </div>`;
+  }).join('') || '<div class="excl-empty">No dropped sailors.</div>';
+}
+
+function dropSailor(name) {
+  DROPPED_SAILORS.add(name);
+  recomputeSailors();
+  saveData();
+  renderAll();
+  renderFleetPanel();
+}
+
+function promoteSailor(name) {
+  DROPPED_SAILORS.delete(name);
+  recomputeSailors();
+  saveData();
+  renderAll();
+  renderFleetPanel();
+}
+
+function addNewFleetSailor() {
+  const name = document.getElementById('fleet-add-name').value.trim();
+  const gender = document.getElementById('fleet-add-gender').value;
+  const born = parseInt(document.getElementById('fleet-add-born').value) || 2013;
+  const club = document.getElementById('fleet-add-club').value.trim();
+  const school = document.getElementById('fleet-add-school').value.trim();
+  
+  if (!name) {
+    alert("Please enter a sailor name.");
+    return;
+  }
+  
+  if (REGATTAS.length > 0) {
+    const latestReg = REGATTAS[REGATTAS.length - 1];
+    latestReg.sailors.push({
+      name,
+      g: gender,
+      born,
+      club,
+      school,
+      nett: null,
+      rank: null
+    });
+  } else {
+    REGATTAS.push({
+      name: "Initial Regatta",
+      date: new Date().toISOString().split('T')[0],
+      sailors: [{
+        name,
+        g: gender,
+        born,
+        club,
+        school,
+        nett: null,
+        rank: null
+      }]
+    });
+  }
+  
+  document.getElementById('fleet-add-name').value = '';
+  document.getElementById('fleet-add-club').value = '';
+  document.getElementById('fleet-add-school').value = '';
+  
+  recomputeSailors();
+  saveData();
+  renderAll();
+  renderFleetPanel();
+  alert(`Sailor "${name}" successfully added to the active fleet.`);
+}
+
+function renderSailorPerformanceChart(sailor) {
+  const sortedRegs = [...REGATTAS].sort((a, b) => {
+    const dA = a.date ? new Date(a.date) : new Date(0);
+    const dB = b.date ? new Date(b.date) : new Date(0);
+    return dA - dB;
+  });
+
+  const labels = [];
+  const ranksData = [];
+  const historyHtml = [];
+  
+  let best = Infinity;
+  let sum = 0;
+  let count = 0;
+
+  sortedRegs.forEach(reg => {
+    const sInReg = reg.sailors.find(x => isSameSailor(x.name, sailor.name));
+    if (sInReg) {
+      const r = sInReg.rank !== undefined && sInReg.rank !== null ? sInReg.rank : sInReg.nett;
+      if (r !== null && r !== undefined) {
+        labels.push(reg.name);
+        ranksData.push(r);
+        
+        if (r < best) best = r;
+        sum += r;
+        count++;
+
+        const ptsStr = sInReg.nett !== null ? `(${sInReg.nett} pts)` : '';
+        historyHtml.push(`<div>📅 ${reg.date || 'No Date'} — <strong>${reg.name}</strong>: Rank ${r} ${ptsStr}</div>`);
+      }
+    }
+  });
+
+  document.getElementById('sm-stat-best').textContent = best !== Infinity ? `P${best}` : '—';
+  document.getElementById('sm-stat-avg').textContent = count > 0 ? `P${Math.round((sum / count) * 10) / 10}` : '—';
+  document.getElementById('sm-stat-history').innerHTML = historyHtml.length > 0 ? historyHtml.join('') : '<span style="color:var(--text3)">No results recorded.</span>';
+
+  if (sailorChartObj) {
+    sailorChartObj.destroy();
+  }
+
+  const ctx = document.getElementById('sailorPerformanceChart').getContext('2d');
+  sailorChartObj = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: labels,
+      datasets: [
+        {
+          label: 'Rank',
+          data: ranksData,
+          borderColor: '#1a472a',
+          backgroundColor: 'rgba(26, 71, 42, 0.08)',
+          borderWidth: 2,
+          tension: 0.12,
+          pointRadius: 4,
+          pointBackgroundColor: '#1a472a'
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false }
+      },
+      scales: {
+        y: {
+          reversed: true,
+          min: 1,
+          ticks: {
+            stepSize: 1,
+            precision: 0
+          }
+        }
+      }
+    }
+  });
+}
+
 function saveData() {
   localStorage.setItem(LOCAL_DATA_KEY, JSON.stringify(REGATTAS));
+  localStorage.setItem('op_ranking_dropped_v3', JSON.stringify(Array.from(DROPPED_SAILORS)));
 }
 
 function loadData() {
@@ -1740,6 +2195,20 @@ function loadData() {
   } else {
     REGATTAS = getSeedRegattas();
   }
+  const rawDropped = localStorage.getItem('op_ranking_dropped_v3');
+  if (rawDropped) {
+    DROPPED_SAILORS = new Set(JSON.parse(rawDropped));
+  } else {
+    DROPPED_SAILORS = new Set();
+  }
+  
+  const rawSelectedRegs = localStorage.getItem('op_ranking_selected_regattas_v3');
+  if (rawSelectedRegs) {
+    SELECTED_REGATTA_NAMES = JSON.parse(rawSelectedRegs);
+  } else {
+    SELECTED_REGATTA_NAMES = null;
+  }
+  
   recomputeSailors();
 }
 
@@ -1750,6 +2219,7 @@ function renderAll() {
   populateSimDropdown();
   populateExclDropdown();
   populateResultsDropdown();
+  populateRegattaCheckboxList();
 }
 
 // ── INITIALIZATION ──────────────────────────────────────────────────────────
@@ -1767,20 +2237,34 @@ window.onload = function() {
 };
 
 function addUpcomingRegatta() {
-  const name = prompt("Enter upcoming regatta name:", `Upcoming Regatta ${REGATTAS.length + 1}`);
-  if (!name) return;
-  const date = prompt("Enter regatta date (YYYY-MM-DD):", new Date().toISOString().split('T')[0]);
-  if (!date) return;
-  
+  document.getElementById('ar-name').value = `Upcoming Regatta ${REGATTAS.length + 1}`;
+  document.getElementById('ar-date').value = new Date().toISOString().split('T')[0];
+  document.getElementById('addRegattaModal').style.display = 'flex';
+  try {
+    document.getElementById('ar-date').showPicker();
+  } catch(e) {}
+}
+
+function closeAddRegattaModal() {
+  document.getElementById('addRegattaModal').style.display = 'none';
+}
+
+function saveNewRegatta() {
+  const name = document.getElementById('ar-name').value.trim();
+  const date = document.getElementById('ar-date').value;
+  if (!name || !date) {
+    alert("Please enter a name and date.");
+    return;
+  }
   REGATTAS.push({
-    name: name.trim(),
-    date: date.trim(),
+    name,
+    date,
     sailors: []
   });
-  
   recomputeSailors();
   saveData();
   renderAll();
+  closeAddRegattaModal();
 }
 
 function addSailorToSpecificRegatta() {
