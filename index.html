@@ -764,25 +764,70 @@ function parseVal(v) {
   return parseFloat(s);
 }
 
+function getRegattaDateByName(name) {
+  const n = name.toLowerCase();
+  if (n.includes('july 2025') || n.includes('jul 2025') || (n.includes('safyc') && n.includes('2025'))) return '2025-07-15';
+  if (n.includes('pesta sukan')) return '2025-08-10';
+  if (n.includes('rsyc')) return '2025-08-25';
+  if (n.includes('snsc')) return '2025-09-15';
+  if (n.includes('csc gold') || n.includes('csc')) return '2026-01-26';
+  if (n.includes('pulau ujong')) return '2026-02-26';
+  if (n.includes('sysc')) return '2026-03-05';
+  if (n.includes('safyc') && n.includes('26')) return '2026-03-20';
+  if (n.includes('temasek')) return '2026-06-20';
+  return new Date().toISOString().split('T')[0];
+}
+
 function parseSheet(data,filename){
   const headers = data[0] || [];
-  const hasConsolidated = headers[10] && headers[12] && headers[14] && headers[16];
+  
+  // Robust check for consolidated
+  let hasConsolidated = false;
+  const col0 = String(headers[0] || '').toLowerCase();
+  const col1 = String(headers[1] || '').toLowerCase();
+  if (col0.includes('name') && (col1.includes('gender') || col1.includes('g') || col1.includes('sex'))) {
+    if (headers.length > 6) {
+      hasConsolidated = true;
+    }
+  }
+
   const parsedRegs = [];
 
   if (hasConsolidated) {
-    const regColumns = [
-      { name: headers[6] || "SAFYC Regatta (July 2025)", idx: 6, date: "2025-07-15" },
-      { name: headers[7] || "Pesta Sukan (Aug 2025)", idx: 7, date: "2025-08-10" },
-      { name: headers[8] || "RSYC (Aug 2025)", idx: 8, date: "2025-08-25" },
-      { name: headers[9] || "SNSC (Sep 2025)", idx: 9, date: "2025-09-15" },
-      { name: headers[10] || "CSC Gold (Jan 26)", idx: 10, date: "2026-01-26" },
-      { name: headers[12] || "Pulau Ujong (Feb 26)", idx: 12, date: "2026-02-26" },
-      { name: headers[14] || "SYSC (Mar 26)", idx: 14, date: "2026-03-05" },
-      { name: headers[16] || "SAFYC Regatta (Mar 26)", idx: 16, date: "2026-03-20" },
-      { name: headers[18] || "Temasek Regatta (Jun 26)", idx: 18, date: "2026-06-20" }
-    ];
+    let col = 6;
+    const regColumns = [];
+    while (col < headers.length) {
+      const headerText = String(headers[col] || '').trim();
+      if (!headerText) {
+        col++;
+        continue;
+      }
+      
+      const cleanName = headerText.replace(/\b(ranking|points|pts|rank)\b/gi, '').trim();
+      
+      const nextHeader = col + 1 < headers.length ? String(headers[col + 1] || '').toLowerCase() : '';
+      const isNextPoints = nextHeader.includes('points') || nextHeader.includes('pts');
+      
+      if (isNextPoints) {
+        regColumns.push({
+          name: cleanName,
+          idx: col,
+          hasPoints: true,
+          date: getRegattaDateByName(cleanName)
+        });
+        col += 2;
+      } else {
+        regColumns.push({
+          name: cleanName,
+          idx: col,
+          hasPoints: false,
+          date: getRegattaDateByName(cleanName)
+        });
+        col += 1;
+      }
+    }
 
-    regColumns.forEach(col => {
+    regColumns.forEach(colObj => {
       const sailors = [];
       for (let i = 1; i < data.length; i++) {
         const r = data[i];
@@ -797,13 +842,13 @@ function parseSheet(data,filename){
         let finalNett = null;
         let finalRank = null;
         
-        if (col.idx >= 6 && col.idx <= 9) {
-          const val = parseVal(r[col.idx]);
+        if (!colObj.hasPoints) {
+          const val = parseVal(r[colObj.idx]);
           finalNett = null;
           finalRank = val;
         } else {
-          finalRank = parseVal(r[col.idx]);
-          finalNett = parseVal(r[col.idx + 1]);
+          finalRank = parseVal(r[colObj.idx]);
+          finalNett = parseVal(r[colObj.idx + 1]);
           
           if (finalNett === null) finalNett = finalRank;
           if (finalRank === null) finalRank = finalNett;
@@ -823,8 +868,8 @@ function parseSheet(data,filename){
       }
       if (sailors.length > 0) {
         parsedRegs.push({
-          name: col.name,
-          date: col.date,
+          name: colObj.name,
+          date: colObj.date,
           sailors: sailors
         });
       }
@@ -2354,6 +2399,7 @@ function showImportConfirmation(parsedRegs) {
   const scoreUpdates = [];
   
   const currentSailors = getAllSailorsInSystem();
+  const sortedCurrentSailors = [...currentSailors].sort((a, b) => a.name.localeCompare(b.name));
   
   parsedRegs.forEach(parsedReg => {
     const existingReg = REGATTAS.find(r => r.name.toLowerCase() === parsedReg.name.toLowerCase());
@@ -2412,10 +2458,27 @@ function showImportConfirmation(parsedRegs) {
   }
   
   if (newSailors.length > 0) {
+    const sailorListHtml = newSailors.map(s => {
+      const options = [`<option value="">No, create as new sailor</option>`];
+      sortedCurrentSailors.forEach(curr => {
+        options.push(`<option value="${curr.name}">Merge with ${curr.name}</option>`);
+      });
+      
+      return `<div style="display:flex; justify-content:space-between; align-items:center; gap:12px; font-size:11.5px; border-bottom:1px dashed var(--border); padding:6px 0;">
+        <div>• <strong>${s.name}</strong> (${s.g}, born ${s.born}, Club: ${s.club || 'None'})</div>
+        <div style="display:flex; align-items:center; gap:6px;">
+          <span style="font-size:9.5px; color:var(--text3);">Is this an existing sailor?</span>
+          <select class="sailor-merge-select" data-new-name="${s.name.replace(/"/g, '&quot;')}" style="height:24px; font-size:10px; font-family:var(--sans); width:180px;">
+            ${options.join('')}
+          </select>
+        </div>
+      </div>`;
+    }).join('');
+
     html += `<div>
-      <div style="font-weight:600; font-family:var(--mono); font-size:11px; color:var(--accent2); margin-bottom:8px; display:flex; align-items:center; gap:6px;">🟦 NEW SAILORS DETECTED (Will add to active rankings, ${newSailors.length})</div>
-      <div style="display:flex; flex-direction:column; gap:4px; padding-left:12px; max-height:150px; overflow-y:auto;">
-        ${newSailors.map(s => `<div style="font-size:11.5px;">• <strong>${s.name}</strong> (${s.g}, born ${s.born}, Club: ${s.club || 'None'}, School: ${s.school || 'None'})</div>`).join('')}
+      <div style="font-weight:600; font-family:var(--mono); font-size:11px; color:var(--accent2); margin-bottom:8px; display:flex; align-items:center; gap:6px;">🟦 NEW SAILORS DETECTED (${newSailors.length})</div>
+      <div style="display:flex; flex-direction:column; gap:2px; padding-left:12px; max-height:150px; overflow-y:auto; border:1px solid var(--border); border-radius:4px; padding:6px 12px;">
+        ${sailorListHtml}
       </div>
     </div>`;
   }
@@ -2445,7 +2508,7 @@ function showImportConfirmation(parsedRegs) {
 
     html += `<div>
       <div style="font-weight:600; font-family:var(--mono); font-size:11px; color:var(--accent3); margin-bottom:8px; display:flex; align-items:center; gap:6px;">🟧 SCORE & RANK CHANGES (${scoreUpdates.length})</div>
-      <div class="tbl-wrap" style="max-height: 250px; overflow-y:auto;">
+      <div class="tbl-wrap" style="max-height: 200px; overflow-y:auto;">
         <table>
           <thead>
             <tr class="ct-hdr">
@@ -2482,7 +2545,23 @@ function closeImportModal() {
 function confirmPendingImport() {
   if (!PENDING_IMPORT_DATA) return;
   
+  const mergeSelects = document.querySelectorAll('.sailor-merge-select');
+  const nameMap = new Map();
+  mergeSelects.forEach(sel => {
+    const newName = sel.getAttribute('data-new-name');
+    const existingName = sel.value;
+    if (existingName) {
+      nameMap.set(newName, existingName);
+    }
+  });
+
   PENDING_IMPORT_DATA.forEach(col => {
+    col.sailors.forEach(s => {
+      if (nameMap.has(s.name)) {
+        s.name = nameMap.get(s.name);
+      }
+    });
+
     const existing = REGATTAS.find(r => r.name.toLowerCase() === col.name.toLowerCase());
     if (existing) {
       col.sailors.forEach(newSailor => {
