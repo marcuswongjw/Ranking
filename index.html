@@ -1032,6 +1032,7 @@ function recomputeSailors() {
   const allSystemSailors = getAllSailorsInSystem();
   allSystemSailors.forEach(s => {
     if (DROPPED_SAILORS.has(s.name)) return;
+    if (s.born && s.born <= (COMP_YEAR - 16)) return; // Auto-drop if > 15 years old (born <= 2010 for 2026)
     sailorMap.set(s.name, {
       name: s.name,
       g: s.g,
@@ -1046,6 +1047,7 @@ function recomputeSailors() {
   latestRegs.forEach((reg, regIdx) => {
     reg.sailors.forEach(s => {
       if (DROPPED_SAILORS.has(s.name)) return;
+      if (s.born && s.born <= (COMP_YEAR - 16)) return; // Auto-drop if > 15 years old
       let matchedKey = null;
       for (const existingName of sailorMap.keys()) {
         if (isSameSailor(existingName, s.name)) {
