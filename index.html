@@ -1834,50 +1834,57 @@ function populateResultsDropdown() {
 }
 
 function renderSpecificRegattaResults() {
-  const sel = document.getElementById('resultsRegattaSelect');
-  const wrap = document.getElementById('specific-regatta-results-wrap');
-  const body = document.getElementById('specific-regatta-body');
-  if (!sel || !wrap || !body) return;
-  
-  const regName = sel.value;
-  if (!regName) {
-    wrap.style.display = 'none';
-    return;
+  try {
+    const sel = document.getElementById('resultsRegattaSelect');
+    const wrap = document.getElementById('specific-regatta-results-wrap');
+    const body = document.getElementById('specific-regatta-body');
+    if (!sel || !wrap || !body) return;
+    
+    const regName = sel.value;
+    if (!regName) {
+      wrap.style.display = 'none';
+      return;
+    }
+    
+    const reg = REGATTAS.find(r => r.name === regName);
+    if (!reg) {
+      wrap.style.display = 'none';
+      return;
+    }
+    
+    wrap.style.display = 'block';
+    document.getElementById('specific-regatta-name').textContent = reg.name;
+    document.getElementById('specific-regatta-date').textContent = reg.date ? `Date: ${reg.date}` : 'Date: Not Set';
+    
+    const regSailors = (reg.sailors || []).filter(s => s && s.name);
+    const sortedSailors = [...regSailors].sort((a, b) => (a.rank !== undefined ? a.rank : a.nett) - (b.rank !== undefined ? b.rank : b.nett));
+    
+    body.innerHTML = sortedSailors.map((s, idx) => {
+      const rankVal = s.rank !== undefined && s.rank !== null ? s.rank : '';
+      const pointsVal = s.nett !== undefined && s.nett !== null ? s.nett : '';
+      const safeName = (s.name || 'Unknown').trim();
+      const escapedName = safeName.replace(/'/g, "\\'");
+      return `<tr>
+        <td class="rank-c">${idx + 1}</td>
+        <td class="name-c" onclick="openSailorModal('${escapedName}')" style="cursor:pointer; color:var(--accent); font-weight:600; text-decoration:underline;">${safeName}</td>
+        <td class="sub-c">${s.g || '—'}</td>
+        <td class="sub-c">${s.born || '—'}</td>
+        <td class="sub-c" style="font-size:10px">${s.club || '—'}</td>
+        <td style="text-align:center;">
+          <input type="number" value="${rankVal}" 
+                 onchange="updateRegattaSailorRank('${reg.name.replace(/'/g, "\\'")}', '${escapedName}', this.value)" 
+                 style="width:70px; height:24px; text-align:center; padding:2px; font-family:var(--mono);">
+        </td>
+        <td style="text-align:center;">
+          <input type="number" value="${pointsVal}" 
+                 onchange="updateRegattaSailorPoints('${reg.name.replace(/'/g, "\\'")}', '${escapedName}', this.value)" 
+                 style="width:70px; height:24px; text-align:center; padding:2px; font-family:var(--mono); font-weight:600; color:var(--accent2);">
+        </td>
+      </tr>`;
+    }).join('');
+  } catch (err) {
+    console.error("Error rendering specific regatta results:", err);
   }
-  
-  const reg = REGATTAS.find(r => r.name === regName);
-  if (!reg) {
-    wrap.style.display = 'none';
-    return;
-  }
-  
-  wrap.style.display = 'block';
-  document.getElementById('specific-regatta-name').textContent = reg.name;
-  document.getElementById('specific-regatta-date').textContent = reg.date ? `Date: ${reg.date}` : 'Date: Not Set';
-  
-  const sortedSailors = [...reg.sailors].sort((a, b) => (a.rank !== undefined ? a.rank : a.nett) - (b.rank !== undefined ? b.rank : b.nett));
-  
-  body.innerHTML = sortedSailors.map((s, idx) => {
-    const rankVal = s.rank !== undefined && s.rank !== null ? s.rank : '';
-    const pointsVal = s.nett !== undefined && s.nett !== null ? s.nett : '';
-    return `<tr>
-      <td class="rank-c">${idx + 1}</td>
-      <td class="name-c" onclick="openSailorModal('${s.name.replace(/'/g, "\\'")}')" style="cursor:pointer; color:var(--accent); font-weight:600; text-decoration:underline;">${s.name}</td>
-      <td class="sub-c">${s.g || '—'}</td>
-      <td class="sub-c">${s.born || '—'}</td>
-      <td class="sub-c" style="font-size:10px">${s.club || '—'}</td>
-      <td style="text-align:center;">
-        <input type="number" value="${rankVal}" 
-               onchange="updateRegattaSailorRank('${reg.name.replace(/'/g, "\\'")}', '${s.name.replace(/'/g, "\\'")}', this.value)" 
-               style="width:70px; height:24px; text-align:center; padding:2px; font-family:var(--mono);">
-      </td>
-      <td style="text-align:center;">
-        <input type="number" value="${pointsVal}" 
-               onchange="updateRegattaSailorPoints('${reg.name.replace(/'/g, "\\'")}', '${s.name.replace(/'/g, "\\'")}', this.value)" 
-               style="width:70px; height:24px; text-align:center; padding:2px; font-family:var(--mono); font-weight:600; color:var(--accent2);">
-      </td>
-    </tr>`;
-  }).join('');
 }
 
 // ── CHARTS ──────────────────────────────────────────────────────────────────
@@ -1934,221 +1941,222 @@ function handleChartClick(chartId, label, datasetLabel) {
 }
 
 function renderCharts() {
-  if (!SAILORS.length) return;
-  const sq = computeSquads(SAILORS);
+  try {
+    if (!SAILORS.length) return;
+    const sq = computeSquads(SAILORS);
 
-  // 1. Avg, Min, Max score by squad
-  const squadScores = { 'Nat A': [], 'Nat B': [], 'DS': [], 'None': [] };
-  SAILORS.forEach(s => {
-    const squad = EXCLUDED.has(s.name) ? 'None' : (sq.get(s.name) || 'None');
-    squadScores[squad].push(s.score);
-  });
-  const distData = Object.keys(squadScores).map(k => {
-    const vals = squadScores[k];
-    const avg = vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : 0;
-    const min = vals.length ? Math.min(...vals) : 0;
-    const max = vals.length ? Math.max(...vals) : 0;
-    return { 
-      squad: k, 
-      avg: Math.round(avg * 10) / 10, 
-      min: min, 
-      max: max, 
-      count: vals.length 
-    };
-  });
-
-  if (chartObjs.dist) chartObjs.dist.destroy();
-  chartObjs.dist = new Chart(document.getElementById('distChart'), {
-    type: 'bar',
-    data: {
-      labels: distData.map(d => d.squad),
-      datasets: [
-        {
-          label: 'Min Score',
-          data: distData.map(d => d.min),
-          backgroundColor: '#a3c9b0'
-        },
-        {
-          label: 'Avg Score',
-          data: distData.map(d => d.avg),
-          backgroundColor: '#2d4a8a'
-        },
-        {
-          label: 'Max Score',
-          data: distData.map(d => d.max),
-          backgroundColor: '#f0b07a'
-        }
-      ]
-    },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      onClick: (e, elements) => {
-        if (!elements || elements.length === 0) return;
-        const index = elements[0].index;
-        const datasetIndex = elements[0].datasetIndex;
-        const clickedLabel = chartObjs.dist.data.labels[index];
-        const datasetLabel = chartObjs.dist.data.datasets[datasetIndex].label;
-        handleChartClick('distChart', clickedLabel, datasetLabel);
-      },
-      scales: { 
-        y: { 
-          beginAtZero: true,
-          title: { display: true, text: 'Points (lower is better)' }
-        } 
-      }
-    }
-  });
-
-  // 2. Rank vs Score Scatter
-  const scatterData = SAILORS.map(s => ({ x: s.cur, y: s.score }));
-  if (chartObjs.scatter) chartObjs.scatter.destroy();
-  chartObjs.scatter = new Chart(document.getElementById('scatterChart'), {
-    type: 'scatter',
-    data: {
-      datasets: [{
-        label: 'Sailors',
-        data: scatterData,
-        backgroundColor: '#2d4a8a'
-      }]
-    },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      scales: {
-        x: { title: { display: true, text: 'Current Rank' } },
-        y: { title: { display: true, text: 'Points Score' } }
-      }
-    }
-  });
-
-  // 3. Club Distribution Pie
-  const clubs = {};
-  SAILORS.forEach(s => { if (s.club) clubs[s.club] = (clubs[s.club] || 0) + 1; });
-  const clubLabels = Object.keys(clubs).sort((a, b) => clubs[b] - clubs[a]).slice(0, 7);
-  const clubValues = clubLabels.map(l => clubs[l]);
-
-  if (chartObjs.club) chartObjs.club.destroy();
-  chartObjs.club = new Chart(document.getElementById('clubChart'), {
-    type: 'pie',
-    data: {
-      labels: clubLabels,
-      datasets: [{
-        data: clubValues,
-        backgroundColor: ['#1a472a', '#2d4a8a', '#7a3500', '#b8b3aa', '#dedad2', '#e8e5de', '#faf9f6']
-      }]
-    },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false
-    }
-  });
-
-  // 4. Birth Year Distribution grouped by Gender (Boys vs Girls)
-  const years = {};
-  SAILORS.forEach(s => { 
-    if (s.born) {
-      if (!years[s.born]) years[s.born] = { M: 0, F: 0 };
-      years[s.born][s.g]++;
-    }
-  });
-  const yearLabels = Object.keys(years).sort();
-  const boysValues = yearLabels.map(l => years[l].M);
-  const girlsValues = yearLabels.map(l => years[l].F);
-
-  if (chartObjs.year) chartObjs.year.destroy();
-  chartObjs.year = new Chart(document.getElementById('yearChart'), {
-    type: 'bar',
-    data: {
-      labels: yearLabels,
-      datasets: [
-        {
-          label: 'Boys (M)',
-          data: boysValues,
-          backgroundColor: '#3b82f6'
-        },
-        {
-          label: 'Girls (F)',
-          data: girlsValues,
-          backgroundColor: '#ec4899'
-        }
-      ]
-    },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      onClick: (e, elements) => {
-        if (!elements || elements.length === 0) return;
-        const index = elements[0].index;
-        const datasetIndex = elements[0].datasetIndex;
-        const clickedLabel = chartObjs.year.data.labels[index];
-        const datasetLabel = chartObjs.year.data.datasets[datasetIndex].label;
-        handleChartClick('yearChart', clickedLabel, datasetLabel);
-      },
-      scales: { 
-        x: { stacked: false },
-        y: { beginAtZero: true, ticks: { stepSize: 1 } } 
-      }
-    }
-  });
-
-  // 5. Club Dominance (Split of Clubs inside Squad Levels)
-  // X-axis: Squad levels ['Nat A', 'Nat B', 'DS', 'None']
-  // Stacked Datasets: Club names showing their counts
-  const clubSquads = {};
-  SAILORS.forEach(s => {
-    if (s.club) {
-      if (!clubSquads[s.club]) {
-        clubSquads[s.club] = { 'Nat A': 0, 'Nat B': 0, 'DS': 0, 'None': 0 };
-      }
+    // 1. Avg, Min, Max score by squad
+    const squadScores = { 'Nat A': [], 'Nat B': [], 'DS': [], 'None': [] };
+    SAILORS.forEach(s => {
       const squad = EXCLUDED.has(s.name) ? 'None' : (sq.get(s.name) || 'None');
-      clubSquads[s.club][squad]++;
-    }
-  });
-  
-  const dominanceLabels = ['Nat A', 'Nat B', 'DS', 'None'];
-  const clubColorsList = ['#1a472a', '#2d4a8a', '#7a3500', '#b8b3aa', '#dedad2', '#862633', '#004b49', '#5c0632', '#7b68ee'];
-  
-  // Sort clubs by their representation count to assign colors consistently
-  const uniqueClubs = Object.keys(clubSquads).sort((a, b) => {
-    const totalA = Object.values(clubSquads[a]).reduce((x, y) => x + y, 0);
-    const totalB = Object.values(clubSquads[b]).reduce((x, y) => x + y, 0);
-    return totalB - totalA;
-  });
+      squadScores[squad].push(s.score);
+    });
+    const distData = Object.keys(squadScores).map(k => {
+      const vals = squadScores[k];
+      const avg = vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : 0;
+      const min = vals.length ? Math.min(...vals) : 0;
+      const max = vals.length ? Math.max(...vals) : 0;
+      return { 
+        squad: k, 
+        avg: Math.round(avg * 10) / 10, 
+        min: min, 
+        max: max, 
+        count: vals.length 
+      };
+    });
 
-  const dominanceDatasets = uniqueClubs.map((club, idx) => {
-    const color = clubColorsList[idx % clubColorsList.length];
-    return {
-      label: club,
-      data: dominanceLabels.map(lvl => clubSquads[club][lvl]),
-      backgroundColor: color
-    };
-  });
-
-  if (chartObjs.dominance) chartObjs.dominance.destroy();
-  chartObjs.dominance = new Chart(document.getElementById('dominanceChart'), {
-    type: 'bar',
-    data: {
-      labels: dominanceLabels,
-      datasets: dominanceDatasets
-    },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      onClick: (e, elements) => {
-        if (!elements || elements.length === 0) return;
-        const index = elements[0].index;
-        const datasetIndex = elements[0].datasetIndex;
-        const clickedLabel = chartObjs.dominance.data.labels[index];
-        const datasetLabel = chartObjs.dominance.data.datasets[datasetIndex].label;
-        handleChartClick('dominanceChart', clickedLabel, datasetLabel);
+    if (chartObjs.dist) chartObjs.dist.destroy();
+    chartObjs.dist = new Chart(document.getElementById('distChart'), {
+      type: 'bar',
+      data: {
+        labels: distData.map(d => d.squad),
+        datasets: [
+          {
+            label: 'Min Score',
+            data: distData.map(d => d.min),
+            backgroundColor: '#a3c9b0'
+          },
+          {
+            label: 'Avg Score',
+            data: distData.map(d => d.avg),
+            backgroundColor: '#2d4a8a'
+          },
+          {
+            label: 'Max Score',
+            data: distData.map(d => d.max),
+            backgroundColor: '#f0b07a'
+          }
+        ]
       },
-      scales: {
-        x: { stacked: true },
-        y: { stacked: true, beginAtZero: true }
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        onClick: function(e, elements) {
+          if (!elements || elements.length === 0) return;
+          const index = elements[0].index;
+          const datasetIndex = elements[0].datasetIndex;
+          const clickedLabel = this.data.labels[index];
+          const datasetLabel = this.data.datasets[datasetIndex].label;
+          handleChartClick('distChart', clickedLabel, datasetLabel);
+        },
+        scales: { 
+          y: { 
+            beginAtZero: true,
+            title: { display: true, text: 'Points (lower is better)' }
+          } 
+        }
       }
-    }
-  });
+    });
+
+    // 2. Rank vs Score Scatter
+    const scatterData = SAILORS.map(s => ({ x: s.cur, y: s.score }));
+    if (chartObjs.scatter) chartObjs.scatter.destroy();
+    chartObjs.scatter = new Chart(document.getElementById('scatterChart'), {
+      type: 'scatter',
+      data: {
+        datasets: [{
+          label: 'Sailors',
+          data: scatterData,
+          backgroundColor: '#2d4a8a'
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: {
+          x: { title: { display: true, text: 'Current Rank' } },
+          y: { title: { display: true, text: 'Points Score' } }
+        }
+      }
+    });
+
+    // 3. Club Distribution Pie
+    const clubs = {};
+    SAILORS.forEach(s => { if (s.club) clubs[s.club] = (clubs[s.club] || 0) + 1; });
+    const clubLabels = Object.keys(clubs).sort((a, b) => clubs[b] - clubs[a]).slice(0, 7);
+    const clubValues = clubLabels.map(l => clubs[l]);
+
+    if (chartObjs.club) chartObjs.club.destroy();
+    chartObjs.club = new Chart(document.getElementById('clubChart'), {
+      type: 'pie',
+      data: {
+        labels: clubLabels,
+        datasets: [{
+          data: clubValues,
+          backgroundColor: ['#1a472a', '#2d4a8a', '#7a3500', '#b8b3aa', '#dedad2', '#e8e5de', '#faf9f6']
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false
+      }
+    });
+
+    // 4. Birth Year Distribution grouped by Gender (Boys vs Girls)
+    const years = {};
+    SAILORS.forEach(s => { 
+      if (s.born) {
+        if (!years[s.born]) years[s.born] = { M: 0, F: 0 };
+        years[s.born][s.g]++;
+      }
+    });
+    const yearLabels = Object.keys(years).sort();
+    const boysValues = yearLabels.map(l => years[l].M);
+    const girlsValues = yearLabels.map(l => years[l].F);
+
+    if (chartObjs.year) chartObjs.year.destroy();
+    chartObjs.year = new Chart(document.getElementById('yearChart'), {
+      type: 'bar',
+      data: {
+        labels: yearLabels,
+        datasets: [
+          {
+            label: 'Boys (M)',
+            data: boysValues,
+            backgroundColor: '#3b82f6'
+          },
+          {
+            label: 'Girls (F)',
+            data: girlsValues,
+            backgroundColor: '#ec4899'
+          }
+        ]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        onClick: function(e, elements) {
+          if (!elements || elements.length === 0) return;
+          const index = elements[0].index;
+          const datasetIndex = elements[0].datasetIndex;
+          const clickedLabel = this.data.labels[index];
+          const datasetLabel = this.data.datasets[datasetIndex].label;
+          handleChartClick('yearChart', clickedLabel, datasetLabel);
+        },
+        scales: { 
+          x: { stacked: false },
+          y: { beginAtZero: true, ticks: { stepSize: 1 } } 
+        }
+      }
+    });
+
+    // 5. Club Dominance (Split of Clubs inside Squad Levels)
+    const clubSquads = {};
+    SAILORS.forEach(s => {
+      if (s.club) {
+        if (!clubSquads[s.club]) {
+          clubSquads[s.club] = { 'Nat A': 0, 'Nat B': 0, 'DS': 0, 'None': 0 };
+        }
+        const squad = EXCLUDED.has(s.name) ? 'None' : (sq.get(s.name) || 'None');
+        clubSquads[s.club][squad]++;
+      }
+    });
+    
+    const dominanceLabels = ['Nat A', 'Nat B', 'DS', 'None'];
+    const clubColorsList = ['#1a472a', '#2d4a8a', '#7a3500', '#b8b3aa', '#dedad2', '#862633', '#004b49', '#5c0632', '#7b68ee'];
+    
+    const uniqueClubs = Object.keys(clubSquads).sort((a, b) => {
+      const totalA = Object.values(clubSquads[a]).reduce((x, y) => x + y, 0);
+      const totalB = Object.values(clubSquads[b]).reduce((x, y) => x + y, 0);
+      return totalB - totalA;
+    });
+
+    const dominanceDatasets = uniqueClubs.map((club, idx) => {
+      const color = clubColorsList[idx % clubColorsList.length];
+      return {
+        label: club,
+        data: dominanceLabels.map(lvl => clubSquads[club][lvl]),
+        backgroundColor: color
+      };
+    });
+
+    if (chartObjs.dominance) chartObjs.dominance.destroy();
+    chartObjs.dominance = new Chart(document.getElementById('dominanceChart'), {
+      type: 'bar',
+      data: {
+        labels: dominanceLabels,
+        datasets: dominanceDatasets
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        onClick: function(e, elements) {
+          if (!elements || elements.length === 0) return;
+          const index = elements[0].index;
+          const datasetIndex = elements[0].datasetIndex;
+          const clickedLabel = this.data.labels[index];
+          const datasetLabel = this.data.datasets[datasetIndex].label;
+          handleChartClick('dominanceChart', clickedLabel, datasetLabel);
+        },
+        scales: {
+          x: { stacked: true },
+          y: { stacked: true, beginAtZero: true }
+        }
+      }
+    });
+  } catch (err) {
+    console.error("Error rendering charts:", err);
+  }
 }
 
 // ── NAVIGATION & VIEWS ──────────────────────────────────────────────────────
