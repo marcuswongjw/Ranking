@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>OP Gold — National Ranking</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><rect width=%22100%22 height=%22100%22 rx=%2222%22 fill=%22%231a472a%22/><text y=%2268%22 x=%2250%22 font-size=%2254%22 font-family=%22system-ui,-apple-system,sans-serif%22 font-weight=%22800%22 fill=%22white%22 text-anchor=%22middle%22>SR</text></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500;600&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
@@ -1982,12 +1983,12 @@ function renderCharts() {
     options: {
       responsive: true,
       maintainAspectRatio: false,
-      onClick: (e, elements, chart) => {
+      onClick: (e, elements) => {
         if (!elements || elements.length === 0) return;
         const index = elements[0].index;
         const datasetIndex = elements[0].datasetIndex;
-        const clickedLabel = chart.data.labels[index];
-        const datasetLabel = chart.data.datasets[datasetIndex].label;
+        const clickedLabel = chartObjs.dist.data.labels[index];
+        const datasetLabel = chartObjs.dist.data.datasets[datasetIndex].label;
         handleChartClick('distChart', clickedLabel, datasetLabel);
       },
       scales: { 
@@ -2076,12 +2077,12 @@ function renderCharts() {
     options: {
       responsive: true,
       maintainAspectRatio: false,
-      onClick: (e, elements, chart) => {
+      onClick: (e, elements) => {
         if (!elements || elements.length === 0) return;
         const index = elements[0].index;
         const datasetIndex = elements[0].datasetIndex;
-        const clickedLabel = chart.data.labels[index];
-        const datasetLabel = chart.data.datasets[datasetIndex].label;
+        const clickedLabel = chartObjs.year.data.labels[index];
+        const datasetLabel = chartObjs.year.data.datasets[datasetIndex].label;
         handleChartClick('yearChart', clickedLabel, datasetLabel);
       },
       scales: { 
@@ -2134,12 +2135,12 @@ function renderCharts() {
     options: {
       responsive: true,
       maintainAspectRatio: false,
-      onClick: (e, elements, chart) => {
+      onClick: (e, elements) => {
         if (!elements || elements.length === 0) return;
         const index = elements[0].index;
         const datasetIndex = elements[0].datasetIndex;
-        const clickedLabel = chart.data.labels[index];
-        const datasetLabel = chart.data.datasets[datasetIndex].label;
+        const clickedLabel = chartObjs.dominance.data.labels[index];
+        const datasetLabel = chartObjs.dominance.data.datasets[datasetIndex].label;
         handleChartClick('dominanceChart', clickedLabel, datasetLabel);
       },
       scales: {
