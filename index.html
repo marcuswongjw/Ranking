@@ -1531,7 +1531,7 @@ function runTarget(){
   const simSqM = computeSquads(simScoresM);
   
   const nsAtN=posNeeded?calcSimScore(sailor, [{ name: sailor.name, nett: posNeeded, rank: posNeeded }], true):calcSimScore(sailor, [{ name: sailor.name, nett: 1, rank: 1 }], true);
-  const blocking=pool.filter(s=>{if(s.name===sailor.name)return false;const sq=baseSq.get(s.name)||'';return s.score<nsAtN&&(sqOrd[sq]||99)<=(sqOrd[goal]||99);});
+  const blocking=pool.filter(s=>{if(s.name===sailor.name)return false;const sq=baseSq.get(s.name)||'';return s.score>nsAtN&&(sqOrd[sq]||99)<=(sqOrd[goal]||99);});
   const ctxT=buildCtxTable(ctx,sailor,baseSq,simSqM,posNeeded);
   const wiS=buildWhatIf(sailor,goal,ctx);
   let html='';
@@ -1602,12 +1602,12 @@ function buildCtxTable(ctx,sailor,baseSq,simSqM,posNeeded){
   return `<table class="ct">
     <thead>
       <tr class="ct-hdr">
-        <td style="width:30px">Pos</td>
+        <td style="width:35px">Pos</td>
         <td>Sailor</td>
-        <td style="width:20px">G</td>
-        <td style="width:35px">Born</td>
-        <td style="width:50px">Club</td>
-        <td style="width:130px">Squad (Before → Sim)</td>
+        <td style="width:25px">G</td>
+        <td style="width:50px">Born</td>
+        <td style="width:55px">Club</td>
+        <td style="width:140px">Squad (Before → Sim)</td>
         <td style="width:70px;text-align:center">Score</td>
         <td>History</td>
       </tr>
