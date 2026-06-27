@@ -767,16 +767,36 @@ function parseVal(v) {
 }
 
 function getRegattaDateByName(name) {
-  const n = name.toLowerCase();
-  if (n.includes('july 2025') || n.includes('jul 2025') || (n.includes('safyc') && n.includes('2025'))) return '2025-07-15';
-  if (n.includes('pesta sukan')) return '2025-08-10';
-  if (n.includes('rsyc')) return '2025-08-25';
-  if (n.includes('snsc')) return '2025-09-15';
-  if (n.includes('csc gold') || n.includes('csc')) return '2026-01-26';
-  if (n.includes('pulau ujong')) return '2026-02-26';
-  if (n.includes('sysc')) return '2026-03-05';
-  if (n.includes('safyc') && n.includes('26')) return '2026-03-20';
-  if (n.includes('temasek')) return '2026-06-20';
+  const months = {
+    jan: '01', feb: '02', mar: '03', apr: '04', may: '05', jun: '06',
+    jul: '07', aug: '08', sep: '09', oct: '10', nov: '11', dec: '12',
+    january: '01', february: '02', march: '03', april: '04', june: '06',
+    july: '07', august: '08', september: '09', october: '10', november: '11', december: '12'
+  };
+
+  const clean = name.toLowerCase().replace(/_/g, ' ');
+  
+  const regex = /(january|february|march|april|may|june|july|august|september|october|november|december|jan|feb|mar|apr|jun|jul|aug|sep|oct|nov|dec)[-\s(]*(\d{2,4})\b/i;
+  const match = clean.match(regex);
+  if (match) {
+    const mName = match[1];
+    let yStr = match[2];
+    const mVal = months[mName];
+    if (yStr.length === 2) {
+      yStr = '20' + yStr;
+    }
+    return `${yStr}-${mVal}-15`;
+  }
+  
+  if (clean.includes('pesta sukan')) return '2025-08-10';
+  if (clean.includes('rsyc')) return '2025-08-25';
+  if (clean.includes('snsc')) return '2025-09-15';
+  if (clean.includes('csc gold') || clean.includes('csc')) return '2026-01-26';
+  if (clean.includes('pulau ujong')) return '2026-02-26';
+  if (clean.includes('sysc')) return '2026-03-05';
+  if (clean.includes('safyc') && clean.includes('26')) return '2026-03-20';
+  if (clean.includes('temasek')) return '2026-06-20';
+  
   return new Date().toISOString().split('T')[0];
 }
 
@@ -961,7 +981,7 @@ function parseSheet(data,filename){
       const cleanName = filename.replace(/\.[^/.]+$/, "").replace(/_/g, ' ');
       parsedRegs.push({
         name: cleanName,
-        date: new Date().toISOString().split('T')[0],
+        date: getRegattaDateByName(cleanName),
         sailors: sailors
       });
     }
