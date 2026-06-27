@@ -694,7 +694,7 @@ const LOCAL_DATA_KEY = 'op_ranking_regattas_v3';
 
 function normalizeName(name) {
   if (!name) return "";
-  return name.toLowerCase().replace(/[,.-]/g, ' ').split(/\s+/).filter(Boolean).sort().join(' ');
+  return String(name).toLowerCase().replace(/[,.-]/g, ' ').split(/\s+/).filter(Boolean).sort().join(' ');
 }
 
 function isSameSailor(nameA, nameB) {
@@ -1604,10 +1604,11 @@ function renderTargetSimulation(simulatedPos) {
   simScoresM.forEach((s, idx) => s.cur = idx + 1);
   const simSqM = computeSquads(simScoresM);
   
-  const blocking = pool.filter(s => {
+  const blocking = SAILORS.filter(s => {
     if (s.name === sailor.name) return false;
-    const sq = baseSq.get(s.name) || '';
-    return s.score > projScore && (sqOrd[sq] || 99) <= (sqOrd[goal] || 99);
+    const wasIn = (sqOrd[baseSq.get(s.name)] || 99) <= (sqOrd[goal] || 99);
+    const nowIn = (sqOrd[simSqM.get(s.name)] || 99) <= (sqOrd[goal] || 99);
+    return wasIn && !nowIn;
   });
   
   const ctxT = buildCtxTable(ctx, sailor, baseSq, simSqM, simulatedPos);
