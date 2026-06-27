@@ -847,7 +847,7 @@ function getRegattaDateByName(name) {
 
   const clean = name.toLowerCase().replace(/_/g, ' ');
   
-  const regex = /(january|february|march|april|may|june|july|august|september|october|november|december|jan|feb|mar|apr|jun|jul|aug|sep|oct|nov|dec)[-\s(]*(\d{2,4})\b/i;
+  const regex = /(january|february|march|april|may|june|july|august|september|october|november|december|jan|feb|mar|apr|jun|jul|aug|sep|oct|nov|dec)[^0-9]*(\d{2,4})/i;
   const match = clean.match(regex);
   if (match) {
     const mName = match[1];
@@ -1110,6 +1110,13 @@ function squadBadge(sq){
 }
 
 function recomputeSailors() {
+  REGATTAS.forEach(reg => {
+    const parsedDate = getRegattaDateByName(reg.name);
+    if (parsedDate !== new Date().toISOString().split('T')[0]) {
+      reg.date = parsedDate;
+    }
+  });
+
   REGATTAS.sort((a, b) => {
     const dA = a.date ? new Date(a.date) : new Date(0);
     const dB = b.date ? new Date(b.date) : new Date(0);
