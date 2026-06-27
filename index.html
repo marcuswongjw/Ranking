@@ -794,7 +794,19 @@ function parseSheet(data,filename){
   const parsedRegs = [];
 
   if (hasConsolidated) {
-    let col = 6;
+    const profileKeywords = ['name', 'sailor', 'gender', 'g', 'sex', 'born', 'birth year', 'year', 'sail number', 'sail no', 'no.', 'club', 'school', 'sch', 'squad', 'group', 'age'];
+    let startCol = 6;
+    for (let c = 0; c < headers.length; c++) {
+      const h = String(headers[c] || '').toLowerCase().trim();
+      if (!h) continue;
+      const isProfile = profileKeywords.some(kw => h.includes(kw));
+      if (!isProfile && c >= 5) {
+        startCol = c;
+        break;
+      }
+    }
+
+    let col = startCol;
     const regColumns = [];
     while (col < headers.length) {
       const headerText = String(headers[col] || '').trim();
