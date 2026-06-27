@@ -163,7 +163,78 @@ td{padding:8px 10px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .drop-overlay.show{display:flex}
 .do-text{font-family:var(--mono);font-size:20px;color:#fff;font-weight:600}
 .do-sub{font-family:var(--mono);font-size:12px;color:rgba(255,255,255,.55)}
-::-webkit-scrollbar{width:5px;height:5px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px}
+@media (max-width: 768px) {
+  .app {
+    grid-template-columns: 1fr;
+  }
+  .sidebar {
+    height: auto;
+    position: relative;
+  }
+  .sb-logo {
+    padding: 14px 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .sb-logo h1 {
+    font-size: 14px;
+  }
+  .sb-tag {
+    margin-top: 0;
+  }
+  .sb-nav {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    padding: 10px;
+    border-bottom: 1px solid rgba(255,255,255,.1);
+    flex: none;
+  }
+  .nav-sec {
+    width: 100%;
+    margin: 8px 0 2px;
+  }
+  .nav-item {
+    width: auto;
+    display: inline-flex;
+    padding: 6px 12px;
+  }
+  .sb-footer {
+    display: none;
+  }
+  .topbar {
+    padding: 12px 16px;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+    position: relative;
+  }
+  .topbar-right {
+    margin-left: 0;
+    justify-content: space-between;
+    width: 100%;
+  }
+  .content {
+    padding: 16px;
+  }
+  .metrics {
+    grid-template-columns: 1fr 1fr;
+  }
+  .two-col {
+    grid-template-columns: 1fr;
+  }
+  .charts-grid {
+    grid-template-columns: 1fr;
+  }
+  .tbl-wrap {
+    overflow-x: auto;
+  }
+  table {
+    table-layout: auto;
+    min-width: 600px;
+  }
+}
 </style>
 </head>
 <body>
@@ -1343,21 +1414,19 @@ function getContextPool(sailor,goal){
 
 function calcSimScore(sailor, simSailors, rankingMode = false) {
   const simEntry = simSailors.find(x => x.name === sailor.name);
-  const simPos = simEntry ? simEntry.nett : DNS;
+  const simPos = simEntry ? (simEntry.rank !== undefined && simEntry.rank !== null ? simEntry.rank : simEntry.nett) : DNS;
   
-  const sortedRegs = [...REGATTAS].sort((a, b) => {
-    const dA = a.date ? new Date(a.date) : new Date(0);
-    const dB = b.date ? new Date(b.date) : new Date(0);
-    return dA - dB;
-  });
-  sortedRegs.push({
-    name: "Simulated Regatta",
-    date: "2026-12-31",
-    sailors: []
-  });
+  const activeRegs = getActiveRegattas();
+  const simulatedRegsList = [
+    ...activeRegs,
+    {
+      name: "Simulated Regatta",
+      date: "2026-12-31",
+      sailors: []
+    }
+  ];
   
-  const latestRegs = sortedRegs.slice(-5);
-  const scores = latestRegs.map((reg, regIdx) => {
+  const scores = simulatedRegsList.map(reg => {
     if (reg.name === "Simulated Regatta") return simPos;
     const sInReg = reg.sailors.find(x => isSameSailor(x.name, sailor.name));
     if (rankingMode) {
@@ -1611,6 +1680,7 @@ function addExcl() {
   const name = sel.value;
   EXCLUDED.set(name, selectedReason);
   sel.value = '';
+  saveData();
   renderExclusions();
   renderRankingsPanel();
   runTarget();
@@ -1618,6 +1688,7 @@ function addExcl() {
 
 function removeExcl(name) {
   EXCLUDED.delete(name);
+  saveData();
   renderExclusions();
   renderRankingsPanel();
   runTarget();
@@ -2329,6 +2400,7 @@ function renderSailorPerformanceChart(sailor) {
 function saveData() {
   localStorage.setItem(LOCAL_DATA_KEY, JSON.stringify(REGATTAS));
   localStorage.setItem('op_ranking_dropped_v3', JSON.stringify(Array.from(DROPPED_SAILORS)));
+  localStorage.setItem('op_ranking_excluded_v3', JSON.stringify(Array.from(EXCLUDED.entries())));
 }
 
 function loadData() {
@@ -2343,6 +2415,13 @@ function loadData() {
     DROPPED_SAILORS = new Set(JSON.parse(rawDropped));
   } else {
     DROPPED_SAILORS = new Set();
+  }
+  
+  const rawExcluded = localStorage.getItem('op_ranking_excluded_v3');
+  if (rawExcluded) {
+    EXCLUDED = new Map(JSON.parse(rawExcluded));
+  } else {
+    EXCLUDED = new Map();
   }
   
   const rawSelectedRegs = localStorage.getItem('op_ranking_selected_regattas_v3');
