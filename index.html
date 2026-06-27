@@ -1825,7 +1825,15 @@ function switchView(viewId, btn) {
   if (targetPanel) targetPanel.classList.add('active');
 
   document.querySelectorAll('.nav-item').forEach(item => item.classList.remove('active'));
-  if (btn) btn.classList.add('active');
+  
+  let activeBtn = btn;
+  if (!activeBtn) {
+    activeBtn = Array.from(document.querySelectorAll('.nav-item')).find(b => {
+      const onclickAttr = b.getAttribute('onclick');
+      return onclickAttr && onclickAttr.includes(`'${viewId}'`);
+    });
+  }
+  if (activeBtn) activeBtn.classList.add('active');
 
   const titleMap = {
     'rankings': 'Rankings',
@@ -1854,6 +1862,17 @@ function switchView(viewId, btn) {
   } else if (viewId === 'fleet') {
     renderFleetPanel();
   }
+
+  if (window.location.hash !== '#' + viewId) {
+    window.location.hash = '#' + viewId;
+  }
+}
+
+function handleRouting() {
+  const hash = window.location.hash.substring(1);
+  const validViews = ['rankings', 'results', 'regattas', 'simulator', 'target', 'exclusions', 'charts', 'fleet'];
+  const target = validViews.includes(hash) ? hash : 'rankings';
+  switchView(target);
 }
 
 // ── REGATTAS PANEL ─────────────────────────────────────────────────────────
@@ -2126,7 +2145,11 @@ function renderFleetPanel() {
   
   const allSystem = getAllSailorsInSystem();
   
-  const activeSailors = allSystem.filter(s => !DROPPED_SAILORS.has(s.name) && s.name.toLowerCase().includes(searchActive));
+  const activeSailors = allSystem.filter(s => {
+    const isAutoDrop = s.born && s.born <= (COMP_YEAR - 16);
+    const isDropped = DROPPED_SAILORS.has(s.name) || isAutoDrop;
+    return !isDropped && s.name.toLowerCase().includes(searchActive);
+  });
   activeList.innerHTML = activeSailors.map(s => {
     return `<div class="excl-item" style="margin-bottom:4px;">
       <div>
@@ -2137,14 +2160,23 @@ function renderFleetPanel() {
     </div>`;
   }).join('') || '<div class="excl-empty">No active sailors.</div>';
 
-  const droppedSailors = allSystem.filter(s => DROPPED_SAILORS.has(s.name) && s.name.toLowerCase().includes(searchDropped));
+  const droppedSailors = allSystem.filter(s => {
+    const isAutoDrop = s.born && s.born <= (COMP_YEAR - 16);
+    const isDropped = DROPPED_SAILORS.has(s.name) || isAutoDrop;
+    return isDropped && s.name.toLowerCase().includes(searchDropped);
+  });
   droppedList.innerHTML = droppedSailors.map(s => {
+    const isAutoDrop = s.born && s.born <= (COMP_YEAR - 16);
+    const actionButton = isAutoDrop 
+      ? `<span class="badge b-n" style="background:var(--red-l); color:var(--red); font-size:9px; padding:3px 6px;">Age Limit (>15)</span>`
+      : `<button class="excl-rm" onclick="promoteSailor('${s.name.replace(/'/g, "\\'")}')" style="background:var(--accent-l); color:var(--accent); border:1px solid rgba(26,71,42,.15); min-width:90px; height:24px; padding:0 8px;">＋ Re-promote</button>`;
+    
     return `<div class="excl-item" style="margin-bottom:4px; opacity:0.8;">
       <div>
         <div class="excl-name" onclick="openSailorModal('${s.name.replace(/'/g, "\\'")}')" style="cursor:pointer; color:var(--accent); text-decoration:underline; font-weight:600;">${s.name}</div>
         <div class="excl-reason">${s.g} · ${s.born} · ${s.club || 'No Club'}</div>
       </div>
-      <button class="excl-rm" onclick="promoteSailor('${s.name.replace(/'/g, "\\'")}')" style="background:var(--accent-l); color:var(--accent); border:1px solid rgba(26,71,42,.15); min-width:90px; height:24px; padding:0 8px;">＋ Re-promote</button>
+      ${actionButton}
     </div>`;
   }).join('') || '<div class="excl-empty">No dropped sailors.</div>';
 }
@@ -2345,6 +2377,9 @@ window.onload = function() {
   document.getElementById('src-tag').className = 'src-tag ok';
 
   renderAll();
+  
+  handleRouting();
+  window.addEventListener('hashchange', handleRouting);
 };
 
 function addUpcomingRegatta() {
