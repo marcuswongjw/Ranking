@@ -2674,30 +2674,51 @@ function saveData() {
 }
 
 function loadData() {
-  const raw = localStorage.getItem(LOCAL_DATA_KEY);
-  if (raw) {
-    REGATTAS = JSON.parse(raw);
-  } else {
+  try {
+    const raw = localStorage.getItem(LOCAL_DATA_KEY);
+    if (raw) {
+      REGATTAS = JSON.parse(raw);
+    } else {
+      REGATTAS = getSeedRegattas();
+    }
+  } catch (e) {
+    console.error("Failed to parse REGATTAS:", e);
     REGATTAS = getSeedRegattas();
   }
-  const rawDropped = localStorage.getItem('op_ranking_dropped_v3');
-  if (rawDropped) {
-    DROPPED_SAILORS = new Set(JSON.parse(rawDropped));
-  } else {
+
+  try {
+    const rawDropped = localStorage.getItem('op_ranking_dropped_v3');
+    if (rawDropped) {
+      DROPPED_SAILORS = new Set(JSON.parse(rawDropped));
+    } else {
+      DROPPED_SAILORS = new Set();
+    }
+  } catch (e) {
+    console.error("Failed to parse DROPPED_SAILORS:", e);
     DROPPED_SAILORS = new Set();
   }
   
-  const rawExcluded = localStorage.getItem('op_ranking_excluded_v3');
-  if (rawExcluded) {
-    EXCLUDED = new Map(JSON.parse(rawExcluded));
-  } else {
+  try {
+    const rawExcluded = localStorage.getItem('op_ranking_excluded_v3');
+    if (rawExcluded) {
+      EXCLUDED = new Map(JSON.parse(rawExcluded));
+    } else {
+      EXCLUDED = new Map();
+    }
+  } catch (e) {
+    console.error("Failed to parse EXCLUDED:", e);
     EXCLUDED = new Map();
   }
   
-  const rawSelectedRegs = localStorage.getItem('op_ranking_selected_regattas_v3');
-  if (rawSelectedRegs) {
-    SELECTED_REGATTA_NAMES = JSON.parse(rawSelectedRegs);
-  } else {
+  try {
+    const rawSelectedRegs = localStorage.getItem('op_ranking_selected_regattas_v3');
+    if (rawSelectedRegs) {
+      SELECTED_REGATTA_NAMES = JSON.parse(rawSelectedRegs);
+    } else {
+      SELECTED_REGATTA_NAMES = null;
+    }
+  } catch (e) {
+    console.error("Failed to parse SELECTED_REGATTA_NAMES:", e);
     SELECTED_REGATTA_NAMES = null;
   }
   
