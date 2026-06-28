@@ -453,6 +453,9 @@ td{padding:8px 10px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
           <thead>
             <tr>
               <th style="width:180px;">Sailor</th>
+              <th style="width:32px;text-align:center;">G</th>
+              <th style="width:46px;text-align:center;">Born</th>
+              <th style="width:100px;text-align:center;">Entered Gold</th>
               <th style="text-align:center;">Optimist World Champ.</th>
               <th style="text-align:center;">Optimist European Champ.</th>
               <th style="text-align:center;">Optimist Asian & Oceanian Champ.</th>
@@ -3329,12 +3332,18 @@ function renderMajorCompsPanel() {
   const body = document.getElementById('major-comps-body');
   if (!body) return;
   
+  const allSystem = getAllSailorsInSystem();
+  const allSystemMap = new Map();
+  allSystem.forEach(s => {
+    allSystemMap.set(normalizeName(s.name), s);
+  });
+  
   // Gather ALL sailors: active fleet + anyone in SAILOR_METADATA (retired/dropped/historical)
   const allNames = new Map();
   const normalizedToOriginal = new Map();
   
   // From active regatta data
-  getAllSailorsInSystem().forEach(s => {
+  allSystem.forEach(s => {
     const norm = normalizeName(s.name);
     normalizedToOriginal.set(norm, s.name);
     allNames.set(s.name, s.name);
@@ -3353,6 +3362,13 @@ function renderMajorCompsPanel() {
   
   body.innerHTML = sortedNames.map(name => {
     const meta = SAILOR_METADATA[name] || {};
+    const norm = normalizeName(name);
+    const sObj = allSystemMap.get(norm);
+    
+    const gender = sObj ? (sObj.g || '—') : (meta.g || '—');
+    const born = sObj ? (sObj.born || '—') : (meta.born || '—');
+    const enteredGold = meta.enteredGold || '—';
+    
     const major = meta.majorComps || {};
     const worlds = major.worlds || [];
     const euros = major.euros || [];
@@ -3366,6 +3382,9 @@ function renderMajorCompsPanel() {
     
     return `<tr>
       <td class="name-c" onclick="openSailorModal('${name.replace(/'/g, "\\'")}')" style="cursor:pointer; color:var(--accent); font-weight:600; text-decoration:underline;">${name}</td>
+      <td class="sub-c" style="text-align:center;">${gender}</td>
+      <td class="sub-c" style="text-align:center;">${born}</td>
+      <td style="font-family:var(--sans);font-size:11px;color:var(--text2);text-align:center;">${enteredGold}</td>
       <td style="text-align:center;">${worldsTags}</td>
       <td style="text-align:center;">${eurosTags}</td>
       <td style="text-align:center;">${asiansTags}</td>
