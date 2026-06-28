@@ -269,6 +269,7 @@ td{padding:8px 10px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
     <button class="nav-item" onclick="quickFilter('Nat A')"><span class="nav-dot dot-a"></span>National A</button>
     <button class="nav-item" onclick="quickFilter('Nat B')"><span class="nav-dot dot-b"></span>National B</button>
     <button class="nav-item" onclick="quickFilter('DS')"><span class="nav-dot dot-ds"></span>Development</button>
+    <button class="nav-item" onclick="exportDataToCode()" style="background:var(--accent-l); color:var(--accent); font-weight:bold; margin-top:10px;">📤 Export Data for Code</button>
   </nav>
   <div class="sb-footer" id="sb-footer">Drop .xlsx to load data</div>
 </aside>
@@ -3494,6 +3495,25 @@ function uploadFleetExcel(input) {
     input.value = '';
   };
   reader.readAsArrayBuffer(file);
+}
+
+function exportDataToCode() {
+  const exportPayload = {
+    REGATTAS,
+    DROPPED_SAILORS: Array.from(DROPPED_SAILORS),
+    EXCLUDED: Array.from(EXCLUDED.entries()),
+    SAILOR_METADATA
+  };
+  const codeBlock = JSON.stringify(exportPayload);
+  
+  const tempTextArea = document.createElement("textarea");
+  tempTextArea.value = codeBlock;
+  document.body.appendChild(tempTextArea);
+  tempTextArea.select();
+  document.execCommand("copy");
+  document.body.removeChild(tempTextArea);
+  
+  alert("Database code copied to clipboard! Please paste this block back into the chat window so I can permanently bake it into the website.");
 }
 </script>
 </body>
