@@ -235,6 +235,9 @@ td{padding:8px 10px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
     table-layout: auto;
     min-width: 600px;
   }
+  .hide-mobile {
+    display: none !important;
+  }
 }
 </style>
 </head>
@@ -1338,10 +1341,10 @@ function renderRankingsPanel(){
         <th style="width:46px">Born</th>
         <th style="width:62px">Club</th>
         <th style="width:66px">Squad</th>
-        <th style="width:85px">Entered Gold</th>
-        <th style="width:50px;text-align:center">Jun 25</th>
-        <th style="width:50px;text-align:center">Dec 25</th>
-        <th style="width:50px;text-align:center">Jun 26</th>
+        <th style="width:85px" class="hide-mobile">Entered Gold</th>
+        <th style="width:50px;text-align:center" class="hide-mobile">Jun 25</th>
+        <th style="width:50px;text-align:center" class="hide-mobile">Dec 25</th>
+        <th style="width:50px;text-align:center" class="hide-mobile">Jun 26</th>
         <th style="width:80px;text-align:center">Best 3 of ${latestRegs.length}</th>
         ${regHeaders}
       </tr></thead>
@@ -1397,10 +1400,10 @@ function renderRankings(){
       <td class="sub-c">${s.born}</td>
       <td class="sub-c" style="font-size:10px">${s.club}</td>
       <td>${isExcl?'<span class="badge b-n">Excl.</span>':squadBadge(squad)}</td>
-      <td style="font-family:var(--sans);font-size:11px;color:var(--text2)">${s.enteredGold || '—'}</td>
-      <td style="text-align:center;font-family:var(--mono);font-size:10.5px">${valJun25}</td>
-      <td style="text-align:center;font-family:var(--mono);font-size:10.5px">${valDec25}</td>
-      <td style="text-align:center;font-family:var(--mono);font-size:10.5px">${valJun26}</td>
+      <td style="font-family:var(--sans);font-size:11px;color:var(--text2)" class="hide-mobile">${s.enteredGold || '—'}</td>
+      <td style="text-align:center;font-family:var(--mono);font-size:10.5px" class="hide-mobile">${valJun25}</td>
+      <td style="text-align:center;font-family:var(--mono);font-size:10.5px" class="hide-mobile">${valDec25}</td>
+      <td style="text-align:center;font-family:var(--mono);font-size:10.5px" class="hide-mobile">${valJun26}</td>
       <td style="text-align:center;font-family:var(--mono);font-weight:600;color:var(--accent2)">${Math.floor(s.score)}</td>
       ${cells}
     </tr>`;
