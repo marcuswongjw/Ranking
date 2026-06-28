@@ -605,13 +605,13 @@ td{padding:8px 10px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
         </table>
       </div>
     </div>
-    <!-- Sailor Edit Modal -->
-    <div id="sailorModal" class="drop-overlay" style="background:rgba(0,0,0,.6); align-items:center; justify-content:center; display:none; position:fixed; inset:0; z-index:200;">
-      <div class="card" style="width:820px; max-width:95%; max-height:95vh; overflow-y:auto; background:var(--card); border:1px solid var(--border); box-shadow:0 10px 30px rgba(0,0,0,.3); display:grid; grid-template-columns:1.2fr 1fr; gap:24px; padding:24px; border-radius:12px; position:relative;">
-        <button onclick="closeSailorModal()" style="position:absolute; top:16px; right:16px; background:none; border:none; color:var(--text3); font-size:16px; cursor:pointer;" aria-label="Close modal">✕</button>
-        
+    <!-- Sailor Edit / Analysis Panel (Full Page) -->
+    <div class="panel" id="panel-sailor-analysis">
+      <button onclick="switchView('rankings')" style="background:var(--bg2); color:var(--text); border:1px solid var(--border); padding:6px 12px; font-size:11.5px; border-radius:4px; cursor:pointer; font-family:var(--mono); margin-bottom:15px; display:inline-flex; align-items:center; gap:6px;">← Back to Rankings</button>
+      
+      <div class="card" style="display:grid; grid-template-columns:1.2fr 1fr; gap:24px; padding:24px; border-radius:12px; position:relative;">
         <div>
-          <div class="card-title" style="font-size:16px; margin-bottom:16px; font-family:var(--mono);" id="sm-title">Edit Sailor Profile</div>
+          <div class="card-title" style="font-size:16px; margin-bottom:16px; font-family:var(--mono);" id="sm-title">Sailor Profile & Analysis</div>
           <div style="display:flex; flex-direction:column; gap:12px; margin-bottom:20px;">
             <input type="hidden" id="sm-orig-name">
             <div class="fl">
@@ -641,13 +641,41 @@ td{padding:8px 10px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
                 <input type="text" id="sm-school" style="width:100%;">
               </div>
             </div>
-            <div class="sec-lbl" style="margin-top:10px;">Regatta Scores</div>
+            <div style="display:grid; grid-template-columns:1fr; gap:12px;">
+              <div class="fl">
+                <label class="fl-lbl" for="sm-entered-gold">Gold Fleet Entry Date</label>
+                <select id="sm-entered-gold" style="width:100%; height:30px;">
+                  <option value="—">— none / unknown —</option>
+                  <option value="Jul 2025">Jul 2025</option>
+                  <option value="Jan 2026">Jan 2026</option>
+                  <option value="Jul 2026">Jul 2026</option>
+                </select>
+              </div>
+            </div>
+            
+            <div class="sec-lbl" style="margin-top:10px;">Historical Standings Overrides</div>
+            <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px;">
+              <div class="fl">
+                <label class="fl-lbl" for="sm-override-jun25">Jun 2025 Rank</label>
+                <input type="number" id="sm-override-jun25" style="width:100%;" placeholder="Auto">
+              </div>
+              <div class="fl">
+                <label class="fl-lbl" for="sm-override-dec25">Dec 2025 Rank</label>
+                <input type="number" id="sm-override-dec25" style="width:100%;" placeholder="Auto">
+              </div>
+              <div class="fl">
+                <label class="fl-lbl" for="sm-override-jun26">Jun 2026 Rank</label>
+                <input type="number" id="sm-override-jun26" style="width:100%;" placeholder="Auto">
+              </div>
+            </div>
+            
+            <div class="sec-lbl" style="margin-top:10px;">Regatta Rankings</div>
             <div id="sm-scores-container" style="max-height:180px; overflow-y:auto; display:flex; flex-direction:column; gap:8px; padding-right:4px;">
-              <!-- Regatta scores inputs will be generated here -->
+              <!-- Regatta rankings inputs will be generated here -->
             </div>
           </div>
           <div style="display:flex; justify-content:flex-end; gap:8px;">
-            <button onclick="closeSailorModal()" style="padding:7px 14px; background:var(--bg2); border:1px solid var(--border); border-radius:var(--r); font-size:11px; cursor:pointer; font-family:var(--mono);">Cancel</button>
+            <button onclick="switchView('rankings')" style="padding:7px 14px; background:var(--bg2); border:1px solid var(--border); border-radius:var(--r); font-size:11px; cursor:pointer; font-family:var(--mono);">Cancel</button>
             <button onclick="saveSailorProfile()" style="padding:7px 16px; background:var(--accent); color:#fff; border:none; border-radius:var(--r); font-size:11px; font-weight:600; cursor:pointer; font-family:var(--mono);">Save Changes</button>
           </div>
         </div>
@@ -700,7 +728,7 @@ td{padding:8px 10px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 </div>
 <script>
 const COMP_YEAR=2026,DNS=84;
-let REGATTAS=[],SAILORS=[],EXCLUDED=new Map(),selectedReason='Declined',genderFilter='all',simCount=0,chartObjs={};
+let REGATTAS=[],SAILORS=[],EXCLUDED=new Map(),selectedReason='Declined',genderFilter='all',simCount=0,chartObjs={},SAILOR_METADATA={};
 
 const LOCAL_DATA_KEY = 'op_ranking_regattas_v3';
 
@@ -725,6 +753,12 @@ function openSailorModal(sailorName) {
   document.getElementById('sm-club').value = sailor.club || '';
   document.getElementById('sm-school').value = sailor.school || '';
   
+  const meta = SAILOR_METADATA[sailor.name] || {};
+  document.getElementById('sm-entered-gold').value = meta.enteredGold || '—';
+  document.getElementById('sm-override-jun25').value = meta.histJun25 !== undefined && meta.histJun25 !== null ? meta.histJun25 : '';
+  document.getElementById('sm-override-dec25').value = meta.histDec25 !== undefined && meta.histDec25 !== null ? meta.histDec25 : '';
+  document.getElementById('sm-override-jun26').value = meta.histJun26 !== undefined && meta.histJun26 !== null ? meta.histJun26 : '';
+  
   const container = document.getElementById('sm-scores-container');
   container.innerHTML = '';
   
@@ -737,14 +771,14 @@ function openSailorModal(sailorName) {
     </div>`;
   });
   
-  document.getElementById('sailorModal').style.display = 'flex';
+  switchView('sailor-analysis');
   setTimeout(() => {
     renderSailorPerformanceChart(sailor);
   }, 50);
 }
 
 function closeSailorModal() {
-  document.getElementById('sailorModal').style.display = 'none';
+  switchView('rankings');
   if (sailorChartObj) {
     sailorChartObj.destroy();
     sailorChartObj = null;
@@ -759,6 +793,11 @@ function saveSailorProfile() {
   const club = document.getElementById('sm-club').value.trim();
   const school = document.getElementById('sm-school').value.trim();
   
+  const enteredGold = document.getElementById('sm-entered-gold').value;
+  const histJun25 = document.getElementById('sm-override-jun25').value !== '' ? parseInt(document.getElementById('sm-override-jun25').value) : null;
+  const histDec25 = document.getElementById('sm-override-dec25').value !== '' ? parseInt(document.getElementById('sm-override-dec25').value) : null;
+  const histJun26 = document.getElementById('sm-override-jun26').value !== '' ? parseInt(document.getElementById('sm-override-jun26').value) : null;
+
   if (!newName) {
     alert("Name cannot be empty.");
     return;
@@ -794,16 +833,26 @@ function saveSailorProfile() {
     }
   });
   
-  if (origName !== newName && EXCLUDED.has(origName)) {
-    const reason = EXCLUDED.get(origName);
-    EXCLUDED.delete(origName);
-    EXCLUDED.set(newName, reason);
+  if (origName !== newName) {
+    if (EXCLUDED.has(origName)) {
+      const reason = EXCLUDED.get(origName);
+      EXCLUDED.delete(origName);
+      EXCLUDED.set(newName, reason);
+    }
+    delete SAILOR_METADATA[origName];
   }
+  
+  SAILOR_METADATA[newName] = {
+    enteredGold,
+    histJun25,
+    histDec25,
+    histJun26
+  };
   
   recomputeSailors();
   saveData();
   renderAll();
-  closeSailorModal();
+  switchView('rankings');
 }
 
 function resetDatabaseToSeed() {
@@ -1226,6 +1275,7 @@ function recomputeSailors() {
     const sortedScores = validScores.slice().sort((a, b) => a - b);
     const score = sortedScores.slice(0, 3).reduce((a, b) => a + b, 0);
 
+    const metadata = SAILOR_METADATA[s.name] || {};
     computed.push({
       name: s.name,
       g: s.g,
@@ -1234,7 +1284,11 @@ function recomputeSailors() {
       school: s.school,
       score: score,
       scores: s.scores,
-      ranks: s.ranks
+      ranks: s.ranks,
+      enteredGold: metadata.enteredGold || '—',
+      histJun25: metadata.histJun25 || null,
+      histDec25: metadata.histDec25 || null,
+      histJun26: metadata.histJun26 || null
     });
   });
 
@@ -1279,11 +1333,15 @@ function renderRankingsPanel(){
     <div class="tbl-wrap"><table>
       <thead><tr>
         <th style="width:46px">Rank</th>
-        <th style="width:180px">Sailor</th>
+        <th style="width:160px">Sailor</th>
         <th style="width:32px">G</th>
         <th style="width:46px">Born</th>
         <th style="width:62px">Club</th>
         <th style="width:66px">Squad</th>
+        <th style="width:85px">Entered Gold</th>
+        <th style="width:50px;text-align:center">Jun 25</th>
+        <th style="width:50px;text-align:center">Dec 25</th>
+        <th style="width:50px;text-align:center">Jun 26</th>
         <th style="width:80px;text-align:center">Best 3 of ${latestRegs.length}</th>
         ${regHeaders}
       </tr></thead>
@@ -1328,6 +1386,10 @@ function renderRankings(){
       return `<td style="text-align:center"><span class="pos-tag${isBest3.has(idx)?' best':''}">${v}</span></td>`;
     }).join('');
 
+    const valJun25 = s.histJun25 !== null ? `#${s.histJun25}` : getHistoricalRank(s.name, '2025-06-30');
+    const valDec25 = s.histDec25 !== null ? `#${s.histDec25}` : getHistoricalRank(s.name, '2025-12-31');
+    const valJun26 = s.histJun26 !== null ? `#${s.histJun26}` : getHistoricalRank(s.name, '2026-06-30');
+
     return`<tr style="${rowSt}">
       <td class="rank-c">${s.cur}</td>
       <td class="name-c" onclick="openSailorModal('${s.name.replace(/'/g, "\\'")}')" style="cursor:pointer; color:var(--accent); font-weight:600; text-decoration:underline;">${s.name}${exclTag}</td>
@@ -1335,6 +1397,10 @@ function renderRankings(){
       <td class="sub-c">${s.born}</td>
       <td class="sub-c" style="font-size:10px">${s.club}</td>
       <td>${isExcl?'<span class="badge b-n">Excl.</span>':squadBadge(squad)}</td>
+      <td style="font-family:var(--sans);font-size:11px;color:var(--text2)">${s.enteredGold || '—'}</td>
+      <td style="text-align:center;font-family:var(--mono);font-size:10.5px">${valJun25}</td>
+      <td style="text-align:center;font-family:var(--mono);font-size:10.5px">${valDec25}</td>
+      <td style="text-align:center;font-family:var(--mono);font-size:10.5px">${valJun26}</td>
       <td style="text-align:center;font-family:var(--mono);font-weight:600;color:var(--accent2)">${Math.floor(s.score)}</td>
       ${cells}
     </tr>`;
@@ -2265,7 +2331,8 @@ function switchView(viewId, btn) {
     'target': 'Squad target',
     'exclusions': 'Exclusions',
     'charts': 'Analysis',
-    'fleet': 'Manage Fleet'
+    'fleet': 'Manage Fleet',
+    'sailor-analysis': 'Sailor Profile & Analysis'
   };
   const titleEl = document.getElementById('view-title');
   if (titleEl) titleEl.textContent = titleMap[viewId] || 'OP Gold Ranking';
@@ -2292,7 +2359,7 @@ function switchView(viewId, btn) {
 
 function handleRouting() {
   const hash = window.location.hash.substring(1);
-  const validViews = ['rankings', 'results', 'regattas', 'simulator', 'target', 'exclusions', 'charts', 'fleet'];
+  const validViews = ['rankings', 'results', 'regattas', 'simulator', 'target', 'exclusions', 'charts', 'fleet', 'sailor-analysis'];
   const target = validViews.includes(hash) ? hash : 'rankings';
   switchView(target);
 }
@@ -2875,9 +2942,10 @@ function renderSailorPerformanceChart(sailor) {
   }
 
   // Calculate half-yearly rankings
-  const rankJun25 = getHistoricalRank(sailor.name, '2025-06-30');
-  const rankDec25 = getHistoricalRank(sailor.name, '2025-12-31');
-  const rankJun26 = getHistoricalRank(sailor.name, '2026-06-30');
+  const meta = SAILOR_METADATA[sailor.name] || {};
+  const rankJun25 = meta.histJun25 !== undefined && meta.histJun25 !== null ? `#${meta.histJun25}` : getHistoricalRank(sailor.name, '2025-06-30');
+  const rankDec25 = meta.histDec25 !== undefined && meta.histDec25 !== null ? `#${meta.histDec25}` : getHistoricalRank(sailor.name, '2025-12-31');
+  const rankJun26 = meta.histJun26 !== undefined && meta.histJun26 !== null ? `#${meta.histJun26}` : getHistoricalRank(sailor.name, '2026-06-30');
 
   document.getElementById('sm-stat-best').textContent = best !== Infinity ? `P${best}` : '—';
   document.getElementById('sm-stat-avg').textContent = count > 0 ? `P${Math.round((sum / count) * 10) / 10}` : '—';
@@ -2954,6 +3022,7 @@ function saveData() {
   localStorage.setItem(LOCAL_DATA_KEY, JSON.stringify(REGATTAS));
   localStorage.setItem('op_ranking_dropped_v3', JSON.stringify(Array.from(DROPPED_SAILORS)));
   localStorage.setItem('op_ranking_excluded_v3', JSON.stringify(Array.from(EXCLUDED.entries())));
+  localStorage.setItem('op_ranking_sailor_metadata_v3', JSON.stringify(SAILOR_METADATA));
 }
 
 function loadData() {
@@ -2967,6 +3036,18 @@ function loadData() {
   } catch (e) {
     console.error("Failed to parse REGATTAS:", e);
     REGATTAS = getSeedRegattas();
+  }
+
+  try {
+    const rawMeta = localStorage.getItem('op_ranking_sailor_metadata_v3');
+    if (rawMeta) {
+      SAILOR_METADATA = JSON.parse(rawMeta);
+    } else {
+      SAILOR_METADATA = {};
+    }
+  } catch (e) {
+    console.error("Failed to parse SAILOR_METADATA:", e);
+    SAILOR_METADATA = {};
   }
 
   try {
