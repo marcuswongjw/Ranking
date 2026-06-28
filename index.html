@@ -250,16 +250,9 @@ td{padding:8px 10px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 
 <div class="app">
 <aside class="sidebar">
-  <div class="sb-logo" onclick="switchView('rankings')" style="cursor:pointer; padding-bottom: 8px;">
+  <div class="sb-logo" onclick="switchView('rankings')" style="cursor:pointer;">
     <div class="sb-org">Singapore Sailing</div>
     <h1 id="sidebar-h1">OP Gold<br>Ranking</h1>
-  </div>
-  <div style="padding: 0 16px 14px 16px; border-bottom: 1px solid var(--border); margin-bottom: 14px;">
-    <label class="fl-lbl" for="classSelector" style="color:var(--text3); font-size:9.5px; text-transform:uppercase; margin-bottom:4px; font-family:var(--mono);">Boat Class</label>
-    <select id="classSelector" onchange="changeBoatClass(this.value)" style="width:100%; height:32px; background:var(--bg2); border:1px solid var(--border); border-radius:var(--r); color:var(--text); font-weight:600; padding:0 8px; cursor:pointer;">
-      <option value="optimist">Optimist Gold Fleet</option>
-      <option value="ilca4">ILCA 4 Fleet</option>
-    </select>
   </div>
   <nav class="sb-nav">
     <div class="nav-sec">Views</div>
@@ -417,44 +410,6 @@ td{padding:8px 10px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
         </div>
         <div id="target-output"></div>
       </div>
-      
-      <div id="ilca4-target-view" style="display:none">
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:18px;">
-          <div style="font-size:12px; font-family:var(--mono); color:var(--text3);">Junior Training Squad selection calculator</div>
-          <div style="display:flex; gap:6px;">
-            <button class="reason-btn active" id="btn-intake-july" onclick="setIlcaIntake('july')" style="font-size:11px; padding:6px 12px; height:auto;">July Intake</button>
-            <button class="reason-btn" id="btn-intake-jan" onclick="setIlcaIntake('jan')" style="font-size:11px; padding:6px 12px; height:auto;">January Intake</button>
-          </div>
-        </div>
-        <div class="two-col">
-          <div class="card" style="grid-column: 1 / -1;">
-            <div class="card-title">National Junior Training Squad - ILCA 4</div>
-            <p class="card-desc">Calculated based on Selection Priority buckets. Max 16 spots overall, top 25 overall ranked, age limit <= 17 in intake year.</p>
-            <div class="tbl-wrap" style="margin-top:16px;">
-              <table>
-                <thead>
-                  <tr>
-                    <th style="width:40px">Spot</th>
-                    <th style="width:160px">Sailor</th>
-                    <th style="width:32px">G</th>
-                    <th style="width:50px">Born</th>
-                    <th style="width:50px">Age</th>
-                    <th style="width:60px">Overall Rank</th>
-                    <th style="width:80px">Total Points</th>
-                    <th>Selection Criteria Category</th>
-                  </tr>
-                </thead>
-                <tbody id="ilca-squad-body"></tbody>
-              </table>
-            </div>
-          </div>
-          
-          <div class="card" style="grid-column: 1 / -1;">
-            <div class="card-title">Allocation Log & Roll-downs</div>
-            <p class="card-desc" style="margin-bottom:12px;">Trace logs of the selection algorithm executing priority queues and cascades.</p>
-            <div id="ilca-squad-logs" style="font-family:var(--mono); font-size:11px; line-height:1.6; background:var(--bg2); padding:16px; border-radius:var(--r); border:1px solid var(--border); color:var(--text2); max-height:250px; overflow-y:auto;"></div>
-          </div>
-        </div>
       </div>
     </div>
     <div class="panel" id="panel-exclusions">
@@ -786,7 +741,7 @@ td{padding:8px 10px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 </div>
 <script>
 const COMP_YEAR=2026,DNS=84;
-let CURRENT_CLASS='optimist',REGATTAS=[],SAILORS=[],EXCLUDED=new Map(),selectedReason='Declined',genderFilter='all',simCount=0,chartObjs={},SAILOR_METADATA={};
+let REGATTAS=[],SAILORS=[],EXCLUDED=new Map(),selectedReason='Declined',genderFilter='all',simCount=0,chartObjs={},SAILOR_METADATA={};
 
 const LOCAL_DATA_KEY = 'op_ranking_regattas_v3';
 
@@ -819,12 +774,11 @@ function getRegattaPercentileBase(reg) {
 
 function isAgeDropped(born) {
   if (!born) return false;
-  const ageLimit = CURRENT_CLASS === 'optimist' ? 16 : 18;
-  return born <= (COMP_YEAR - ageLimit);
+  return born <= (COMP_YEAR - 16);
 }
 
 function getAgeLimitCutoffYear() {
-  return CURRENT_CLASS === 'optimist' ? (COMP_YEAR - 15) : (COMP_YEAR - 17);
+  return COMP_YEAR - 15;
 }
 
 function openSailorModal(sailorName) {
@@ -1354,9 +1308,7 @@ function recomputeSailors() {
       const sailorObj = sailorMap.get(matchedKey);
       
       const rankVal = s.rank !== undefined ? s.rank : s.nett;
-      const pointsVal = CURRENT_CLASS === 'optimist' 
-        ? (s.nett !== undefined && s.nett !== null ? s.nett : rankVal)
-        : (rankVal !== null && rankVal !== undefined ? (reg.sailors.length - rankVal + 1) : 0);
+      const pointsVal = (s.nett !== undefined && s.nett !== null ? s.nett : rankVal);
       
       sailorObj.scores[regIdx] = pointsVal;
       sailorObj.ranks[regIdx] = rankVal;
@@ -1370,23 +1322,12 @@ function recomputeSailors() {
 
   const computed = [];
   sailorMap.forEach((s, name) => {
-    let score = 0;
-    if (CURRENT_CLASS === 'optimist') {
-      const validScores = s.scores.map(v => v === null ? DNS : v);
-      while (validScores.length < 5) {
-        validScores.push(DNS);
-      }
-      const sortedScores = validScores.slice().sort((a, b) => a - b);
-      score = sortedScores.slice(0, 3).reduce((a, b) => a + b, 0);
-    } else {
-      // ILCA 4 High Point
-      const validScores = s.scores.map(v => v === null ? 0 : v);
-      while (validScores.length < 5) {
-        validScores.push(0);
-      }
-      const sortedScores = validScores.slice().sort((a, b) => b - a);
-      score = sortedScores.slice(0, 3).reduce((a, b) => a + b, 0);
+    const validScores = s.scores.map(v => v === null ? DNS : v);
+    while (validScores.length < 5) {
+      validScores.push(DNS);
     }
+    const sortedScores = validScores.slice().sort((a, b) => a - b);
+    const score = sortedScores.slice(0, 3).reduce((a, b) => a + b, 0);
 
     const metadata = SAILOR_METADATA[s.name] || {};
     computed.push({
@@ -1406,29 +1347,15 @@ function recomputeSailors() {
   });
 
   computed.sort((a, b) => {
-    if (CURRENT_CLASS === 'optimist') {
-      if (a.score !== b.score) return a.score - b.score;
-      
-      const ranksA = a.ranks.map(v => v === null ? DNS : v).sort((x, y) => x - y);
-      const ranksB = b.ranks.map(v => v === null ? DNS : v).sort((x, y) => x - y);
-      
-      for (let i = 0; i < Math.max(ranksA.length, ranksB.length); i++) {
-        const rA = ranksA[i] !== undefined ? ranksA[i] : DNS;
-        const rB = ranksB[i] !== undefined ? ranksB[i] : DNS;
-        if (rA !== rB) return rA - rB;
-      }
-    } else {
-      // ILCA 4 High Point: higher score is better
-      if (a.score !== b.score) return b.score - a.score;
-      
-      const scoresA = a.scores.map(v => v === null ? 0 : v).sort((x, y) => y - x);
-      const scoresB = b.scores.map(v => v === null ? 0 : v).sort((x, y) => y - x);
-      
-      for (let i = 0; i < Math.max(scoresA.length, scoresB.length); i++) {
-        const sA = scoresA[i] !== undefined ? scoresA[i] : 0;
-        const sB = scoresB[i] !== undefined ? scoresB[i] : 0;
-        if (sA !== sB) return sB - sA;
-      }
+    if (a.score !== b.score) return a.score - b.score;
+    
+    const ranksA = a.ranks.map(v => v === null ? DNS : v).sort((x, y) => x - y);
+    const ranksB = b.ranks.map(v => v === null ? DNS : v).sort((x, y) => x - y);
+    
+    for (let i = 0; i < Math.max(ranksA.length, ranksB.length); i++) {
+      const rA = ranksA[i] !== undefined ? ranksA[i] : DNS;
+      const rB = ranksB[i] !== undefined ? ranksB[i] : DNS;
+      if (rA !== rB) return rA - rB;
     }
     return 0;
   });
@@ -2483,18 +2410,10 @@ function switchView(viewId, btn) {
     renderFleetPanel();
   } else if (viewId === 'target') {
     const opTargetView = document.getElementById('optimist-target-view');
-    const ilcaTargetView = document.getElementById('ilca4-target-view');
-    if (opTargetView && ilcaTargetView) {
-      if (CURRENT_CLASS === 'optimist') {
-        opTargetView.style.display = 'block';
-        ilcaTargetView.style.display = 'none';
-        populateTargetDropdown();
-        runTarget();
-      } else {
-        opTargetView.style.display = 'none';
-        ilcaTargetView.style.display = 'block';
-        renderIlca4SquadSelection();
-      }
+    if (opTargetView) {
+      opTargetView.style.display = 'block';
+      populateTargetDropdown();
+      runTarget();
     }
   }
 
@@ -2596,86 +2515,23 @@ function deleteRegatta(idx) {
 }
 
 function getLocalDataKey() {
-  return CURRENT_CLASS === 'optimist' ? 'op_ranking_regattas_v3' : 'op_ranking_regattas_v3_' + CURRENT_CLASS;
-}
-
-function changeBoatClass(newClass) {
-  CURRENT_CLASS = newClass;
-  
-  const sidebarH1 = document.getElementById('sidebar-h1');
-  if (sidebarH1) {
-    sidebarH1.innerHTML = newClass === 'optimist' ? 'OP Gold<br>Ranking' : 'ILCA 4<br>Ranking';
-  }
-  
-  loadData();
-  switchView('rankings');
-  renderAll();
+  return 'op_ranking_regattas_v3';
 }
 
 function getDefaultSailorMetadata() {
-  if (CURRENT_CLASS === 'optimist') {
-    return {"Anya Alessia Zahedi":{"enteredGold":"—","histJun25":null,"histDec25":null,"histJun26":null},"Desiree Lee Yuet Chi":{"enteredGold":"—","histJun25":null,"histDec25":null,"histJun26":null},"Tham Yan Lin Ashlyn":{"enteredGold":"—","histJun25":null,"histDec25":null,"histJun26":null},"Wai Zhi Tong":{"enteredGold":"—","histJun25":null,"histDec25":null,"histJun26":null},"Dylan Goh Yue Teng":{"enteredGold":"—","histJun25":null,"histDec25":null,"histJun26":null},"Ethan Low Zhi Ren":{"enteredGold":"—","histJun25":null,"histDec25":null,"histJun26":null},"Rahul Rajakanth":{"enteredGold":"—","histJun25":null,"histDec25":null,"histJun26":null},"Cheong Ting Jia Olivia":{"enteredGold":"—","histJun25":null,"histDec25":null,"histJun26":null},"Tan En Ting, Kirsten":{"enteredGold":"—","histJun25":null,"histDec25":null,"histJun26":null},"Shin Lin Chen Rui":{"enteredGold":"—","histJun25":null,"histDec25":null,"histJun26":null},"Kaelyn Dayna Soh Zhi Yin":{"enteredGold":"—","histJun25":null,"histDec25":null,"histJun26":null},"Tan Kai En Joel":{"enteredGold":"—","histJun25":null,"histDec25":null,"histJun26":null},"Chow Yi Min, Yvette":{"enteredGold":"—","histJun25":null,"histDec25":null,"histJun26":null},"Dan Toh Guan You":{"enteredGold":"—","histJun25":null,"histDec25":null,"histJun26":null},"Kyan Tan Chun Hong":{"enteredGold":"—","histJun25":null,"histDec25":null,"histJun26":null},"Worawit Jutahkiti":{"enteredGold":"—","histJun25":null,"histDec25":null,"histJun26":null},"Kai Yen-Yu":{"enteredGold":"—","histJun25":null,"histDec25":null,"histJun26":null},"Seah Yong Zhen Denzel":{"enteredGold":"—","histJun25":null,"histDec25":null,"histJun26":null},"Cyrus Chiam Jing Yi":{"enteredGold":"—","histJun25":null,"histDec25":null,"histJun26":null},"Fong Luke Tin":{"enteredGold":"—","histJun25":null,"histDec25":null,"histJun26":null},"Hagen Goh":{"enteredGold":"—","histJun25":null,"histDec25":null,"histJun26":null},"Irwin Yit Kei Fung":{"enteredGold":"—","histJun25":null,"histDec25":null,"histJun26":null},"XAVIER PUAH YANG ZHENG":{"enteredGold":"—","histJun25":null,"histDec25":null,"histJun26":null},"Estelle Yeo Rui En":{"enteredGold":"—","histJun25":null,"histDec25":null,"histJun26":null},"Jamiroquai Tay Kai Nuo":{"enteredGold":"—","histJun25":null,"histDec25":null,"histJun26":null},"Aiden Wong Kang Jun":{"enteredGold":"—","histJun25":null,"histDec25":null,"histJun26":null},"Chan Qingxuan Joel":{"enteredGold":"—","histJun25":null,"histDec25":null,"histJun26":null},"Xie Si Duo Kiz":{"enteredGold":"—","histJun25":null,"histDec25":null,"histJun26":null},"Paolo Gagliard La Gala":{"enteredGold":"—","histJun25":null,"histDec25":null,"histJun26":null},"Cory Loh Zhi Hang":{"enteredGold":"—","histJun25":null,"histDec25":null,"histJun26":null},"Yong Heng Yi":{"enteredGold":"—","histJun25":null,"histDec25":null,"histJun26":null},"Tan Yi Kai Kayden":{"enteredGold":"—","histJun25":null,"histDec25":null,"histJun26":null},"Callum Wong Joon Thang":{"enteredGold":"—","histJun25":null,"histDec25":null,"histJun26":null},"Isaiah Yap Chor Hong":{"enteredGold":"—","histJun25":null,"histDec25":null,"histJun26":null},"Chen Wang Sun":{"enteredGold":"—","histJun25":null,"histDec25":null,"histJun26":null},"Nicole Wong Jing Chen":{"enteredGold":"—","histJun25":null,"histDec25":null,"histJun26":null},"Edrei Ong En Xu":{"enteredGold":"—","histJun25":null,"histDec25":null,"histJun26":null},"Loh Yi Jie Luke":{"enteredGold":"—","histJun25":null,"histDec25":null,"histJun26":null},"Siti Ra'idah Binte Mohd Airudin":{"enteredGold":"—","histJun25":null,"histDec25":null,"histJun26":null},"Kyle Jeremy Soh Zhi Jun":{"enteredGold":"—","histJun25":null,"histDec25":null,"histJun26":null},"Padmaeja Rajakanth":{"enteredGold":"—","histJun25":null,"histDec25":null,"histJun26":null},"Jeremiah Ong Rui Feng":{"enteredGold":"—","histJun25":null,"histDec25":null,"histJun26":null},"Lim Rui Kai, Lucas":{"enteredGold":"—","histJun25":null,"histDec25":null,"histJun26":null},"Lim Yuk Pin":{"enteredGold":"—","histJun25":null,"histDec25":null,"histJun26":null},"Joel Khoo Zhuo Le":{"enteredGold":"—","histJun25":null,"histDec25":null,"histJun26":null},"Jude Nathan Wong":{"enteredGold":"—","histJun25":null,"histDec25":null,"histJun26":null},"Joel Ong Han Sheng":{"enteredGold":"—","histJun25":null,"histDec25":null,"histJun26":null},"Rachel Lim Qian Hui":{"enteredGold":"—","histJun25":null,"histDec25":null,"histJun26":null},"Lim Rui Xuan Lavene":{"enteredGold":"—","histJun25":null,"histDec25":null,"histJun26":null},"Zachary Low Zhi En":{"enteredGold":"—","histJun25":null,"histDec25":null,"histJun26":null},"Chiang Zhiyi Aaron":{"enteredGold":"—","histJun25":null,"histDec25":null,"histJun26":null},"Ng Kai Zhe Timothy":{"enteredGold":"—","histJun25":null,"histDec25":null,"histJun26":null},"Teo Rui Ling":{"enteredGold":"—","histJun25":null,"histDec25":null,"histJun26":null},"Meera Srihari":{"enteredGold":"—","histJun25":null,"histDec25":null,"histJun26":null},"Charlene Yong Heng Ning":{"enteredGold":"—","histJun25":null,"histDec25":null,"histJun26":null},"Matthew Chiam Qin Hao":{"enteredGold":"—","histJun25":null,"histDec25":null,"histJun26":null},"Gloria Kwok Yen Rui":{"enteredGold":"—","histJun25":null,"histDec25":null,"histJun26":null},"Ethan Tan Jing Zhou":{"enteredGold":"—","histJun25":null,"histDec25":null,"histJun26":null},"Quintan Rupert Low":{"enteredGold":"Jul 2025","histJun25":null,"histDec25":null,"histJun26":null},"Aidan Armand Anuar":{"enteredGold":"—","histJun25":null,"histDec25":null,"histJun26":null},"Lee Gentaro Noah":{"enteredGold":"—","histJun25":null,"histDec25":null,"histJun26":null},"Tan Huan Zhe, Kenji":{"enteredGold":"—","histJun25":null,"histDec25":null,"histJun26":null},"Mikaela Rae Ng":{"enteredGold":"Jan 2026","histJun25":null,"histDec25":null,"histJun26":null}};
-  }
-  return {};
+  return {"Anya Alessia Zahedi":{"enteredGold":"—","histJun25":null,"histDec25":null,"histJun26":null},"Desiree Lee Yuet Chi":{"enteredGold":"—","histJun25":null,"histDec25":null,"histJun26":null},"Tham Yan Lin Ashlyn":{"enteredGold":"—","histJun25":null,"histDec25":null,"histJun26":null},"Wai Zhi Tong":{"enteredGold":"—","histJun25":null,"histDec25":null,"histJun26":null},"Dylan Goh Yue Teng":{"enteredGold":"—","histJun25":null,"histDec25":null,"histJun26":null},"Ethan Low Zhi Ren":{"enteredGold":"—","histJun25":null,"histDec25":null,"histJun26":null},"Rahul Rajakanth":{"enteredGold":"—","histJun25":null,"histDec25":null,"histJun26":null},"Cheong Ting Jia Olivia":{"enteredGold":"—","histJun25":null,"histDec25":null,"histJun26":null},"Tan En Ting, Kirsten":{"enteredGold":"—","histJun25":null,"histDec25":null,"histJun26":null},"Shin Lin Chen Rui":{"enteredGold":"—","histJun25":null,"histDec25":null,"histJun26":null},"Kaelyn Dayna Soh Zhi Yin":{"enteredGold":"—","histJun25":null,"histDec25":null,"histJun26":null},"Tan Kai En Joel":{"enteredGold":"—","histJun25":null,"histDec25":null,"histJun26":null},"Chow Yi Min, Yvette":{"enteredGold":"—","histJun25":null,"histDec25":null,"histJun26":null},"Dan Toh Guan You":{"enteredGold":"—","histJun25":null,"histDec25":null,"histJun26":null},"Kyan Tan Chun Hong":{"enteredGold":"—","histJun25":null,"histDec25":null,"histJun26":null},"Worawit Jutahkiti":{"enteredGold":"—","histJun25":null,"histDec25":null,"histJun26":null},"Kai Yen-Yu":{"enteredGold":"—","histJun25":null,"histDec25":null,"histJun26":null},"Seah Yong Zhen Denzel":{"enteredGold":"—","histJun25":null,"histDec25":null,"histJun26":null},"Cyrus Chiam Jing Yi":{"enteredGold":"—","histJun25":null,"histDec25":null,"histJun26":null},"Fong Luke Tin":{"enteredGold":"—","histJun25":null,"histDec25":null,"histJun26":null},"Hagen Goh":{"enteredGold":"—","histJun25":null,"histDec25":null,"histJun26":null},"Irwin Yit Kei Fung":{"enteredGold":"—","histJun25":null,"histDec25":null,"histJun26":null},"XAVIER PUAH YANG ZHENG":{"enteredGold":"—","histJun25":null,"histDec25":null,"histJun26":null},"Estelle Yeo Rui En":{"enteredGold":"—","histJun25":null,"histDec25":null,"histJun26":null},"Jamiroquai Tay Kai Nuo":{"enteredGold":"—","histJun25":null,"histDec25":null,"histJun26":null},"Aiden Wong Kang Jun":{"enteredGold":"—","histJun25":null,"histDec25":null,"histJun26":null},"Chan Qingxuan Joel":{"enteredGold":"—","histJun25":null,"histDec25":null,"histJun26":null},"Xie Si Duo Kiz":{"enteredGold":"—","histJun25":null,"histDec25":null,"histJun26":null},"Paolo Gagliard La Gala":{"enteredGold":"—","histJun25":null,"histDec25":null,"histJun26":null},"Cory Loh Zhi Hang":{"enteredGold":"—","histJun25":null,"histDec25":null,"histJun26":null},"Yong Heng Yi":{"enteredGold":"—","histJun25":null,"histDec25":null,"histJun26":null},"Tan Yi Kai Kayden":{"enteredGold":"—","histJun25":null,"histDec25":null,"histJun26":null},"Callum Wong Joon Thang":{"enteredGold":"—","histJun25":null,"histDec25":null,"histJun26":null},"Isaiah Yap Chor Hong":{"enteredGold":"—","histJun25":null,"histDec25":null,"histJun26":null},"Chen Wang Sun":{"enteredGold":"—","histJun25":null,"histDec25":null,"histJun26":null},"Nicole Wong Jing Chen":{"enteredGold":"—","histJun25":null,"histDec25":null,"histJun26":null},"Edrei Ong En Xu":{"enteredGold":"—","histJun25":null,"histDec25":null,"histJun26":null},"Loh Yi Jie Luke":{"enteredGold":"—","histJun25":null,"histDec25":null,"histJun26":null},"Siti Ra'idah Binte Mohd Airudin":{"enteredGold":"—","histJun25":null,"histDec25":null,"histJun26":null},"Kyle Jeremy Soh Zhi Jun":{"enteredGold":"—","histJun25":null,"histDec25":null,"histJun26":null},"Padmaeja Rajakanth":{"enteredGold":"—","histJun25":null,"histDec25":null,"histJun26":null},"Jeremiah Ong Rui Feng":{"enteredGold":"—","histJun25":null,"histDec25":null,"histJun26":null},"Lim Rui Kai, Lucas":{"enteredGold":"—","histJun25":null,"histDec25":null,"histJun26":null},"Lim Yuk Pin":{"enteredGold":"—","histJun25":null,"histDec25":null,"histJun26":null},"Joel Khoo Zhuo Le":{"enteredGold":"—","histJun25":null,"histDec25":null,"histJun26":null},"Jude Nathan Wong":{"enteredGold":"—","histJun25":null,"histDec25":null,"histJun26":null},"Joel Ong Han Sheng":{"enteredGold":"—","histJun25":null,"histDec25":null,"histJun26":null},"Rachel Lim Qian Hui":{"enteredGold":"—","histJun25":null,"histDec25":null,"histJun26":null},"Lim Rui Xuan Lavene":{"enteredGold":"—","histJun25":null,"histDec25":null,"histJun26":null},"Zachary Low Zhi En":{"enteredGold":"—","histJun25":null,"histDec25":null,"histJun26":null},"Chiang Zhiyi Aaron":{"enteredGold":"—","histJun25":null,"histDec25":null,"histJun26":null},"Ng Kai Zhe Timothy":{"enteredGold":"—","histJun25":null,"histDec25":null,"histJun26":null},"Teo Rui Ling":{"enteredGold":"—","histJun25":null,"histDec25":null,"histJun26":null},"Meera Srihari":{"enteredGold":"—","histJun25":null,"histDec25":null,"histJun26":null},"Charlene Yong Heng Ning":{"enteredGold":"—","histJun25":null,"histDec25":null,"histJun26":null},"Matthew Chiam Qin Hao":{"enteredGold":"—","histJun25":null,"histDec25":null,"histJun26":null},"Gloria Kwok Yen Rui":{"enteredGold":"—","histJun25":null,"histDec25":null,"histJun26":null},"Ethan Tan Jing Zhou":{"enteredGold":"—","histJun25":null,"histDec25":null,"histJun26":null},"Quintan Rupert Low":{"enteredGold":"Jul 2025","histJun25":null,"histDec25":null,"histJun26":null},"Aidan Armand Anuar":{"enteredGold":"—","histJun25":null,"histDec25":null,"histJun26":null},"Lee Gentaro Noah":{"enteredGold":"—","histJun25":null,"histDec25":null,"histJun26":null},"Tan Huan Zhe, Kenji":{"enteredGold":"—","histJun25":null,"histDec25":null,"histJun26":null},"Mikaela Rae Ng":{"enteredGold":"Jan 2026","histJun25":null,"histDec25":null,"histJun26":null}};
 }
 
 function getDefaultDroppedSailors() {
-  if (CURRENT_CLASS === 'optimist') {
-    return new Set(["Isaiah Yap Chor Hong","Tan Yi Kai Kayden","Callum Wong Joon Thang","Yong Heng Yi","Paolo Gagliard La Gala","Xie Si Duo Kiz","Cory Loh Zhi Hang","Chan Qingxuan Joel","Mohamed Mikail Bin Mohamed Shahrom","Alaric Shenthil naidu","Huang Tianyi","Kate Yeh Zi Ning","Gemma Chen Huang Heng","Isla Lee Zhi Xi","Joshua Khoo Zhuo Xi","Gerome Sim","Germaine Sim","Tham Yan Shuang Ashlea","Mikaela Rae Ng","Zeph Wan"]);
-  }
-  return new Set();
+  return new Set(["Isaiah Yap Chor Hong","Tan Yi Kai Kayden","Callum Wong Joon Thang","Yong Heng Yi","Paolo Gagliard La Gala","Xie Si Duo Kiz","Cory Loh Zhi Hang","Chan Qingxuan Joel","Mohamed Mikail Bin Mohamed Shahrom","Alaric Shenthil naidu","Huang Tianyi","Kate Yeh Zi Ning","Gemma Chen Huang Heng","Isla Lee Zhi Xi","Joshua Khoo Zhuo Xi","Gerome Sim","Germaine Sim","Tham Yan Shuang Ashlea","Mikaela Rae Ng","Zeph Wan"]);
 }
 
 function getDefaultExcludedSailors() {
-  if (CURRENT_CLASS === 'optimist') {
-    return new Map([["Wai Zhi Tong","Declined"]]);
-  }
-  return new Map();
-}
-
-function getIlca4SeedRegattas() {
-  const sailorsList = [
-    { name: "Mikaela Wong", g: "F", born: 2009, club: "SAFYC", school: "Raffles Girls’ School", scores: [1, 2, 1, 3, 2] },
-    { name: "Quintan Rupert Low", g: "M", born: 2010, club: "SAFYC", school: "ACS Independent", scores: [2, 1, 3, 2, 1] },
-    { name: "Ethan Lee", g: "M", born: 2010, club: "PA", school: "Victoria School", scores: [3, 4, 2, 1, 3] },
-    { name: "Lucas Cao", g: "M", born: 2009, club: "SAFYC", school: "Raffles Institution", scores: [4, 3, 4, 5, 4] },
-    { name: "Ashlyn Tham", g: "F", born: 2010, club: "RM", school: "Tanjong Katong Girls School", scores: [5, 5, 6, 4, 6] },
-    { name: "Anya Alessia Zahedi", g: "F", born: 2011, club: "RM", school: "Tao Nan School", scores: [6, 7, 5, 6, 5] },
-    { name: "Darian Huang", g: "M", born: 2011, club: "SAFYC", school: "St Hilda's Primary", scores: [7, 6, 7, 7, 8] },
-    { name: "Elijah Ong", g: "M", born: 2010, club: "SAFYC", school: "St Hilda's Primary", scores: [8, 8, 8, 8, 7] }
-  ];
-
-  const regNames = [
-    { name: "Pesta Sukan (ILCA 4) (Aug 2025)", date: "2025-08-02", type: "selection" },
-    { name: "SNSC (ILCA 4) (Sep 2025)", date: "2025-09-15", type: "selection" },
-    { name: "RSYC (ILCA 4) (Nov 2025)", date: "2025-11-15", type: "selection" },
-    { name: "NSC Cup (ILCA 4) (Dec 2025)", date: "2025-12-15", type: "selection" },
-    { name: "CSC Gold (ILCA 4) (Jan 2026)", date: "2026-01-26", type: "selection" }
-  ];
-
-  return regNames.map((reg, regIdx) => {
-    const sailors = [];
-    sailorsList.forEach(s => {
-      sailors.push({
-        name: s.name,
-        g: s.g,
-        born: s.born,
-        club: s.club,
-        school: s.school,
-        nett: null,
-        rank: s.scores[regIdx]
-      });
-    });
-    return { name: reg.name, date: reg.date, type: reg.type, sailors };
-  });
+  return new Map([["Wai Zhi Tong","Declined"]]);
 }
 
 function getSeedRegattas() {
-  if (CURRENT_CLASS === 'optimist') {
-    return getOptimistSeedRegattas();
-  } else {
-    return getIlca4SeedRegattas();
-  }
+  return getOptimistSeedRegattas();
 }
 
 // ── SEED DATA GENERATOR ─────────────────────────────────────────────────────
@@ -2848,7 +2704,7 @@ function renderFleetPanel() {
   droppedList.innerHTML = droppedSailors.map(s => {
     const isAutoDrop = isAgeDropped(s.born);
     const actionButton = isAutoDrop 
-      ? `<span class="badge b-n" style="background:var(--red-l); color:var(--red); font-size:9px; padding:3px 6px;">Age Limit (${CURRENT_CLASS === 'optimist' ? '>15' : '>17'})</span>`
+      ? `<span class="badge b-n" style="background:var(--red-l); color:var(--red); font-size:9px; padding:3px 6px;">Age Limit (>15)</span>`
       : `<button class="excl-rm" onclick="promoteSailor('${s.name.replace(/'/g, "\\'")}')" style="background:var(--accent-l); color:var(--accent); border:1px solid rgba(26,71,42,.15); min-width:90px; height:24px; padding:0 8px;">＋ Re-promote</button>`;
     
     return `<div class="excl-item" style="margin-bottom:4px; opacity:0.8;">
@@ -2940,12 +2796,12 @@ function getVenueFromName(regName) {
 const historicalRankCache = new Map();
 
 function getHistoricalRank(sailorName, dateStr) {
-  const cacheKey = `${CURRENT_CLASS}_${sailorName}_${dateStr}`;
+  const cacheKey = `optimist_${sailorName}_${dateStr}`;
   if (historicalRankCache.has(cacheKey)) {
     return historicalRankCache.get(cacheKey);
   }
   
-  const batchKeyPrefix = `${CURRENT_CLASS}_batch_${dateStr}`;
+  const batchKeyPrefix = `optimist_batch_${dateStr}`;
   if (!historicalRankCache.has(batchKeyPrefix)) {
     const cutoff = new Date(dateStr);
     const eligibleRegs = REGATTAS.filter(r => r.date && new Date(r.date) <= cutoff);
@@ -2961,7 +2817,6 @@ function getHistoricalRank(sailorName, dateStr) {
       return dA - dB;
     });
     
-    const isOpt = CURRENT_CLASS === 'optimist';
     const activeRegs = sortedRegs.filter(r => r.type !== 'overseas' && r.sailors && r.sailors.length > 0).slice(-5);
     
     const sysSailors = [];
@@ -2991,53 +2846,30 @@ function getHistoricalRank(sailorName, dateStr) {
       
       const scores = activeRegs.map(reg => {
         const sInReg = reg.sailors.find(x => normalizeName(x.name) === norm);
-        if (isOpt) {
-          return sInReg ? (sInReg.rank !== undefined && sInReg.rank !== null ? sInReg.rank : sInReg.nett) : null;
-        } else {
-          return sInReg ? (sInReg.rank !== undefined && sInReg.rank !== null ? (reg.sailors.length - sInReg.rank + 1) : 0) : null;
-        }
+        return sInReg ? (sInReg.rank !== undefined && sInReg.rank !== null ? sInReg.rank : sInReg.nett) : null;
       });
       
-      if (isOpt) {
-        const validScores = scores.map(v => v === null ? DNS : v);
-        while (validScores.length < 5) validScores.push(DNS);
-        const sorted = validScores.slice().sort((a,b)=>a-b);
-        const score = sorted.slice(0,3).reduce((a,b)=>a+b,0);
-        sysSailors.push({ name: originalName, score, ranks: validScores });
-      } else {
-        const validScores = scores.map(v => v === null ? 0 : v);
-        while (validScores.length < 5) validScores.push(0);
-        const sorted = validScores.slice().sort((a,b)=>b-a);
-        const score = sorted.slice(0,3).reduce((a,b)=>a+b,0);
-        sysSailors.push({ name: originalName, score, ranks: validScores });
-      }
+      const validScores = scores.map(v => v === null ? DNS : v);
+      while (validScores.length < 5) validScores.push(DNS);
+      const sorted = validScores.slice().sort((a,b)=>a-b);
+      const score = sorted.slice(0,3).reduce((a,b)=>a+b,0);
+      sysSailors.push({ name: originalName, score, ranks: validScores });
     });
     
     sysSailors.sort((a,b) => {
-      if (isOpt) {
-        if (a.score !== b.score) return a.score - b.score;
-        const rA = [...a.ranks].sort((x,y)=>(x===null?DNS:x) - (y===null?DNS:y));
-        const rB = [...b.ranks].sort((x,y)=>(x===null?DNS:x) - (y===null?DNS:y));
-        for (let i=0; i<5; i++) {
-          const valA = rA[i] !== undefined && rA[i] !== null ? rA[i] : DNS;
-          const valB = rB[i] !== undefined && rB[i] !== null ? rB[i] : DNS;
-          if (valA !== valB) return valA - valB;
-        }
-      } else {
-        if (a.score !== b.score) return b.score - a.score;
-        const rA = [...a.ranks].sort((x,y)=>(y===null?0:y) - (x===null?0:x));
-        const rB = [...b.ranks].sort((x,y)=>(y===null?0:y) - (x===null?0:x));
-        for (let i=0; i<5; i++) {
-          const valA = rA[i] !== undefined && rA[i] !== null ? rA[i] : 0;
-          const valB = rB[i] !== undefined && rB[i] !== null ? rB[i] : 0;
-          if (valA !== valB) return valB - valA;
-        }
+      if (a.score !== b.score) return a.score - b.score;
+      const rA = [...a.ranks].sort((x,y)=>(x===null?DNS:x) - (y===null?DNS:y));
+      const rB = [...b.ranks].sort((x,y)=>(x===null?DNS:x) - (y===null?DNS:y));
+      for (let i=0; i<5; i++) {
+        const valA = rA[i] !== undefined && rA[i] !== null ? rA[i] : DNS;
+        const valB = rB[i] !== undefined && rB[i] !== null ? rB[i] : DNS;
+        if (valA !== valB) return valA - valB;
       }
       return 0;
     });
     
     sysSailors.forEach((s, idx) => {
-      historicalRankCache.set(`${CURRENT_CLASS}_${s.name}_${dateStr}`, `#${idx + 1}`);
+      historicalRankCache.set(`optimist_${s.name}_${dateStr}`, `#${idx + 1}`);
     });
     historicalRankCache.set(batchKeyPrefix, true);
   }
@@ -3077,8 +2909,7 @@ function renderSailorPerformanceChart(sailor) {
         count++;
 
         allFinishes.push(r);
-        const N = reg.sailors.length;
-        const pts = CURRENT_CLASS === 'optimist' ? r : Math.max(0, N - r + 1);
+        const pts = r;
         allPoints.push(pts);
 
         const venue = getVenueFromName(reg.name);
@@ -3108,11 +2939,7 @@ function renderSailorPerformanceChart(sailor) {
     const avg = scores.reduce((a, b) => a + b, 0) / scores.length;
     venueAvgs.push({ venue, avg });
   }
-  if (CURRENT_CLASS === 'optimist') {
-    venueAvgs.sort((a, b) => a.avg - b.avg);
-  } else {
-    venueAvgs.sort((a, b) => b.avg - a.avg);
-  }
+  venueAvgs.sort((a, b) => a.avg - b.avg);
   
   const bestVenue = venueAvgs.length > 0 ? `${venueAvgs[0].venue} (Avg: ${venueAvgs[0].avg.toFixed(1)})` : '—';
   const worstVenue = venueAvgs.length > 0 ? `${venueAvgs[venueAvgs.length - 1].venue} (Avg: ${venueAvgs[venueAvgs.length - 1].avg.toFixed(1)})` : '—';
@@ -3120,28 +2947,17 @@ function renderSailorPerformanceChart(sailor) {
   // Calculate Nett vs Gross scores and averages
   let nettScoreSum = 0;
   let grossScoreSum = 0;
-  let nettAvg = CURRENT_CLASS === 'optimist' ? DNS : 0;
-  let grossAvg = CURRENT_CLASS === 'optimist' ? DNS : 0;
+  let nettAvg = DNS;
+  let grossAvg = DNS;
   if (allPoints.length > 0) {
-    if (CURRENT_CLASS === 'optimist') {
-      const validScoresForNett = allPoints.map(v => v === null ? DNS : v);
-      while (validScoresForNett.length < 5) validScoresForNett.push(DNS);
-      const sortedForNett = [...validScoresForNett].sort((a, b) => a - b);
-      nettScoreSum = sortedForNett.slice(0, 3).reduce((a, b) => a + b, 0);
-      nettAvg = nettScoreSum / 3;
+    const validScoresForNett = allPoints.map(v => v === null ? DNS : v);
+    while (validScoresForNett.length < 5) validScoresForNett.push(DNS);
+    const sortedForNett = [...validScoresForNett].sort((a, b) => a - b);
+    nettScoreSum = sortedForNett.slice(0, 3).reduce((a, b) => a + b, 0);
+    nettAvg = nettScoreSum / 3;
 
-      grossScoreSum = allPoints.reduce((a, b) => a + b, 0);
-      grossAvg = grossScoreSum / allPoints.length;
-    } else {
-      const validScoresForNett = allPoints.map(v => v === null ? 0 : v);
-      while (validScoresForNett.length < 5) validScoresForNett.push(0);
-      const sortedForNett = [...validScoresForNett].sort((a, b) => b - a);
-      nettScoreSum = sortedForNett.slice(0, 3).reduce((a, b) => a + b, 0);
-      nettAvg = nettScoreSum / 3;
-
-      grossScoreSum = allPoints.reduce((a, b) => a + b, 0);
-      grossAvg = grossScoreSum / allPoints.length;
-    }
+    grossScoreSum = allPoints.reduce((a, b) => a + b, 0);
+    grossAvg = grossScoreSum / allPoints.length;
   }
 
   // Calculate half-yearly rankings
