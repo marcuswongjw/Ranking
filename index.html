@@ -742,6 +742,7 @@ td{padding:8px 10px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 <script>
 const COMP_YEAR=2026,DNS=84;
 let REGATTAS=[],SAILORS=[],EXCLUDED=new Map(),selectedReason='Declined',genderFilter='all',simCount=0,chartObjs={},SAILOR_METADATA={};
+let sortKey='score',sortAsc=true;
 
 const LOCAL_DATA_KEY = 'op_ranking_regattas_v3';
 
@@ -1307,10 +1308,9 @@ function recomputeSailors() {
       }
       const sailorObj = sailorMap.get(matchedKey);
       
-      const rankVal = s.rank !== undefined ? s.rank : s.nett;
-      const pointsVal = (s.nett !== undefined && s.nett !== null ? s.nett : rankVal);
+      const rankVal = (s.rank !== undefined && s.rank !== null) ? s.rank : s.nett;
       
-      sailorObj.scores[regIdx] = pointsVal;
+      sailorObj.scores[regIdx] = rankVal;
       sailorObj.ranks[regIdx] = rankVal;
       
       if (s.g && !sailorObj.g) sailorObj.g = s.g;
@@ -1322,8 +1322,8 @@ function recomputeSailors() {
 
   const computed = [];
   sailorMap.forEach((s, name) => {
-    const validScores = s.scores.map(v => v === null ? DNS : v);
-    while (validScores.length < 5) {
+    const validScores = s.scores.map(v => (v === null || v === undefined) ? DNS : v);
+    while (validScores.length < latestRegs.length) {
       validScores.push(DNS);
     }
     const sortedScores = validScores.slice().sort((a, b) => a - b);
@@ -1363,6 +1363,40 @@ function recomputeSailors() {
   SAILORS = computed;
 }
 
+function squadNameOrder(squad) {
+  if (squad === 'Nat A') return 1;
+  if (squad === 'Nat B') return 2;
+  if (squad === 'DS') return 3;
+  return 4;
+}
+
+function getHistoricalSortValue(sailor, prop, dateStr) {
+  if (sailor[prop] !== null && sailor[prop] !== undefined) {
+    return sailor[prop];
+  }
+  const hist = getHistoricalRank(sailor.name, dateStr);
+  if (hist && hist.startsWith('#')) {
+    const num = parseInt(hist.substring(1));
+    if (!isNaN(num)) return num;
+  }
+  return 999;
+}
+
+function handleSort(key) {
+  if (sortKey === key) {
+    sortAsc = !sortAsc;
+  } else {
+    sortKey = key;
+    sortAsc = true;
+  }
+  renderRankings();
+}
+
+function getSortIndicator(key) {
+  if (sortKey !== key) return ' <span style="font-size:8px;color:var(--text3);opacity:0.3;">↕</span>';
+  return sortAsc ? ' <span style="font-size:9px;color:var(--accent);font-weight:bold">▲</span>' : ' <span style="font-size:9px;color:var(--accent);font-weight:bold">▼</span>';
+}
+
 function renderRankingsPanel(){
   if(!SAILORS.length) return;
   const sq=computeSquads(SAILORS);
@@ -1372,7 +1406,7 @@ function renderRankingsPanel(){
   const excl=EXCLUDED.size;
 
   const latestRegs = getActiveRegattas();
-  const regHeaders = latestRegs.map(r => `<th style="text-align:center">${r.name}</th>`).join('');
+  const regHeaders = latestRegs.map((r, rIdx) => `<th style="text-align:center;cursor:pointer;user-select:none" onclick="handleSort('reg_${rIdx}')">${r.name}${getSortIndicator('reg_' + rIdx)}</th>`).join('');
 
   document.getElementById('rankings-content').innerHTML=`
     ${excl>0?`<div class="excl-banner">⚠ <strong>${excl} sailor${excl>1?'s':''} excluded</strong> from squad selection. <a href="#" onclick="switchView('exclusions',document.getElementById('nav-excl'));return false;" style="color:var(--red);margin-left:4px;font-family:var(--mono);font-size:10px">Manage →</a></div>`:''}
@@ -1385,17 +1419,17 @@ function renderRankingsPanel(){
     </div>
     <div class="tbl-wrap"><table>
       <thead><tr>
-        <th style="width:46px">Rank</th>
-        <th style="width:160px">Sailor</th>
-        <th style="width:32px">G</th>
-        <th style="width:46px">Born</th>
-        <th style="width:62px">Club</th>
-        <th style="width:66px">Squad</th>
-        <th style="width:85px" class="hide-mobile">Entered Gold</th>
-        <th style="width:50px;text-align:center" class="hide-mobile">Jun 25</th>
-        <th style="width:50px;text-align:center" class="hide-mobile">Dec 25</th>
-        <th style="width:50px;text-align:center" class="hide-mobile">Jun 26</th>
-        <th style="width:80px;text-align:center">Best 3 of ${latestRegs.length}</th>
+        <th style="width:46px;cursor:pointer;user-select:none" onclick="handleSort('cur')">Rank${getSortIndicator('cur')}</th>
+        <th style="width:160px;cursor:pointer;user-select:none" onclick="handleSort('name')">Sailor${getSortIndicator('name')}</th>
+        <th style="width:32px;cursor:pointer;user-select:none" onclick="handleSort('gender')">G${getSortIndicator('gender')}</th>
+        <th style="width:46px;cursor:pointer;user-select:none" onclick="handleSort('born')">Born${getSortIndicator('born')}</th>
+        <th style="width:62px;cursor:pointer;user-select:none" onclick="handleSort('club')">Club${getSortIndicator('club')}</th>
+        <th style="width:66px;cursor:pointer;user-select:none" onclick="handleSort('squad')">Squad${getSortIndicator('squad')}</th>
+        <th style="width:85px;cursor:pointer;user-select:none" class="hide-mobile" onclick="handleSort('enteredGold')">Entered Gold${getSortIndicator('enteredGold')}</th>
+        <th style="width:50px;text-align:center;cursor:pointer;user-select:none" class="hide-mobile" onclick="handleSort('jun25')">Jun 25${getSortIndicator('jun25')}</th>
+        <th style="width:50px;text-align:center;cursor:pointer;user-select:none" class="hide-mobile" onclick="handleSort('dec25')">Dec 25${getSortIndicator('dec25')}</th>
+        <th style="width:50px;text-align:center;cursor:pointer;user-select:none" class="hide-mobile" onclick="handleSort('jun26')">Jun 26${getSortIndicator('jun26')}</th>
+        <th style="width:80px;text-align:center;cursor:pointer;user-select:none" onclick="handleSort('score')">Best 3 of ${latestRegs.length}${getSortIndicator('score')}</th>
         ${regHeaders}
       </tr></thead>
       <tbody id="rank-body"></tbody>
@@ -1420,6 +1454,61 @@ function renderRankings(){
     if(nm&&!s.name.toLowerCase().includes(nm))return false;
     if(t50&&s.cur>50)return false;
     return true;
+  });
+
+  data.sort((a, b) => {
+    let valA, valB;
+    if (sortKey === 'cur') {
+      valA = a.cur;
+      valB = b.cur;
+    } else if (sortKey === 'name') {
+      valA = a.name;
+      valB = b.name;
+    } else if (sortKey === 'gender') {
+      valA = a.g;
+      valB = b.g;
+    } else if (sortKey === 'born') {
+      valA = a.born;
+      valB = b.born;
+    } else if (sortKey === 'club') {
+      valA = a.club;
+      valB = b.club;
+    } else if (sortKey === 'squad') {
+      valA = squadNameOrder(sq.get(a.name));
+      valB = squadNameOrder(sq.get(b.name));
+    } else if (sortKey === 'enteredGold') {
+      valA = a.enteredGold || '—';
+      valB = b.enteredGold || '—';
+    } else if (sortKey === 'jun25') {
+      valA = getHistoricalSortValue(a, 'histJun25', '2025-06-30');
+      valB = getHistoricalSortValue(b, 'histJun25', '2025-06-30');
+    } else if (sortKey === 'dec25') {
+      valA = getHistoricalSortValue(a, 'histDec25', '2025-12-31');
+      valB = getHistoricalSortValue(b, 'histDec25', '2025-12-31');
+    } else if (sortKey === 'jun26') {
+      valA = getHistoricalSortValue(a, 'histJun26', '2026-06-30');
+      valB = getHistoricalSortValue(b, 'histJun26', '2026-06-30');
+    } else if (sortKey === 'score') {
+      valA = a.score;
+      valB = b.score;
+    } else if (sortKey.startsWith('reg_')) {
+      const regIdx = parseInt(sortKey.split('_')[1]);
+      valA = a.ranks[regIdx] !== null && a.ranks[regIdx] !== undefined ? a.ranks[regIdx] : 999;
+      valB = b.ranks[regIdx] !== null && b.ranks[regIdx] !== undefined ? b.ranks[regIdx] : 999;
+    } else {
+      valA = a.cur;
+      valB = b.cur;
+    }
+
+    if (valA === valB) {
+      return a.cur - b.cur;
+    }
+    
+    if (typeof valA === 'string' && typeof valB === 'string') {
+      return sortAsc ? valA.localeCompare(valB) : valB.localeCompare(valA);
+    } else {
+      return sortAsc ? valA - valB : valB - valA;
+    }
   });
 
   body.innerHTML=data.map(s=>{
