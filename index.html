@@ -790,9 +790,15 @@ let CURRENT_CLASS='optimist',REGATTAS=[],SAILORS=[],EXCLUDED=new Map(),selectedR
 
 const LOCAL_DATA_KEY = 'op_ranking_regattas_v3';
 
+const nameNormalizationCache = new Map();
+
 function normalizeName(name) {
   if (!name) return "";
-  return String(name).toLowerCase().replace(/[,.-]/g, ' ').split(/\s+/).filter(Boolean).sort().join(' ');
+  let cached = nameNormalizationCache.get(name);
+  if (cached !== undefined) return cached;
+  const normalized = String(name).toLowerCase().replace(/[,.-]/g, ' ').split(/\s+/).filter(Boolean).sort().join(' ');
+  nameNormalizationCache.set(name, normalized);
+  return normalized;
 }
 
 function isSameSailor(nameA, nameB) {
@@ -1290,6 +1296,7 @@ function squadBadge(sq){
 }
 
 function recomputeSailors() {
+  historicalRankCache.clear();
   REGATTAS.forEach(reg => {
     if (!reg.date) {
       reg.date = getRegattaDateByName(reg.name);
@@ -1304,12 +1311,15 @@ function recomputeSailors() {
 
   const latestRegs = getActiveRegattas();
   const sailorMap = new Map();
+  const normalizedToOriginal = new Map();
   
   // Pre-populate with all active (non-dropped) system sailors
   const allSystemSailors = getAllSailorsInSystem();
   allSystemSailors.forEach(s => {
     if (DROPPED_SAILORS.has(s.name)) return;
     if (isAgeDropped(s.born)) return;
+    const norm = normalizeName(s.name);
+    normalizedToOriginal.set(norm, s.name);
     sailorMap.set(s.name, {
       name: s.name,
       g: s.g,
@@ -1325,15 +1335,12 @@ function recomputeSailors() {
     reg.sailors.forEach(s => {
       if (DROPPED_SAILORS.has(s.name)) return;
       if (isAgeDropped(s.born)) return;
-      let matchedKey = null;
-      for (const existingName of sailorMap.keys()) {
-        if (isSameSailor(existingName, s.name)) {
-          matchedKey = existingName;
-          break;
-        }
-      }
+      
+      const norm = normalizeName(s.name);
+      let matchedKey = normalizedToOriginal.get(norm);
       if (!matchedKey) {
         matchedKey = s.name;
+        normalizedToOriginal.set(norm, matchedKey);
         sailorMap.set(matchedKey, {
           name: s.name,
           g: s.g || s.gender,
@@ -2696,17 +2703,16 @@ function getActiveRegattas() {
 
 function getAllSailorsInSystem() {
   const allNames = new Map();
+  const normalizedToOriginal = new Map();
+  
   REGATTAS.forEach(reg => {
     reg.sailors.forEach(s => {
-      let matchedKey = null;
-      for (const existingName of allNames.keys()) {
-        if (isSameSailor(existingName, s.name)) {
-          matchedKey = existingName;
-          break;
-        }
-      }
+      const norm = normalizeName(s.name);
+      let matchedKey = normalizedToOriginal.get(norm);
       if (!matchedKey) {
-        allNames.set(s.name, {
+        matchedKey = s.name;
+        normalizedToOriginal.set(norm, matchedKey);
+        allNames.set(matchedKey, {
           name: s.name,
           g: s.g,
           born: s.born,
@@ -2931,110 +2937,112 @@ function getVenueFromName(regName) {
   return words[0] || 'Unknown';
 }
 
+const historicalRankCache = new Map();
+
 function getHistoricalRank(sailorName, dateStr) {
-  const cutoff = new Date(dateStr);
-  const eligibleRegs = REGATTAS.filter(r => r.date && new Date(r.date) <= cutoff);
-  if (eligibleRegs.length === 0) return '—';
+  const cacheKey = `${CURRENT_CLASS}_${sailorName}_${dateStr}`;
+  if (historicalRankCache.has(cacheKey)) {
+    return historicalRankCache.get(cacheKey);
+  }
   
-  // Sort and pick top 5
-  const sortedRegs = [...eligibleRegs].sort((a,b) => new Date(a.date) - new Date(b.date));
-  const activeRegs = sortedRegs.slice(-5);
-  
-  // Calculate scores for all active sailors up to this cutoff
-  const sysSailors = [];
-  const systemNames = new Set();
-  eligibleRegs.forEach(reg => reg.sailors.forEach(s => systemNames.add(s.name)));
-  
-  systemNames.forEach(name => {
-    // Find details
-    let g="M", born=2013, club="";
-    eligibleRegs.forEach(reg => {
-      const found = reg.sailors.find(x => isSameSailor(x.name, name));
-      if (found) {
-        if (found.g) g = found.g;
-        if (found.born) born = found.born;
-        if (found.club) club = found.club;
+  const batchKeyPrefix = `${CURRENT_CLASS}_batch_${dateStr}`;
+  if (!historicalRankCache.has(batchKeyPrefix)) {
+    const cutoff = new Date(dateStr);
+    const eligibleRegs = REGATTAS.filter(r => r.date && new Date(r.date) <= cutoff);
+    if (eligibleRegs.length === 0) {
+      historicalRankCache.set(batchKeyPrefix, true);
+      historicalRankCache.set(cacheKey, '—');
+      return '—';
+    }
+    
+    const sortedRegs = [...eligibleRegs].sort((a,b) => {
+      const dA = a.date ? new Date(a.date) : new Date(0);
+      const dB = b.date ? new Date(b.date) : new Date(0);
+      return dA - dB;
+    });
+    
+    const isOpt = CURRENT_CLASS === 'optimist';
+    const activeRegs = sortedRegs.filter(r => r.type !== 'overseas' && r.sailors && r.sailors.length > 0).slice(-5);
+    
+    const sysSailors = [];
+    const systemNames = new Set();
+    activeRegs.forEach(reg => reg.sailors.forEach(s => systemNames.add(s.name)));
+    
+    const normalizedToOriginal = new Map();
+    systemNames.forEach(name => {
+      const norm = normalizeName(name);
+      if (!normalizedToOriginal.has(norm)) {
+        normalizedToOriginal.set(norm, name);
       }
     });
     
-    if (DROPPED_SAILORS.has(name)) return;
-    if (born && born <= (COMP_YEAR - 16)) return;
-    
-    // Scores
-    const scores = activeRegs.map(reg => {
-      const sInReg = reg.sailors.find(x => isSameSailor(x.name, name));
-      return sInReg ? (sInReg.rank !== undefined && sInReg.rank !== null ? sInReg.rank : sInReg.nett) : null;
+    normalizedToOriginal.forEach((originalName, norm) => {
+      let g = "M", born = 2013;
+      eligibleRegs.forEach(reg => {
+        const found = reg.sailors.find(x => normalizeName(x.name) === norm);
+        if (found) {
+          if (found.g) g = found.g;
+          if (found.born) born = found.born;
+        }
+      });
+      
+      if (DROPPED_SAILORS.has(originalName)) return;
+      if (isAgeDropped(born)) return;
+      
+      const scores = activeRegs.map(reg => {
+        const sInReg = reg.sailors.find(x => normalizeName(x.name) === norm);
+        if (isOpt) {
+          return sInReg ? (sInReg.rank !== undefined && sInReg.rank !== null ? sInReg.rank : sInReg.nett) : null;
+        } else {
+          return sInReg ? (sInReg.rank !== undefined && sInReg.rank !== null ? (reg.sailors.length - sInReg.rank + 1) : 0) : null;
+        }
+      });
+      
+      if (isOpt) {
+        const validScores = scores.map(v => v === null ? DNS : v);
+        while (validScores.length < 5) validScores.push(DNS);
+        const sorted = validScores.slice().sort((a,b)=>a-b);
+        const score = sorted.slice(0,3).reduce((a,b)=>a+b,0);
+        sysSailors.push({ name: originalName, score, ranks: validScores });
+      } else {
+        const validScores = scores.map(v => v === null ? 0 : v);
+        while (validScores.length < 5) validScores.push(0);
+        const sorted = validScores.slice().sort((a,b)=>b-a);
+        const score = sorted.slice(0,3).reduce((a,b)=>a+b,0);
+        sysSailors.push({ name: originalName, score, ranks: validScores });
+      }
     });
     
-    const validScores = scores.map(v => v === null ? DNS : v);
-    while (validScores.length < 5) validScores.push(DNS);
-    const sorted = validScores.sort((a,b)=>a-b);
-    const score = sorted.slice(0,3).reduce((a,b)=>a+b,0);
-    
-    sysSailors.push({ name, score, ranks: validScores, born });
-  });
-  
-  // Sort standings
-  sysSailors.sort((a,b) => {
-    if (a.score !== b.score) return a.score - b.score;
-    const rA = [...a.ranks].sort((x,y)=>x-y);
-    const rB = [...b.ranks].sort((x,y)=>x-y);
-    for (let i=0; i<5; i++) {
-      if ((rA[i]||DNS) !== (rB[i]||DNS)) return (rA[i]||DNS) - (rB[i]||DNS);
-    }
-    return 0;
-  });
-  
-  const rankIdx = sysSailors.findIndex(x => isSameSailor(x.name, sailorName));
-  return rankIdx !== -1 ? `#${rankIdx + 1}` : '—';
-}
-
-function getHistoricalRank(sailorName, dateStr) {
-  const cutoff = new Date(dateStr);
-  const eligibleRegs = REGATTAS.filter(r => r.date && new Date(r.date) <= cutoff);
-  if (eligibleRegs.length === 0) return '—';
-  
-  const sortedRegs = [...eligibleRegs].sort((a,b) => {
-    const dA = a.date ? new Date(a.date) : new Date(0);
-    const dB = b.date ? new Date(b.date) : new Date(0);
-    return dA - dB;
-  });
-  
-  const activeRegs = sortedRegs.filter(r => r.sailors && r.sailors.length > 0).slice(-5);
-  if (activeRegs.length === 0) return '—';
-  
-  const sysSailors = [];
-  const systemNames = new Set();
-  activeRegs.forEach(reg => reg.sailors.forEach(s => systemNames.add(s.name)));
-  
-  systemNames.forEach(name => {
-    const scores = activeRegs.map(reg => {
-      const sInReg = reg.sailors.find(x => isSameSailor(x.name, name));
-      return sInReg ? (sInReg.rank !== undefined && sInReg.rank !== null ? sInReg.rank : sInReg.nett) : null;
+    sysSailors.sort((a,b) => {
+      if (isOpt) {
+        if (a.score !== b.score) return a.score - b.score;
+        const rA = [...a.ranks].sort((x,y)=>(x===null?DNS:x) - (y===null?DNS:y));
+        const rB = [...b.ranks].sort((x,y)=>(x===null?DNS:x) - (y===null?DNS:y));
+        for (let i=0; i<5; i++) {
+          const valA = rA[i] !== undefined && rA[i] !== null ? rA[i] : DNS;
+          const valB = rB[i] !== undefined && rB[i] !== null ? rB[i] : DNS;
+          if (valA !== valB) return valA - valB;
+        }
+      } else {
+        if (a.score !== b.score) return b.score - a.score;
+        const rA = [...a.ranks].sort((x,y)=>(y===null?0:y) - (x===null?0:x));
+        const rB = [...b.ranks].sort((x,y)=>(y===null?0:y) - (x===null?0:x));
+        for (let i=0; i<5; i++) {
+          const valA = rA[i] !== undefined && rA[i] !== null ? rA[i] : 0;
+          const valB = rB[i] !== undefined && rB[i] !== null ? rB[i] : 0;
+          if (valA !== valB) return valB - valA;
+        }
+      }
+      return 0;
     });
     
-    const validScores = scores.map(v => v === null ? DNS : v);
-    while (validScores.length < 5) validScores.push(DNS);
-    const sorted = validScores.sort((a,b)=>a-b);
-    const score = sorted.slice(0,3).reduce((a,b)=>a+b,0);
-    
-    sysSailors.push({ name, score, ranks: validScores });
-  });
+    sysSailors.forEach((s, idx) => {
+      historicalRankCache.set(`${CURRENT_CLASS}_${s.name}_${dateStr}`, `#${idx + 1}`);
+    });
+    historicalRankCache.set(batchKeyPrefix, true);
+  }
   
-  sysSailors.sort((a,b) => {
-    if (a.score !== b.score) return a.score - b.score;
-    const rA = [...a.ranks].sort((x,y)=>(x===null?DNS:x) - (y===null?DNS:y));
-    const rB = [...b.ranks].sort((x,y)=>(x===null?DNS:x) - (y===null?DNS:y));
-    for (let i=0; i<5; i++) {
-      const valA = rA[i] !== undefined && rA[i] !== null ? rA[i] : DNS;
-      const valB = rB[i] !== undefined && rB[i] !== null ? rB[i] : DNS;
-      if (valA !== valB) return valA - valB;
-    }
-    return 0;
-  });
-  
-  const rankIdx = sysSailors.findIndex(x => isSameSailor(x.name, sailorName));
-  return rankIdx !== -1 ? `#${rankIdx + 1}` : '—';
+  return historicalRankCache.get(cacheKey) || '—';
 }
 
 function renderSailorPerformanceChart(sailor) {
