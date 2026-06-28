@@ -764,7 +764,7 @@ function openSailorModal(sailorName) {
   
   REGATTAS.forEach((reg, regIdx) => {
     const sInReg = reg.sailors.find(x => isSameSailor(x.name, sailor.name));
-    const val = sInReg ? sInReg.nett : '';
+    const val = sInReg ? (sInReg.rank !== undefined && sInReg.rank !== null ? sInReg.rank : sInReg.nett) : '';
     container.innerHTML += `<div class="wi-row" style="padding:6px 10px; margin-bottom:4px;">
       <div class="wi-name" style="font-size:11px; font-family:var(--mono);">${reg.name}</div>
       <input type="number" class="sm-reg-score" data-reg-idx="${regIdx}" value="${val}" style="width:65px; height:26px; font-size:10px; text-align:center;" placeholder="DNS">
