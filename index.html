@@ -264,6 +264,7 @@ td{padding:8px 10px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
     <button class="nav-item" onclick="switchView('exclusions',this)" id="nav-excl"><span class="nav-dot dot-r"></span>Exclusions<span class="excl-ct" id="excl-badge" style="display:none">0</span></button>
     <button class="nav-item" onclick="switchView('charts',this)"><span class="nav-dot dot-n"></span>Analysis</button>
     <button class="nav-item" onclick="switchView('major-comps',this)"><span class="nav-dot dot-n"></span>Major Competitions</button>
+    <button class="nav-item" onclick="switchView('hist-gold',this)"><span class="nav-dot dot-n"></span>Historical & Gold</button>
     <button class="nav-item" onclick="switchView('fleet',this)"><span class="nav-dot dot-n"></span>Manage Fleet</button>
     <div class="nav-sec">Quick filters</div>
     <button class="nav-item" onclick="quickFilter('Nat A')"><span class="nav-dot dot-a"></span>National A</button>
@@ -459,6 +460,28 @@ td{padding:8px 10px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
             </tr>
           </thead>
           <tbody id="major-comps-body"></tbody>
+        </table>
+      </div>
+    </div>
+    <div class="panel" id="panel-hist-gold">
+      <div class="card" style="margin-bottom:18px;">
+        <div class="card-title">Historical Rankings & Gold Fleet Entry</div>
+        <p class="card-desc">Track when each sailor entered the Gold Fleet and their historical ranking snapshots at key milestones.</p>
+      </div>
+      <div class="tbl-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th style="width:46px;">Rank</th>
+              <th style="width:180px;">Sailor</th>
+              <th style="width:32px;">G</th>
+              <th style="width:100px;">Entered Gold</th>
+              <th style="width:70px;text-align:center;">Jun 25</th>
+              <th style="width:70px;text-align:center;">Dec 25</th>
+              <th style="width:70px;text-align:center;">Jun 26</th>
+            </tr>
+          </thead>
+          <tbody id="hist-gold-body"></tbody>
         </table>
       </div>
     </div>
@@ -681,6 +704,8 @@ td{padding:8px 10px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
                 <label class="fl-lbl" for="sm-entered-gold">Gold Fleet Entry Date</label>
                 <select id="sm-entered-gold" style="width:100%; height:30px;">
                   <option value="—">— none / unknown —</option>
+                  <option value="Jan 2023">Jan 2023</option>
+                  <option value="Jul 2023">Jul 2023</option>
                   <option value="Jan 2024">Jan 2024</option>
                   <option value="Jul 2024">Jul 2024</option>
                   <option value="Jan 2025">Jan 2025</option>
@@ -853,17 +878,26 @@ function getAgeLimitCutoffYear() {
 
 function openSailorModal(sailorName) {
   const allSystem = getAllSailorsInSystem();
-  const sailor = allSystem.find(s => isSameSailor(s.name, sailorName));
-  if (!sailor) return;
+  let sailor = allSystem.find(s => isSameSailor(s.name, sailorName));
+  const meta = SAILOR_METADATA[sailorName] || {};
+  
+  if (!sailor) {
+    sailor = {
+      name: sailorName,
+      g: meta.g || 'M',
+      born: meta.born || '',
+      club: meta.club || '',
+      school: meta.school || ''
+    };
+  }
   
   document.getElementById('sm-orig-name').value = sailor.name;
   document.getElementById('sm-name').value = sailor.name;
-  document.getElementById('sm-gender').value = sailor.g || 'M';
-  document.getElementById('sm-born').value = sailor.born || '';
-  document.getElementById('sm-club').value = sailor.club || '';
-  document.getElementById('sm-school').value = sailor.school || '';
+  document.getElementById('sm-gender').value = sailor.g || meta.g || 'M';
+  document.getElementById('sm-born').value = sailor.born || meta.born || '';
+  document.getElementById('sm-club').value = sailor.club || meta.club || '';
+  document.getElementById('sm-school').value = sailor.school || meta.school || '';
   
-  const meta = SAILOR_METADATA[sailor.name] || {};
   document.getElementById('sm-entered-gold').value = meta.enteredGold || '—';
   document.getElementById('sm-override-jun25').value = meta.histJun25 !== undefined && meta.histJun25 !== null ? meta.histJun25 : '';
   document.getElementById('sm-override-dec25').value = meta.histDec25 !== undefined && meta.histDec25 !== null ? meta.histDec25 : '';
@@ -973,6 +1007,10 @@ function saveSailorProfile() {
     histJun25,
     histDec25,
     histJun26,
+    g: gender,
+    born: born,
+    club: club,
+    school: school,
     majorComps: {
       worlds: mcWorlds,
       euros: mcEuros,
@@ -1516,10 +1554,7 @@ function renderRankingsPanel(){
         <th style="width:46px;cursor:pointer;user-select:none" onclick="handleSort('born')">Born${getSortIndicator('born')}</th>
         <th style="width:62px;cursor:pointer;user-select:none" onclick="handleSort('club')">Club${getSortIndicator('club')}</th>
         <th style="width:66px;cursor:pointer;user-select:none" onclick="handleSort('squad')">Squad${getSortIndicator('squad')}</th>
-        <th style="width:85px;cursor:pointer;user-select:none" class="hide-mobile" onclick="handleSort('enteredGold')">Entered Gold${getSortIndicator('enteredGold')}</th>
-        <th style="width:50px;text-align:center;cursor:pointer;user-select:none" class="hide-mobile" onclick="handleSort('jun25')">Jun 25${getSortIndicator('jun25')}</th>
-        <th style="width:50px;text-align:center;cursor:pointer;user-select:none" class="hide-mobile" onclick="handleSort('dec25')">Dec 25${getSortIndicator('dec25')}</th>
-        <th style="width:50px;text-align:center;cursor:pointer;user-select:none" class="hide-mobile" onclick="handleSort('jun26')">Jun 26${getSortIndicator('jun26')}</th>
+
         <th style="width:80px;text-align:center;cursor:pointer;user-select:none" onclick="handleSort('score')">Best 3 of ${latestRegs.length}${getSortIndicator('score')}</th>
         ${regHeaders}
       </tr></thead>
@@ -1619,10 +1654,6 @@ function renderRankings(){
       return `<td style="text-align:center"><span class="pos-tag${isBest3.has(idx)?' best':''}">${v}</span></td>`;
     }).join('');
 
-    const valJun25 = s.histJun25 !== null ? `#${s.histJun25}` : getHistoricalRank(s.name, '2025-06-30');
-    const valDec25 = s.histDec25 !== null ? `#${s.histDec25}` : getHistoricalRank(s.name, '2025-12-31');
-    const valJun26 = s.histJun26 !== null ? `#${s.histJun26}` : getHistoricalRank(s.name, '2026-06-30');
-
     return`<tr style="${rowSt}">
       <td class="rank-c">${s.cur}</td>
       <td class="name-c" onclick="openSailorModal('${s.name.replace(/'/g, "\\'")}')" style="cursor:pointer; color:var(--accent); font-weight:600; text-decoration:underline;">${s.name}${exclTag}</td>
@@ -1630,10 +1661,6 @@ function renderRankings(){
       <td class="sub-c">${s.born}</td>
       <td class="sub-c" style="font-size:10px">${s.club}</td>
       <td>${isExcl?'<span class="badge b-n">Excl.</span>':squadBadge(squad)}</td>
-      <td style="font-family:var(--sans);font-size:11px;color:var(--text2)" class="hide-mobile">${s.enteredGold || '—'}</td>
-      <td style="text-align:center;font-family:var(--mono);font-size:10.5px" class="hide-mobile">${valJun25}</td>
-      <td style="text-align:center;font-family:var(--mono);font-size:10.5px" class="hide-mobile">${valDec25}</td>
-      <td style="text-align:center;font-family:var(--mono);font-size:10.5px" class="hide-mobile">${valJun26}</td>
       <td style="text-align:center;font-family:var(--mono);font-weight:600;color:var(--accent2)">${Math.floor(s.score)}</td>
       ${cells}
     </tr>`;
@@ -2570,6 +2597,7 @@ function switchView(viewId, btn) {
     'exclusions': 'Exclusions',
     'charts': 'Analysis',
     'major-comps': 'Major Competitions',
+    'hist-gold': 'Historical & Gold',
     'fleet': 'Manage Fleet',
     'sailor-analysis': 'Sailor Profile & Analysis'
   };
@@ -2589,6 +2617,8 @@ function switchView(viewId, btn) {
     renderCharts();
   } else if (viewId === 'major-comps') {
     renderMajorCompsPanel();
+  } else if (viewId === 'hist-gold') {
+    renderHistGoldPanel();
   } else if (viewId === 'fleet') {
     renderFleetPanel();
   } else if (viewId === 'target') {
@@ -2607,7 +2637,7 @@ function switchView(viewId, btn) {
 
 function handleRouting() {
   const hash = window.location.hash.substring(1);
-  const validViews = ['rankings', 'results', 'regattas', 'simulator', 'target', 'exclusions', 'charts', 'fleet', 'sailor-analysis'];
+  const validViews = ['rankings', 'results', 'regattas', 'simulator', 'target', 'exclusions', 'charts', 'major-comps', 'hist-gold', 'fleet', 'sailor-analysis'];
   const target = validViews.includes(hash) ? hash : 'rankings';
   switchView(target);
 }
@@ -3299,10 +3329,30 @@ function renderMajorCompsPanel() {
   const body = document.getElementById('major-comps-body');
   if (!body) return;
   
-  const sortedSailors = [...SAILORS].sort((a, b) => a.name.localeCompare(b.name));
+  // Gather ALL sailors: active fleet + anyone in SAILOR_METADATA (retired/dropped/historical)
+  const allNames = new Map();
+  const normalizedToOriginal = new Map();
   
-  body.innerHTML = sortedSailors.map(s => {
-    const meta = SAILOR_METADATA[s.name] || {};
+  // From active regatta data
+  getAllSailorsInSystem().forEach(s => {
+    const norm = normalizeName(s.name);
+    normalizedToOriginal.set(norm, s.name);
+    allNames.set(s.name, s.name);
+  });
+  
+  // From metadata (historical sailors who may not appear in any regatta)
+  Object.keys(SAILOR_METADATA).forEach(name => {
+    const norm = normalizeName(name);
+    if (!normalizedToOriginal.has(norm)) {
+      normalizedToOriginal.set(norm, name);
+      allNames.set(name, name);
+    }
+  });
+  
+  const sortedNames = Array.from(allNames.values()).sort((a, b) => a.localeCompare(b));
+  
+  body.innerHTML = sortedNames.map(name => {
+    const meta = SAILOR_METADATA[name] || {};
     const major = meta.majorComps || {};
     const worlds = major.worlds || [];
     const euros = major.euros || [];
@@ -3315,7 +3365,7 @@ function renderMajorCompsPanel() {
     const seagamesTags = seagames.length ? seagames.sort((x, y) => x - y).map(y => `<span class="badge b-n" style="margin:2px;">${y}</span>`).join('') : '<span style="color:var(--text3)">—</span>';
     
     return `<tr>
-      <td class="name-c" onclick="openSailorModal('${s.name.replace(/'/g, "\\'")}')" style="cursor:pointer; color:var(--accent); font-weight:600; text-decoration:underline;">${s.name}</td>
+      <td class="name-c" onclick="openSailorModal('${name.replace(/'/g, "\\'")}')" style="cursor:pointer; color:var(--accent); font-weight:600; text-decoration:underline;">${name}</td>
       <td style="text-align:center;">${worldsTags}</td>
       <td style="text-align:center;">${eurosTags}</td>
       <td style="text-align:center;">${asiansTags}</td>
@@ -3324,11 +3374,37 @@ function renderMajorCompsPanel() {
   }).join('');
 }
 
+function renderHistGoldPanel() {
+  const body = document.getElementById('hist-gold-body');
+  if (!body) return;
+  
+  const sq = computeSquads(SAILORS);
+  
+  const rows = SAILORS.map(s => {
+    const valJun25 = s.histJun25 !== null ? `#${s.histJun25}` : getHistoricalRank(s.name, '2025-06-30');
+    const valDec25 = s.histDec25 !== null ? `#${s.histDec25}` : getHistoricalRank(s.name, '2025-12-31');
+    const valJun26 = s.histJun26 !== null ? `#${s.histJun26}` : getHistoricalRank(s.name, '2026-06-30');
+    
+    return `<tr>
+      <td class="rank-c">${s.cur}</td>
+      <td class="name-c" onclick="openSailorModal('${s.name.replace(/'/g, "\\'")}')" style="cursor:pointer; color:var(--accent); font-weight:600; text-decoration:underline;">${s.name}</td>
+      <td class="sub-c">${s.g}</td>
+      <td style="font-family:var(--sans);font-size:11px;color:var(--text2)">${s.enteredGold || '—'}</td>
+      <td style="text-align:center;font-family:var(--mono);font-size:10.5px">${valJun25}</td>
+      <td style="text-align:center;font-family:var(--mono);font-size:10.5px">${valDec25}</td>
+      <td style="text-align:center;font-family:var(--mono);font-size:10.5px">${valJun26}</td>
+    </tr>`;
+  });
+  
+  body.innerHTML = rows.join('');
+}
+
 function renderAll() {
   renderRankingsPanel();
   renderRegattasPanel();
   renderExclusions();
   renderMajorCompsPanel();
+  renderHistGoldPanel();
   populateTargetDropdown();
   populateSimDropdown();
   populateExclDropdown();
