@@ -2979,6 +2979,10 @@ function loadData() {
     REGATTAS = getSeedRegattas();
   }
 
+  if (!REGATTAS || REGATTAS.length === 0) {
+    REGATTAS = getSeedRegattas();
+  }
+
   try {
     const rawMeta = localStorage.getItem('op_ranking_sailor_metadata_v3');
     if (rawMeta) {
