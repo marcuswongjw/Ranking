@@ -263,6 +263,7 @@ td{padding:8px 10px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
     <button class="nav-item" onclick="switchView('target',this)"><span class="nav-dot dot-n"></span>Squad target</button>
     <button class="nav-item" onclick="switchView('exclusions',this)" id="nav-excl"><span class="nav-dot dot-r"></span>Exclusions<span class="excl-ct" id="excl-badge" style="display:none">0</span></button>
     <button class="nav-item" onclick="switchView('charts',this)"><span class="nav-dot dot-n"></span>Analysis</button>
+    <button class="nav-item" onclick="switchView('major-comps',this)"><span class="nav-dot dot-n"></span>Major Competitions</button>
     <button class="nav-item" onclick="switchView('fleet',this)"><span class="nav-dot dot-n"></span>Manage Fleet</button>
     <div class="nav-sec">Quick filters</div>
     <button class="nav-item" onclick="quickFilter('Nat A')"><span class="nav-dot dot-a"></span>National A</button>
@@ -439,6 +440,27 @@ td{padding:8px 10px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
       </div>
       <div class="sec-lbl" style="margin-top:0">Currently excluded</div>
       <div id="excl-list"><div class="excl-empty">No sailors excluded</div></div>
+    </div>
+    <div class="panel" id="panel-major-comps">
+      <div class="card" style="margin-bottom:18px;">
+        <div class="card-title">Major Competitions Tracker</div>
+        <p class="card-desc">Track and filter participation in major international and regional competitions over the years (2022 – 2026).</p>
+      </div>
+      
+      <div class="tbl-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th style="width:180px;">Sailor</th>
+              <th style="text-align:center;">Optimist World Champ.</th>
+              <th style="text-align:center;">Optimist European Champ.</th>
+              <th style="text-align:center;">Optimist Asian & Oceanian Champ.</th>
+              <th style="text-align:center;">SEA Games</th>
+            </tr>
+          </thead>
+          <tbody id="major-comps-body"></tbody>
+        </table>
+      </div>
     </div>
     <div class="panel" id="panel-fleet">
       <div class="two-col" style="margin-bottom:18px">
@@ -659,10 +681,57 @@ td{padding:8px 10px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
                 <label class="fl-lbl" for="sm-entered-gold">Gold Fleet Entry Date</label>
                 <select id="sm-entered-gold" style="width:100%; height:30px;">
                   <option value="—">— none / unknown —</option>
+                  <option value="Jan 2024">Jan 2024</option>
+                  <option value="Jul 2024">Jul 2024</option>
+                  <option value="Jan 2025">Jan 2025</option>
                   <option value="Jul 2025">Jul 2025</option>
                   <option value="Jan 2026">Jan 2026</option>
                   <option value="Jul 2026">Jul 2026</option>
                 </select>
+              </div>
+            </div>
+            
+            <div class="sec-lbl" style="margin-top:12px;">Major Competitions Participation</div>
+            <div style="display:flex; flex-direction:column; gap:8px;">
+              <div class="wi-row" style="padding:6px 10px; margin-bottom:4px; display:flex; flex-direction:column; align-items:flex-start; gap:4px;">
+                <div class="wi-name" style="font-size:11px; font-weight:600;">Optimist World Championship</div>
+                <div style="display:flex; gap:8px;" id="mc-worlds-years">
+                  <label style="cursor:pointer; font-size:10px;"><input type="checkbox" class="mc-worlds" value="2022"> 2022</label>
+                  <label style="cursor:pointer; font-size:10px;"><input type="checkbox" class="mc-worlds" value="2023"> 2023</label>
+                  <label style="cursor:pointer; font-size:10px;"><input type="checkbox" class="mc-worlds" value="2024"> 2024</label>
+                  <label style="cursor:pointer; font-size:10px;"><input type="checkbox" class="mc-worlds" value="2025"> 2025</label>
+                  <label style="cursor:pointer; font-size:10px;"><input type="checkbox" class="mc-worlds" value="2026"> 2026</label>
+                </div>
+              </div>
+              <div class="wi-row" style="padding:6px 10px; margin-bottom:4px; display:flex; flex-direction:column; align-items:flex-start; gap:4px;">
+                <div class="wi-name" style="font-size:11px; font-weight:600;">Optimist European Championship</div>
+                <div style="display:flex; gap:8px;" id="mc-euros-years">
+                  <label style="cursor:pointer; font-size:10px;"><input type="checkbox" class="mc-euros" value="2022"> 2022</label>
+                  <label style="cursor:pointer; font-size:10px;"><input type="checkbox" class="mc-euros" value="2023"> 2023</label>
+                  <label style="cursor:pointer; font-size:10px;"><input type="checkbox" class="mc-euros" value="2024"> 2024</label>
+                  <label style="cursor:pointer; font-size:10px;"><input type="checkbox" class="mc-euros" value="2025"> 2025</label>
+                  <label style="cursor:pointer; font-size:10px;"><input type="checkbox" class="mc-euros" value="2026"> 2026</label>
+                </div>
+              </div>
+              <div class="wi-row" style="padding:6px 10px; margin-bottom:4px; display:flex; flex-direction:column; align-items:flex-start; gap:4px;">
+                <div class="wi-name" style="font-size:11px; font-weight:600;">Optimist Asian & Oceanian Championship</div>
+                <div style="display:flex; gap:8px;" id="mc-asians-years">
+                  <label style="cursor:pointer; font-size:10px;"><input type="checkbox" class="mc-asians" value="2022"> 2022</label>
+                  <label style="cursor:pointer; font-size:10px;"><input type="checkbox" class="mc-asians" value="2023"> 2023</label>
+                  <label style="cursor:pointer; font-size:10px;"><input type="checkbox" class="mc-asians" value="2024"> 2024</label>
+                  <label style="cursor:pointer; font-size:10px;"><input type="checkbox" class="mc-asians" value="2025"> 2025</label>
+                  <label style="cursor:pointer; font-size:10px;"><input type="checkbox" class="mc-asians" value="2026"> 2026</label>
+                </div>
+              </div>
+              <div class="wi-row" style="padding:6px 10px; margin-bottom:4px; display:flex; flex-direction:column; align-items:flex-start; gap:4px;">
+                <div class="wi-name" style="font-size:11px; font-weight:600;">SEA Games</div>
+                <div style="display:flex; gap:8px;" id="mc-seagames-years">
+                  <label style="cursor:pointer; font-size:10px;"><input type="checkbox" class="mc-seagames" value="2022"> 2022</label>
+                  <label style="cursor:pointer; font-size:10px;"><input type="checkbox" class="mc-seagames" value="2023"> 2023</label>
+                  <label style="cursor:pointer; font-size:10px;"><input type="checkbox" class="mc-seagames" value="2024"> 2024</label>
+                  <label style="cursor:pointer; font-size:10px;"><input type="checkbox" class="mc-seagames" value="2025"> 2025</label>
+                  <label style="cursor:pointer; font-size:10px;"><input type="checkbox" class="mc-seagames" value="2026"> 2026</label>
+                </div>
               </div>
             </div>
             
@@ -800,6 +869,17 @@ function openSailorModal(sailorName) {
   document.getElementById('sm-override-dec25').value = meta.histDec25 !== undefined && meta.histDec25 !== null ? meta.histDec25 : '';
   document.getElementById('sm-override-jun26').value = meta.histJun26 !== undefined && meta.histJun26 !== null ? meta.histJun26 : '';
   
+  const major = meta.majorComps || {};
+  const worlds = major.worlds || [];
+  const euros = major.euros || [];
+  const asians = major.asians || [];
+  const seagames = major.seagames || [];
+  
+  document.querySelectorAll('.mc-worlds').forEach(cb => cb.checked = worlds.includes(parseInt(cb.value)));
+  document.querySelectorAll('.mc-euros').forEach(cb => cb.checked = euros.includes(parseInt(cb.value)));
+  document.querySelectorAll('.mc-asians').forEach(cb => cb.checked = asians.includes(parseInt(cb.value)));
+  document.querySelectorAll('.mc-seagames').forEach(cb => cb.checked = seagames.includes(parseInt(cb.value)));
+  
   const container = document.getElementById('sm-scores-container');
   container.innerHTML = '';
   
@@ -883,11 +963,22 @@ function saveSailorProfile() {
     delete SAILOR_METADATA[origName];
   }
   
+  const mcWorlds = Array.from(document.querySelectorAll('.mc-worlds:checked')).map(cb => parseInt(cb.value));
+  const mcEuros = Array.from(document.querySelectorAll('.mc-euros:checked')).map(cb => parseInt(cb.value));
+  const mcAsians = Array.from(document.querySelectorAll('.mc-asians:checked')).map(cb => parseInt(cb.value));
+  const mcSeagames = Array.from(document.querySelectorAll('.mc-seagames:checked')).map(cb => parseInt(cb.value));
+
   SAILOR_METADATA[newName] = {
     enteredGold,
     histJun25,
     histDec25,
-    histJun26
+    histJun26,
+    majorComps: {
+      worlds: mcWorlds,
+      euros: mcEuros,
+      asians: mcAsians,
+      seagames: mcSeagames
+    }
   };
   
   recomputeSailors();
@@ -2478,6 +2569,7 @@ function switchView(viewId, btn) {
     'target': 'Squad target',
     'exclusions': 'Exclusions',
     'charts': 'Analysis',
+    'major-comps': 'Major Competitions',
     'fleet': 'Manage Fleet',
     'sailor-analysis': 'Sailor Profile & Analysis'
   };
@@ -2495,6 +2587,8 @@ function switchView(viewId, btn) {
 
   if (viewId === 'charts') {
     renderCharts();
+  } else if (viewId === 'major-comps') {
+    renderMajorCompsPanel();
   } else if (viewId === 'fleet') {
     renderFleetPanel();
   } else if (viewId === 'target') {
@@ -3201,10 +3295,40 @@ function loadData() {
   recomputeSailors();
 }
 
+function renderMajorCompsPanel() {
+  const body = document.getElementById('major-comps-body');
+  if (!body) return;
+  
+  const sortedSailors = [...SAILORS].sort((a, b) => a.name.localeCompare(b.name));
+  
+  body.innerHTML = sortedSailors.map(s => {
+    const meta = SAILOR_METADATA[s.name] || {};
+    const major = meta.majorComps || {};
+    const worlds = major.worlds || [];
+    const euros = major.euros || [];
+    const asians = major.asians || [];
+    const seagames = major.seagames || [];
+    
+    const worldsTags = worlds.length ? worlds.sort((x, y) => x - y).map(y => `<span class="badge b-a" style="margin:2px;">${y}</span>`).join('') : '<span style="color:var(--text3)">—</span>';
+    const eurosTags = euros.length ? euros.sort((x, y) => x - y).map(y => `<span class="badge b-b" style="margin:2px;">${y}</span>`).join('') : '<span style="color:var(--text3)">—</span>';
+    const asiansTags = asians.length ? asians.sort((x, y) => x - y).map(y => `<span class="badge b-ds" style="margin:2px;">${y}</span>`).join('') : '<span style="color:var(--text3)">—</span>';
+    const seagamesTags = seagames.length ? seagames.sort((x, y) => x - y).map(y => `<span class="badge b-n" style="margin:2px;">${y}</span>`).join('') : '<span style="color:var(--text3)">—</span>';
+    
+    return `<tr>
+      <td class="name-c" onclick="openSailorModal('${s.name.replace(/'/g, "\\'")}')" style="cursor:pointer; color:var(--accent); font-weight:600; text-decoration:underline;">${s.name}</td>
+      <td style="text-align:center;">${worldsTags}</td>
+      <td style="text-align:center;">${eurosTags}</td>
+      <td style="text-align:center;">${asiansTags}</td>
+      <td style="text-align:center;">${seagamesTags}</td>
+    </tr>`;
+  }).join('');
+}
+
 function renderAll() {
   renderRankingsPanel();
   renderRegattasPanel();
   renderExclusions();
+  renderMajorCompsPanel();
   populateTargetDropdown();
   populateSimDropdown();
   populateExclDropdown();
