@@ -745,6 +745,18 @@ function isSameSailor(nameA, nameB) {
   return normalizeName(nameA) === normalizeName(nameB);
 }
 
+function getRegattaPercentileBase(reg) {
+  if (!reg || !reg.sailors || reg.sailors.length === 0) return 1;
+  let maxRank = 0;
+  reg.sailors.forEach(s => {
+    const r = s.rank !== undefined && s.rank !== null ? s.rank : s.nett;
+    if (r !== null && r !== undefined && r > maxRank) {
+      maxRank = r;
+    }
+  });
+  return maxRank > 1 ? maxRank - 1 : 1;
+}
+
 function openSailorModal(sailorName) {
   const allSystem = getAllSailorsInSystem();
   const sailor = allSystem.find(s => isSameSailor(s.name, sailorName));
@@ -1987,7 +1999,9 @@ function renderSpecificRegattaResults() {
       const rankVal = s.rank !== undefined && s.rank !== null ? s.rank : '';
       const pointsVal = s.nett !== undefined && s.nett !== null ? s.nett : '';
       
-      const pct = totalSailors > 0 ? ((idx + 1) / totalSailors) * 100 : 100;
+      const base = getRegattaPercentileBase(reg);
+      const r = s.rank !== undefined && s.rank !== null ? s.rank : s.nett;
+      const pct = base > 0 && r !== null && r !== undefined ? (r / base) * 100 : 100;
       let pctLabel, pctColor, pctBg;
       if (pct <= 25) { pctLabel = 'Top 25%'; pctColor = 'var(--accent)'; pctBg = 'var(--accent-l)'; }
       else if (pct <= 50) { pctLabel = 'Top 50%'; pctColor = 'var(--accent2)'; pctBg = 'var(--accent2-l)'; }
@@ -2849,7 +2863,8 @@ function renderSailorPerformanceChart(sailor) {
         }
         venueScores[venue].push(r);
 
-        const pct = reg.sailors.length > 0 ? (r / reg.sailors.length) * 100 : 100;
+        const base = getRegattaPercentileBase(reg);
+        const pct = base > 0 ? (r / base) * 100 : 100;
         let pctLabel, pctColor, pctBg;
         if (pct <= 25) { pctLabel = 'Top 25%'; pctColor = 'var(--accent)'; pctBg = 'var(--accent-l)'; }
         else if (pct <= 50) { pctLabel = 'Top 50%'; pctColor = 'var(--accent2)'; pctBg = 'var(--accent2-l)'; }
@@ -2946,8 +2961,8 @@ function renderSailorPerformanceChart(sailor) {
               const r = context.parsed.y;
               const regName = context.label;
               const reg = REGATTAS.find(x => x.name === regName);
-              const total = reg ? reg.sailors.length : 0;
-              const pct = total > 0 ? Math.round((r / total) * 100) : 100;
+              const base = reg ? getRegattaPercentileBase(reg) : 0;
+              const pct = base > 0 ? Math.round((r / base) * 100) : 100;
               return `Rank: P${r} (Top ${pct}%)`;
             }
           }
