@@ -2329,7 +2329,7 @@ function populateExclDropdown() {
   if (!sel) return;
   const cur = sel.value;
   sel.innerHTML = '<option value="">— choose sailor —</option>' +
-    SAILORS.map(s => { const sn = escapeHtml(s.name); return `<option value="${sn}">${s.cur}. ${sn} (${s.g}, ${s.born})</option>`).join('');
+    SAILORS.map(s => { const sn = escapeHtml(s.name); return `<option value="${sn}">${s.cur}. ${sn} (${s.g}, ${s.born})</option>`; }).join('');
   if (cur) sel.value = cur;
 }
 
