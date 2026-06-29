@@ -567,7 +567,6 @@ td{padding:8px 10px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
               <th style="width:70px;text-align:center;">Jun 24</th>
               <th style="width:70px;text-align:center;">Dec 24</th>
               <th style="width:70px;text-align:center;">Jun 25</th>
-              <th style="width:70px;text-align:center;">Jul 25</th>
               <th style="width:70px;text-align:center;">Dec 25</th>
               <th style="width:70px;text-align:center;">Jun 26</th>
             </tr>
@@ -857,7 +856,7 @@ td{padding:8px 10px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
             </div>
             
             <div class="sec-lbl" style="margin-top:10px;">Historical Standings Overrides</div>
-            <div style="display:grid; grid-template-columns:repeat(6, 1fr); gap:6px;">
+            <div style="display:grid; grid-template-columns:1fr 1fr 1fr 1fr 1fr; gap:6px;">
               <div class="fl">
                 <label class="fl-lbl" for="sm-override-jun24">Jun 24</label>
                 <input type="number" id="sm-override-jun24" style="width:100%;" placeholder="Auto">
@@ -869,10 +868,6 @@ td{padding:8px 10px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
               <div class="fl">
                 <label class="fl-lbl" for="sm-override-jun25">Jun 25</label>
                 <input type="number" id="sm-override-jun25" style="width:100%;" placeholder="Auto">
-              </div>
-              <div class="fl">
-                <label class="fl-lbl" for="sm-override-jul25">Jul 25</label>
-                <input type="number" id="sm-override-jul25" style="width:100%;" placeholder="Auto">
               </div>
               <div class="fl">
                 <label class="fl-lbl" for="sm-override-dec25">Dec 25</label>
@@ -1032,7 +1027,6 @@ function openSailorModal(sailorName) {
   document.getElementById('sm-override-jun24').value = meta.histJun24 !== undefined && meta.histJun24 !== null ? meta.histJun24 : '';
   document.getElementById('sm-override-dec24').value = meta.histDec24 !== undefined && meta.histDec24 !== null ? meta.histDec24 : '';
   document.getElementById('sm-override-jun25').value = meta.histJun25 !== undefined && meta.histJun25 !== null ? meta.histJun25 : '';
-  document.getElementById('sm-override-jul25').value = meta.histJul25 !== undefined && meta.histJul25 !== null ? meta.histJul25 : '';
   document.getElementById('sm-override-dec25').value = meta.histDec25 !== undefined && meta.histDec25 !== null ? meta.histDec25 : '';
   document.getElementById('sm-override-jun26').value = meta.histJun26 !== undefined && meta.histJun26 !== null ? meta.histJun26 : '';
   
@@ -1086,7 +1080,6 @@ function saveSailorProfile() {
   const histJun24 = document.getElementById('sm-override-jun24').value !== '' ? parseInt(document.getElementById('sm-override-jun24').value) : null;
   const histDec24 = document.getElementById('sm-override-dec24').value !== '' ? parseInt(document.getElementById('sm-override-dec24').value) : null;
   const histJun25 = document.getElementById('sm-override-jun25').value !== '' ? parseInt(document.getElementById('sm-override-jun25').value) : null;
-  const histJul25 = document.getElementById('sm-override-jul25').value !== '' ? parseInt(document.getElementById('sm-override-jul25').value) : null;
   const histDec25 = document.getElementById('sm-override-dec25').value !== '' ? parseInt(document.getElementById('sm-override-dec25').value) : null;
   const histJun26 = document.getElementById('sm-override-jun26').value !== '' ? parseInt(document.getElementById('sm-override-jun26').value) : null;
 
@@ -1144,7 +1137,6 @@ function saveSailorProfile() {
     histJun24,
     histDec24,
     histJun25,
-    histJul25,
     histDec25,
     histJun26,
     g: gender,
@@ -1620,7 +1612,6 @@ function recomputeSailors() {
       histJun24: metadata.histJun24 || null,
       histDec24: metadata.histDec24 || null,
       histJun25: metadata.histJun25 || null,
-      histJul25: metadata.histJul25 || null,
       histDec25: metadata.histDec25 || null,
       histJun26: metadata.histJun26 || null
     });
@@ -3877,7 +3868,6 @@ function renderHistGoldPanel() {
     const valJun24 = meta.histJun24 !== undefined && meta.histJun24 !== null ? meta.histJun24 : '';
     const valDec24 = meta.histDec24 !== undefined && meta.histDec24 !== null ? meta.histDec24 : '';
     const valJun25 = meta.histJun25 !== undefined && meta.histJun25 !== null ? meta.histJun25 : '';
-    const valJul25 = meta.histJul25 !== undefined && meta.histJul25 !== null ? meta.histJul25 : '';
     const valDec25 = meta.histDec25 !== undefined && meta.histDec25 !== null ? meta.histDec25 : '';
     const valJun26 = meta.histJun26 !== undefined && meta.histJun26 !== null ? meta.histJun26 : '';
 
@@ -3889,7 +3879,6 @@ function renderHistGoldPanel() {
       valJun24,
       valDec24,
       valJun25,
-      valJul25,
       valDec25,
       valJun26,
       isActive: !!activeObj
@@ -3935,7 +3924,6 @@ function renderHistGoldPanel() {
       ${renderCell('histJun24', s.valJun24, '2024-06-30')}
       ${renderCell('histDec24', s.valDec24, '2024-12-31')}
       ${renderCell('histJun25', s.valJun25, '2025-06-30')}
-      ${renderCell('histJul25', s.valJul25, '2025-07-31')}
       ${renderCell('histDec25', s.valDec25, '2025-12-31')}
       ${renderCell('histJun26', s.valJun26, '2026-06-30')}
     </tr>`;
