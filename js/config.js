@@ -18,5 +18,5 @@ const db = firebase.firestore();
 const ADMIN_EMAIL = 'marcuswongjw@gmail.com';
 
 // These default values are mutable and synced dynamically with Cloud Firestore settings
-let COMP_YEAR = new Date().getFullYear();
-let DNS = 84; 
+const COMP_YEAR = new Date().getFullYear();
+const DNS = 84;

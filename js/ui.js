@@ -185,35 +185,7 @@ function saveSailorProfile() {
   renderAll();
 }
 
-function loadSettingsToInputs() {
-  const compYearInput = document.getElementById('settings-comp-year');
-  const dnsScoreInput = document.getElementById('settings-dns-score');
-  if (compYearInput) compYearInput.value = COMP_YEAR;
-  if (dnsScoreInput) dnsScoreInput.value = DNS;
-}
 
-function saveSettings() {
-  if (!requireEditor()) return;
-  const compYearVal = parseInt(document.getElementById('settings-comp-year').value);
-  const dnsScoreVal = parseInt(document.getElementById('settings-dns-score').value);
-  
-  if (isNaN(compYearVal) || compYearVal < 1900 || compYearVal > 2100) {
-    alert("Please enter a valid competition year (e.g. 2026).");
-    return;
-  }
-  if (isNaN(dnsScoreVal) || dnsScoreVal < 1) {
-    alert("Please enter a valid DNS score.");
-    return;
-  }
-  
-  COMP_YEAR = compYearVal;
-  DNS = dnsScoreVal;
-  
-  recomputeSailors();
-  saveData();
-  renderAll();
-  alert("System Settings saved successfully!");
-}
 
 function populateTargetDropdown() {
   const sel = document.getElementById('targetSailor');
@@ -1331,6 +1303,5 @@ function renderAll() {
   populateExclDropdown();
   populateResultsDropdown();
   populateRegattaCheckboxList();
-  loadSettingsToInputs();
   updateDatabaseSourceTags();
 }

@@ -1029,8 +1029,6 @@ function bindStaticEventListeners() {
     if (e.target.files[0]) uploadFleetExcel(e.target);
   });
 
-  // System Settings form controls
-  document.getElementById('save-settings-btn')?.addEventListener('click', () => saveSettings());
   
   // Major Competitions Panel elements
   document.getElementById('mc-only-participants')?.addEventListener('change', () => renderMajorCompsPanel());

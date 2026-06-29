@@ -15,6 +15,11 @@ let sortKey = 'score';
 let sortAsc = true;
 let lastMainView = 'rankings';
 let targetCachedData = null;
+const MAX_CHART_SAILORS = 10;
+let mcSortKey = 'rank';
+let mcSortAsc = true;
+let hgSortKey = 'rank';
+let hgSortAsc = true;
 
 // Firestore collection hook
 const CLOUD_DOC = () => db.collection('opRanking').doc('state');
@@ -41,11 +46,7 @@ function serializeState() {
     dropped: Array.from(DROPPED_SAILORS),
     excluded: Object.fromEntries(EXCLUDED),
     metadata: SAILOR_METADATA,
-    selectedRegattas: SELECTED_REGATTA_NAMES === undefined ? null : SELECTED_REGATTA_NAMES,
-    settings: {
-      compYear: COMP_YEAR,
-      dns: DNS
-    }
+    selectedRegattas: SELECTED_REGATTA_NAMES === undefined ? null : SELECTED_REGATTA_NAMES
   }));
 }
 
@@ -60,14 +61,6 @@ function applyState(s) {
   }
   SAILOR_METADATA = (s.metadata && typeof s.metadata === 'object') ? s.metadata : {};
   SELECTED_REGATTA_NAMES = (s.selectedRegattas === undefined) ? null : s.selectedRegattas;
-  
-  if (s.settings) {
-    if (s.settings.compYear) COMP_YEAR = parseInt(s.settings.compYear) || new Date().getFullYear();
-    if (s.settings.dns) DNS = parseInt(s.settings.dns) || 84;
-  } else {
-    COMP_YEAR = new Date().getFullYear();
-    DNS = 84;
-  }
 }
 
 function applyStateFromSeed() {
@@ -76,8 +69,6 @@ function applyStateFromSeed() {
   EXCLUDED = getDefaultExcludedSailors();
   SAILOR_METADATA = getDefaultSailorMetadata();
   SELECTED_REGATTA_NAMES = null;
-  COMP_YEAR = new Date().getFullYear();
-  DNS = 84;
 }
 
 // Legacy local storage state backup read
