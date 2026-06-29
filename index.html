@@ -341,8 +341,6 @@ td{padding:8px 10px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
     <div class="topbar-right">
       <span class="src-tag" id="src-tag">No file loaded</span>
       <span id="sync-status" class="src-tag" style="font-family:var(--mono);">View-only</span>
-      <button class="editor-only" onclick="clearAllData()" style="background:var(--red-l);color:var(--red);border:1px solid rgba(138,28,28,.2);border-radius:var(--r);font-size:11px;padding:6px 10px;font-family:var(--mono);cursor:pointer;font-weight:500;height:30px;transition:all .15s;margin-right:4px;">✕ Clear Data</button>
-      <button class="editor-only" onclick="resetDatabaseToSeed()" style="background:var(--bg2);color:var(--text2);border:1px solid var(--border);border-radius:var(--r);font-size:11px;padding:6px 10px;font-family:var(--mono);cursor:pointer;font-weight:500;height:30px;transition:all .15s;margin-right:4px;">↺ Load Seed</button>
       <button class="editor-only upload-btn" onclick="document.getElementById('fileInput').click()">↑ Load .xlsx</button>
       <button id="auth-btn" onclick="signInEditor()" style="background:var(--text);color:#fff;border:none;border-radius:var(--r);font-size:11px;padding:6px 12px;font-family:var(--mono);cursor:pointer;font-weight:500;height:30px;transition:all .15s;">🔒 Sign in to edit</button>
     </div>
@@ -883,6 +881,7 @@ const CLOUD_DOC = () => db.collection('opRanking').doc('state');
 let CURRENT_USER = null;          // set by auth state listener; non-null = editor
 let PENDING_LOCAL_MIGRATION = null; // in-memory snapshot of legacy localStorage data, pushed up on first sign-in
 let SUPPRESS_SNAPSHOT = false;     // true while we are writing, so our own echo doesn't re-render
+let CLOUD_HAS_DATA = false;        // true once the cloud doc actually exists with data
 
 function isEditor() { return !!CURRENT_USER; }
 
@@ -3390,6 +3389,7 @@ async function saveData() {
     const payload = serializeState();
     payload.updatedAt = firebase.firestore.FieldValue.serverTimestamp();
     await CLOUD_DOC().set(payload);
+    CLOUD_HAS_DATA = true;
     setSyncStatus('saved');
   } catch (e) {
     console.error('Cloud save failed:', e);
@@ -3412,6 +3412,7 @@ async function loadData() {
     setSyncStatus('error', e && e.message);
   }
 
+  CLOUD_HAS_DATA = !!cloud;
   if (cloud) {
     // Doc exists = authoritative, even if empty (a deliberate "Clear Data" must stick).
     applyState(cloud);
@@ -3430,17 +3431,22 @@ async function loadData() {
 // After an editor signs in, if the cloud is still empty but we loaded legacy
 // local data, offer to push it up as the initial cloud document.
 async function maybeMigrate() {
-  if (!isEditor() || !PENDING_LOCAL_MIGRATION) return;
-  let stillEmpty = false;
+  if (!isEditor()) return;
+  let cloudHasData = false;
   try {
     const snap = await CLOUD_DOC().get();
-    stillEmpty = !snap.exists || !(snap.data() && Array.isArray(snap.data().regattas) && snap.data().regattas.length);
+    cloudHasData = snap.exists && snap.data() && Array.isArray(snap.data().regattas) && snap.data().regattas.length > 0;
   } catch (e) { return; }
-  if (!stillEmpty) { PENDING_LOCAL_MIGRATION = null; return; }
-  if (confirm('The cloud database is empty. Push this browser\'s existing data up as the starting point?')) {
+  if (cloudHasData) { CLOUD_HAS_DATA = true; PENDING_LOCAL_MIGRATION = null; return; }
+  // Cloud is empty — offer to publish whatever data is currently on screen
+  // (legacy localStorage if we found any, otherwise the seed/in-memory data).
+  const msg = PENDING_LOCAL_MIGRATION
+    ? "The cloud database is empty. Publish this browser's existing data to the cloud as the starting point?"
+    : "The cloud database is empty. Publish the data currently shown to the cloud now so all viewers share it?";
+  if (confirm(msg)) {
     await saveData();
     PENDING_LOCAL_MIGRATION = null;
-    alert('Local data migrated to the cloud.');
+    alert('Data published to the cloud — all viewers now read this shared copy.');
   }
 }
 
@@ -3474,7 +3480,7 @@ function applyEditorUI() {
     btn.textContent = isEditor() ? '✓ Editing — sign out' : '🔒 Sign in to edit';
     btn.onclick = isEditor() ? signOutEditor : signInEditor;
   }
-  setSyncStatus(isEditor() ? 'saved' : 'view');
+  setSyncStatus(isEditor() ? (CLOUD_HAS_DATA ? 'saved' : 'unpublished') : 'view');
 }
 
 async function signInEditor() {
@@ -3500,6 +3506,7 @@ function setSyncStatus(state, detail) {
     locked: ['🔒 View-only', 'var(--red)',   'var(--red-l)'],
     saving: ['Saving…',      'var(--accent2)','var(--accent2-l)'],
     saved:  ['✓ Synced',     'var(--accent)','var(--accent-l)'],
+    unpublished: ['⚠ Not on cloud', 'var(--accent3)','var(--accent3-l)'],
     error:  ['⚠ Not saved',  'var(--red)',   'var(--red-l)']
   };
   const [label, color, bg] = map[state] || map.view;
