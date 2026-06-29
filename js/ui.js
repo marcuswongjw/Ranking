@@ -1295,6 +1295,31 @@ function quickFilter(sq) {
   renderRankings();
 }
 
+function updateDatabaseSourceTags() {
+  const isSeed = !CLOUD_HAS_DATA || !REGATTAS.length;
+  
+  const sbTag = document.getElementById('sb-tag');
+  if (sbTag) {
+    sbTag.textContent = SAILORS.length ? SAILORS.length + ' sailors' : 'No file loaded';
+    sbTag.className = SAILORS.length ? 'sb-tag ok' : 'sb-tag';
+  }
+  
+  const footer = document.getElementById('sb-footer');
+  if (footer) {
+    footer.textContent = SAILORS.length 
+      ? (isSeed ? 'Seed Dataset loaded · ' : 'Cloud Database loaded · ') + SAILORS.length + ' sailors'
+      : 'Ranking Database';
+  }
+  
+  const srcTag = document.getElementById('src-tag');
+  if (srcTag) {
+    srcTag.textContent = SAILORS.length 
+      ? (isSeed ? 'Seed Data' : 'Cloud Database') 
+      : 'No file loaded';
+    srcTag.className = SAILORS.length ? 'src-tag ok' : 'src-tag';
+  }
+}
+
 function renderAll() {
   renderRankingsPanel();
   renderRegattasPanel();
@@ -1307,4 +1332,5 @@ function renderAll() {
   populateResultsDropdown();
   populateRegattaCheckboxList();
   loadSettingsToInputs();
+  updateDatabaseSourceTags();
 }

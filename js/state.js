@@ -130,10 +130,11 @@ async function loadData() {
     setSyncStatus('error', e && e.message);
   }
 
-  CLOUD_HAS_DATA = !!cloud;
-  if (cloud) {
+  if (cloud && Array.isArray(cloud.regattas) && cloud.regattas.length > 0) {
+    CLOUD_HAS_DATA = true;
     applyState(cloud);
   } else {
+    CLOUD_HAS_DATA = false;
     const legacy = readLegacyLocalState();
     if (legacy) {
       applyState(legacy);

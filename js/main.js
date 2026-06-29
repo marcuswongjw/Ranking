@@ -14,7 +14,15 @@ function subscribeRealtime() {
     if (snap.metadata.hasPendingWrites) return; // our own optimistic echo
     if (SUPPRESS_SNAPSHOT) return;
     if (isEditor()) return;                      // don't clobber an editor's in-progress work
-    applyState(snap.data());
+    
+    const data = snap.data();
+    if (data && Array.isArray(data.regattas) && data.regattas.length > 0) {
+      CLOUD_HAS_DATA = true;
+      applyState(data);
+    } else {
+      CLOUD_HAS_DATA = false;
+      applyStateFromSeed();
+    }
     recomputeSailors();
     renderAll();
   }, err => console.error('Realtime listener error:', err));
