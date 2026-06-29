@@ -171,6 +171,24 @@ td{padding:8px 10px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .hi-self{background:#f0f7f3!important}
 .wi-row{display:flex;justify-content:space-between;align-items:center;padding:8px 11px;background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);margin-bottom:6px;gap:8px;flex-wrap:wrap}
 .wi-name{font-size:12px;font-weight:500}.wi-sub{font-size:10px;color:var(--text3);font-family:var(--mono);margin-top:1px}
+.hist-direct-input {
+  width: 44px;
+  text-align: center;
+  font-family: var(--mono);
+  font-size: 11px;
+  padding: 3px 2px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--bg);
+  color: var(--text);
+  outline: none;
+  box-shadow: inset 0 1px 2px rgba(0,0,0,0.05);
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+.hist-direct-input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent-l);
+}
 .ct{width:100%;table-layout:auto;border-collapse:collapse}.ct td{padding:5px 9px;font-size:11px;border-bottom:1px solid var(--border);word-break:break-word}
 .ct td:first-child{font-family:var(--mono);font-size:10px;color:var(--text2)}
 .ct tr:last-child td{border-bottom:none}
@@ -531,6 +549,8 @@ td{padding:8px 10px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
               <th style="width:180px;">Sailor</th>
               <th style="width:32px;">G</th>
               <th style="width:100px;">Entered Gold</th>
+              <th style="width:70px;text-align:center;">Jun 24</th>
+              <th style="width:70px;text-align:center;">Dec 24</th>
               <th style="width:70px;text-align:center;">Jun 25</th>
               <th style="width:70px;text-align:center;">Dec 25</th>
               <th style="width:70px;text-align:center;">Jun 26</th>
@@ -821,17 +841,25 @@ td{padding:8px 10px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
             </div>
             
             <div class="sec-lbl" style="margin-top:10px;">Historical Standings Overrides</div>
-            <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px;">
+            <div style="display:grid; grid-template-columns:1fr 1fr 1fr 1fr 1fr; gap:6px;">
               <div class="fl">
-                <label class="fl-lbl" for="sm-override-jun25">Jun 2025 Rank</label>
+                <label class="fl-lbl" for="sm-override-jun24">Jun 24</label>
+                <input type="number" id="sm-override-jun24" style="width:100%;" placeholder="Auto">
+              </div>
+              <div class="fl">
+                <label class="fl-lbl" for="sm-override-dec24">Dec 24</label>
+                <input type="number" id="sm-override-dec24" style="width:100%;" placeholder="Auto">
+              </div>
+              <div class="fl">
+                <label class="fl-lbl" for="sm-override-jun25">Jun 25</label>
                 <input type="number" id="sm-override-jun25" style="width:100%;" placeholder="Auto">
               </div>
               <div class="fl">
-                <label class="fl-lbl" for="sm-override-dec25">Dec 2025 Rank</label>
+                <label class="fl-lbl" for="sm-override-dec25">Dec 25</label>
                 <input type="number" id="sm-override-dec25" style="width:100%;" placeholder="Auto">
               </div>
               <div class="fl">
-                <label class="fl-lbl" for="sm-override-jun26">Jun 2026 Rank</label>
+                <label class="fl-lbl" for="sm-override-jun26">Jun 26</label>
                 <input type="number" id="sm-override-jun26" style="width:100%;" placeholder="Auto">
               </div>
             </div>
@@ -981,6 +1009,8 @@ function openSailorModal(sailorName) {
   document.getElementById('sm-school').value = sailor.school || meta.school || '';
   
   document.getElementById('sm-entered-gold').value = meta.enteredGold || '—';
+  document.getElementById('sm-override-jun24').value = meta.histJun24 !== undefined && meta.histJun24 !== null ? meta.histJun24 : '';
+  document.getElementById('sm-override-dec24').value = meta.histDec24 !== undefined && meta.histDec24 !== null ? meta.histDec24 : '';
   document.getElementById('sm-override-jun25').value = meta.histJun25 !== undefined && meta.histJun25 !== null ? meta.histJun25 : '';
   document.getElementById('sm-override-dec25').value = meta.histDec25 !== undefined && meta.histDec25 !== null ? meta.histDec25 : '';
   document.getElementById('sm-override-jun26').value = meta.histJun26 !== undefined && meta.histJun26 !== null ? meta.histJun26 : '';
@@ -1032,6 +1062,8 @@ function saveSailorProfile() {
   const school = document.getElementById('sm-school').value.trim();
   
   const enteredGold = document.getElementById('sm-entered-gold').value;
+  const histJun24 = document.getElementById('sm-override-jun24').value !== '' ? parseInt(document.getElementById('sm-override-jun24').value) : null;
+  const histDec24 = document.getElementById('sm-override-dec24').value !== '' ? parseInt(document.getElementById('sm-override-dec24').value) : null;
   const histJun25 = document.getElementById('sm-override-jun25').value !== '' ? parseInt(document.getElementById('sm-override-jun25').value) : null;
   const histDec25 = document.getElementById('sm-override-dec25').value !== '' ? parseInt(document.getElementById('sm-override-dec25').value) : null;
   const histJun26 = document.getElementById('sm-override-jun26').value !== '' ? parseInt(document.getElementById('sm-override-jun26').value) : null;
@@ -1087,6 +1119,8 @@ function saveSailorProfile() {
 
   SAILOR_METADATA[newName] = {
     enteredGold,
+    histJun24,
+    histDec24,
     histJun25,
     histDec25,
     histJun26,
@@ -1560,6 +1594,8 @@ function recomputeSailors() {
       scores: s.scores,
       ranks: s.ranks,
       enteredGold: metadata.enteredGold || '—',
+      histJun24: metadata.histJun24 || null,
+      histDec24: metadata.histDec24 || null,
       histJun25: metadata.histJun25 || null,
       histDec25: metadata.histDec25 || null,
       histJun26: metadata.histJun26 || null
@@ -3459,6 +3495,7 @@ async function loadData() {
     }
   }
   recomputeSailors();
+  applyEditorUI();
 }
 
 // After an editor signs in, if the cloud is still empty but we loaded legacy
@@ -3754,25 +3791,59 @@ function renderMajorCompsPanel() {
   `;
 }
 
+async function saveHistoricalRankDirectly(name, field, rawValue) {
+  if (!requireEditor()) return;
+  const cleaned = rawValue.replace(/[^\d]/g, '');
+  const parsedVal = cleaned === '' ? null : parseInt(cleaned);
+  
+  if (!SAILOR_METADATA[name]) {
+    SAILOR_METADATA[name] = {};
+  }
+  
+  SAILOR_METADATA[name][field] = parsedVal;
+  
+  recomputeSailors();
+  await saveData();
+  renderAll();
+}
+
 function renderHistGoldPanel() {
   const body = document.getElementById('hist-gold-body');
   if (!body) return;
   
   const sq = computeSquads(SAILORS);
+  const isEditable = isEditor();
   
   const rows = SAILORS.map(s => {
-    const valJun25 = s.histJun25 !== null ? `#${s.histJun25}` : getHistoricalRank(s.name, '2025-06-30');
-    const valDec25 = s.histDec25 !== null ? `#${s.histDec25}` : getHistoricalRank(s.name, '2025-12-31');
-    const valJun26 = s.histJun26 !== null ? `#${s.histJun26}` : getHistoricalRank(s.name, '2026-06-30');
+    const valJun24 = s.histJun24 !== null && s.histJun24 !== undefined ? s.histJun24 : '';
+    const valDec24 = s.histDec24 !== null && s.histDec24 !== undefined ? s.histDec24 : '';
+    const valJun25 = s.histJun25 !== null && s.histJun25 !== undefined ? s.histJun25 : '';
+    const valDec25 = s.histDec25 !== null && s.histDec25 !== undefined ? s.histDec25 : '';
+    const valJun26 = s.histJun26 !== null && s.histJun26 !== undefined ? s.histJun26 : '';
     
+    function renderCell(field, val, dateStr) {
+      if (isEditable) {
+        return `<td style="text-align:center; padding:4px;">
+          <input type="text" class="hist-direct-input" value="${val !== '' ? '#' + val : ''}" 
+            onchange="saveHistoricalRankDirectly('${s.name.replace(/'/g, "\\'")}', '${field}', this.value)" 
+            placeholder="-">
+        </td>`;
+      } else {
+        const displayVal = val !== '' ? `#${val}` : getHistoricalRank(s.name, dateStr);
+        return `<td style="text-align:center; font-family:var(--mono); font-size:10.5px">${displayVal}</td>`;
+      }
+    }
+
     return `<tr>
       <td class="rank-c">${s.cur}</td>
       <td class="name-c" onclick="openSailorModal('${s.name.replace(/'/g, "\\'")}')" style="cursor:pointer; color:var(--accent); font-weight:600; text-decoration:underline;">${s.name}</td>
       <td class="sub-c">${s.g}</td>
       <td style="font-family:var(--sans);font-size:11px;color:var(--text2)">${s.enteredGold || '—'}</td>
-      <td style="text-align:center;font-family:var(--mono);font-size:10.5px">${valJun25}</td>
-      <td style="text-align:center;font-family:var(--mono);font-size:10.5px">${valDec25}</td>
-      <td style="text-align:center;font-family:var(--mono);font-size:10.5px">${valJun26}</td>
+      ${renderCell('histJun24', valJun24, '2024-06-30')}
+      ${renderCell('histDec24', valDec24, '2024-12-31')}
+      ${renderCell('histJun25', valJun25, '2025-06-30')}
+      ${renderCell('histDec25', valDec25, '2025-12-31')}
+      ${renderCell('histJun26', valJun26, '2026-06-30')}
     </tr>`;
   });
   
