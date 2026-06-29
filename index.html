@@ -937,11 +937,35 @@ td{padding:8px 10px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 </main>
 </div>
 <script>
-const COMP_YEAR=2026,DNS=84;
-let REGATTAS=[],SAILORS=[],EXCLUDED=new Map(),selectedReason='Declined',genderFilter='all',simCount=0,chartObjs={},SAILOR_METADATA={};
-let sortKey='score',sortAsc=true,lastMainView='rankings';
+/**
+ * OP Gold — National Ranking System
+ * Singapore Sailing Optimist Prime Gold Fleet Ranking
+ * 
+ * @version 2.0.0
+ * @description Improved version with security hardening, better error handling, and code organization
+ */
 
+// ============================================================================
+// CONSTANTS & CONFIGURATION
+// ============================================================================
+const COMP_YEAR = 2026;
+const DNS = 84; // Default score for Did Not Sail
 const LOCAL_DATA_KEY = 'op_ranking_regattas_v3';
+const DEBOUNCE_DELAY = 300; // ms for input debouncing
+const MAX_CHART_SAILORS = 10; // Maximum sailors to show in comparison charts
+
+// State variables
+let REGATTAS = [];
+let SAILORS = [];
+let EXCLUDED = new Map();
+let selectedReason = 'Declined';
+let genderFilter = 'all';
+let simCount = 0;
+let chartObjs = {};
+let SAILOR_METADATA = {};
+let sortKey = 'score';
+let sortAsc = true;
+let lastMainView = 'rankings';
 
 // ── CLOUD (Firestore) ───────────────────────────────────────────────────────
 const db = firebase.firestore();
@@ -965,8 +989,28 @@ function requireEditor() {
   return false;
 }
 
+// ============================================================================
+// SECURITY: XSS Prevention Utilities
+// ============================================================================
 const nameNormalizationCache = new Map();
 
+/**
+ * Sanitize HTML to prevent XSS attacks
+ * @param {string} str - Raw string to sanitize
+ * @returns {string} - Sanitized string safe for innerHTML
+ */
+function escapeHtml(str) {
+  if (typeof str !== 'string') return str;
+  const div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML;
+}
+
+/**
+ * Normalize sailor names for comparison (case-insensitive, punctuation-agnostic)
+ * @param {string} name - Sailor name to normalize
+ * @returns {string} - Normalized name
+ */
 function normalizeName(name) {
   if (!name) return "";
   let cached = nameNormalizationCache.get(name);
@@ -976,6 +1020,12 @@ function normalizeName(name) {
   return normalized;
 }
 
+/**
+ * Check if two names refer to the same sailor
+ * @param {string} nameA - First name
+ * @param {string} nameB - Second name
+ * @returns {boolean} - True if names match
+ */
 function isSameSailor(nameA, nameB) {
   return normalizeName(nameA) === normalizeName(nameB);
 }
@@ -1042,16 +1092,20 @@ function openSailorModal(sailorName) {
   document.querySelectorAll('.mc-seagames').forEach(cb => cb.checked = seagames.includes(parseInt(cb.value)));
   
   const container = document.getElementById('sm-scores-container');
-  container.innerHTML = '';
+  if (!container) return;
   
-  REGATTAS.forEach((reg, regIdx) => {
+  // Build HTML safely using array join instead of repeated innerHTML concatenation
+  const scoreRows = REGATTAS.map((reg, regIdx) => {
     const sInReg = reg.sailors.find(x => isSameSailor(x.name, sailor.name));
     const val = sInReg ? (sInReg.rank !== undefined && sInReg.rank !== null ? sInReg.rank : sInReg.nett) : '';
-    container.innerHTML += `<div class="wi-row" style="padding:6px 10px; margin-bottom:4px;">
-      <div class="wi-name" style="font-size:11px; font-family:var(--mono);">${reg.name}</div>
-      <input type="number" class="sm-reg-score" data-reg-idx="${regIdx}" value="${val}" style="width:65px; height:26px; font-size:10px; text-align:center;" placeholder="DNS">
+    const safeRegName = escapeHtml(reg.name);
+    return `<div class="wi-row" style="padding:6px 10px; margin-bottom:4px;">
+      <div class="wi-name" style="font-size:11px; font-family:var(--mono);">${safeRegName}</div>
+      <input type="number" class="sm-reg-score" data-reg-idx="${regIdx}" value="${val !== null && val !== undefined ? val : ''}" style="width:65px; height:26px; font-size:10px; text-align:center;" placeholder="DNS">
     </div>`;
-  });
+  }).join('');
+  
+  container.innerHTML = scoreRows;
   
   switchView('sailor-analysis');
   setTimeout(() => {
@@ -1890,43 +1944,63 @@ function runSimulation(){
   
   const rankMap=new Map(sortedSim.map((s,i)=>[s.name,i+1]));
   
-  const panel=document.getElementById('results-panel');
-  panel.style.display='block';
+  const panel = document.getElementById('results-panel');
+  if (!panel) return;
+  panel.style.display = 'block';
+  
   const activeRegsForSim = getActiveRegattas();
   const last4Regs = activeRegsForSim.slice(-4);
-  document.getElementById('results-body').innerHTML=entries.map(e=>{
-    const s=e.sailor;
-    const ns=calcSimScore(s, simSailors);
-    const gain=s.score<900?(s.score-ns):0;
-    const newRank=rankMap.get(s.name)||s.cur,rd=s.cur-newRank;
-    const dc=rd>0?'up':rd<0?'dn':'eq',dt=rd>0?'▲'+rd:rd<0?'▼'+Math.abs(rd):'—';
-    const oldSq=baseSq.get(s.name)||null,newSq=simSq.get(s.name)||null;
-    const sqD=oldSq!==newSq?`<span style="opacity:.5;text-decoration:line-through;font-size:9px;font-family:var(--mono)">${oldSq||'—'}</span> ${squadBadge(newSq)}`:squadBadge(newSq);
-    return`<div class="res-row">
-      <div><div class="res-name">${s.name}</div><div class="res-sub">${squadBadge(oldSq)} #${s.cur}</div></div>
+  
+  // Build result rows safely with escaped sailor names
+  const resultRows = entries.map(e => {
+    const s = e.sailor;
+    const ns = calcSimScore(s, simSailors);
+    const gain = s.score < 900 ? (s.score - ns) : 0;
+    const newRank = rankMap.get(s.name) || s.cur, rd = s.cur - newRank;
+    const dc = rd > 0 ? 'up' : rd < 0 ? 'dn' : 'eq', dt = rd > 0 ? '▲' + rd : rd < 0 ? '▼' + Math.abs(rd) : '—';
+    const oldSq = baseSq.get(s.name) || null, newSq = simSq.get(s.name) || null;
+    const sqD = oldSq !== newSq 
+      ? `<span style="opacity:.5;text-decoration:line-through;font-size:9px;font-family:var(--mono)">${escapeHtml(String(oldSq)) || '—'}</span> ${squadBadge(newSq)}`
+      : squadBadge(newSq);
+    
+    const last4Html = last4Regs.map(reg => {
+      const sInReg = reg.sailors.find(x => isSameSailor(x.name, s.name));
+      const v = sInReg ? (sInReg.rank !== undefined && sInReg.rank !== null ? sInReg.rank : sInReg.nett) : null;
+      const safeTitle = escapeHtml(reg.name);
+      return `<span style="font-family:var(--mono);font-size:9px;padding:1px 4px;background:var(--bg2);border:1px solid var(--border);border-radius:2px;color:${v !== null ? 'var(--text)' : 'var(--text3)'}" title="${safeTitle}">${v !== null ? v : '—'}</span>`;
+    }).join('');
+    
+    return `<div class="res-row">
+      <div><div class="res-name">${escapeHtml(s.name)}</div><div class="res-sub">${squadBadge(oldSq)} #${s.cur}</div></div>
       <div><span class="fin-tag">P${e.pos}</span></div>
       <div><span class="s-old">${Math.floor(s.score)}</span></div>
       <div><span class="s-new">${ns}</span></div>
-      <div><span class="chg ${gain>0?'chg-up':gain<0?'chg-dn':'chg-eq'}">${gain>0?'−'+gain:gain<0?'+'+Math.abs(gain):'0'}</span></div>
+      <div><span class="chg ${gain > 0 ? 'chg-up' : gain < 0 ? 'chg-dn' : 'chg-eq'}">${gain > 0 ? '−' + gain : gain < 0 ? '+' + Math.abs(gain) : '0'}</span></div>
       <div><span class="rnk-was">was #${s.cur}</span><span class="rnk-new">#${newRank}</span><span class="chg ${dc}" style="font-size:9px">${dt}</span></div>
       <div>${sqD}</div>
-      <div style="display:flex;gap:4px;flex-wrap:wrap">${last4Regs.map(reg => {
-  const sInReg = reg.sailors.find(x => isSameSailor(x.name, s.name));
-  const v = sInReg ? (sInReg.rank !== undefined && sInReg.rank !== null ? sInReg.rank : sInReg.nett) : null;
-  return `<span style="font-family:var(--mono);font-size:9px;padding:1px 4px;background:var(--bg2);border:1px solid var(--border);border-radius:2px;color:${v !== null ? 'var(--text)' : 'var(--text3)'}" title="${reg.name}">${v !== null ? v : '—'}</span>`;
-}).join('')}</div>
+      <div style="display:flex;gap:4px;flex-wrap:wrap">${last4Html}</div>
     </div>`;
   }).join('');
+  
+  document.getElementById('results-body').innerHTML = resultRows;
   panel.scrollIntoView({behavior:'smooth',block:'nearest'});
 }
 
 function clearResults(){document.getElementById('results-panel').style.display='none';document.getElementById('results-body').innerHTML='';}
 
 function populateTargetDropdown(){
-  const sel=document.getElementById('targetSailor'),cur=sel.value;
+  const sel = document.getElementById('targetSailor'), cur = sel.value;
   if (!sel) return;
-  sel.innerHTML='<option value="">— choose sailor —</option>'+SAILORS.map(s=>`<option value="${s.name}">${s.cur}. ${s.name} (${s.g==='M'?'Boy':'Girl'}, ${s.born})</option>`).join('');
-  if(cur)sel.value=cur;
+  
+  // Build options safely with escaped names
+  const options = SAILORS.map(s => {
+    const safeName = escapeHtml(s.name);
+    const genderText = s.g === 'M' ? 'Boy' : 'Girl';
+    return `<option value="${safeName}">${s.cur}. ${safeName} (${genderText}, ${s.born})</option>`;
+  }).join('');
+  
+  sel.innerHTML = '<option value="">— choose sailor —</option>' + options;
+  if(cur) sel.value = cur;
 }
 
 function getContextPool(sailor,goal){
@@ -2270,7 +2344,7 @@ function populateExclDropdown() {
   if (!sel) return;
   const cur = sel.value;
   sel.innerHTML = '<option value="">— choose sailor —</option>' +
-    SAILORS.map(s => `<option value="${s.name}">${s.cur}. ${s.name} (${s.g}, ${s.born})</option>`).join('');
+    SAILORS.map(s => { const sn = escapeHtml(s.name); return `<option value="${sn}">${s.cur}. ${sn} (${s.g}, ${s.born})</option>`).join('');
   if (cur) sel.value = cur;
 }
 
