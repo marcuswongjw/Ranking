@@ -556,23 +556,8 @@ td{padding:8px 10px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
         </div>
       </div>
       
-      <div class="tbl-wrap">
-        <table>
-          <thead>
-            <tr>
-              <th style="width:46px;">Rank</th>
-              <th style="width:180px;">Sailor</th>
-              <th style="width:32px;">G</th>
-              <th style="width:100px;">Entered Gold</th>
-              <th style="width:70px;text-align:center;">Jun 24</th>
-              <th style="width:70px;text-align:center;">Dec 24</th>
-              <th style="width:70px;text-align:center;">Jun 25</th>
-              <th style="width:70px;text-align:center;">Dec 25</th>
-              <th style="width:70px;text-align:center;">Jun 26</th>
-            </tr>
-          </thead>
-          <tbody id="hist-gold-body"></tbody>
-        </table>
+      <div class="tbl-wrap" id="hist-gold-table-container">
+        <!-- Rendered dynamically -->
       </div>
     </div>
     <div class="panel" id="panel-fleet">
@@ -3714,6 +3699,24 @@ function getMcSortIndicator(key) {
   return mcSortAsc ? ' ▲' : ' ▼';
 }
 
+let hgSortKey = 'rank';
+let hgSortAsc = true;
+
+function handleHgSort(key) {
+  if (hgSortKey === key) {
+    hgSortAsc = !hgSortAsc;
+  } else {
+    hgSortKey = key;
+    hgSortAsc = true;
+  }
+  renderHistGoldPanel();
+}
+
+function getHgSortIndicator(key) {
+  if (hgSortKey !== key) return '';
+  return hgSortAsc ? ' ▲' : ' ▼';
+}
+
 function renderMajorCompsPanel() {
   const container = document.getElementById('major-comps-table-container');
   if (!container) return;
@@ -3897,8 +3900,8 @@ async function saveHistoricalRankDirectly(name, field, rawValue) {
 }
 
 function renderHistGoldPanel() {
-  const body = document.getElementById('hist-gold-body');
-  if (!body) return;
+  const container = document.getElementById('hist-gold-table-container');
+  if (!container) return;
   
   const searchVal = (document.getElementById('hg-search')?.value || '').toLowerCase();
   const onlyActive = document.getElementById('hg-only-active')?.checked ?? true;
@@ -3966,12 +3969,50 @@ function renderHistGoldPanel() {
   });
 
   list.sort((a, b) => {
-    if (a.isActive && b.isActive) {
-      return a.curRank - b.curRank;
+    let valA, valB;
+    if (hgSortKey === 'rank') {
+      valA = a.curRank !== null && a.curRank !== undefined ? a.curRank : 9999;
+      valB = b.curRank !== null && b.curRank !== undefined ? b.curRank : 9999;
+    } else if (hgSortKey === 'name') {
+      valA = a.name;
+      valB = b.name;
+    } else if (hgSortKey === 'gender') {
+      valA = a.gender;
+      valB = b.gender;
+    } else if (hgSortKey === 'enteredGold') {
+      valA = a.enteredGold === '—' ? 'zzzz' : a.enteredGold;
+      valB = b.enteredGold === '—' ? 'zzzz' : b.enteredGold;
+    } else if (hgSortKey === 'valJun24') {
+      valA = a.valJun24 !== '' && a.valJun24 !== null && a.valJun24 !== undefined ? a.valJun24 : 9999;
+      valB = b.valJun24 !== '' && b.valJun24 !== null && b.valJun24 !== undefined ? b.valJun24 : 9999;
+    } else if (hgSortKey === 'valDec24') {
+      valA = a.valDec24 !== '' && a.valDec24 !== null && a.valDec24 !== undefined ? a.valDec24 : 9999;
+      valB = b.valDec24 !== '' && b.valDec24 !== null && b.valDec24 !== undefined ? b.valDec24 : 9999;
+    } else if (hgSortKey === 'valJun25') {
+      valA = a.valJun25 !== '' && a.valJun25 !== null && a.valJun25 !== undefined ? a.valJun25 : 9999;
+      valB = b.valJun25 !== '' && b.valJun25 !== null && b.valJun25 !== undefined ? b.valJun25 : 9999;
+    } else if (hgSortKey === 'valDec25') {
+      valA = a.valDec25 !== '' && a.valDec25 !== null && a.valDec25 !== undefined ? a.valDec25 : 9999;
+      valB = b.valDec25 !== '' && b.valDec25 !== null && b.valDec25 !== undefined ? b.valDec25 : 9999;
+    } else if (hgSortKey === 'valJun26') {
+      valA = a.valJun26 !== '' && a.valJun26 !== null && a.valJun26 !== undefined ? a.valJun26 : 9999;
+      valB = b.valJun26 !== '' && b.valJun26 !== null && b.valJun26 !== undefined ? b.valJun26 : 9999;
     }
-    if (a.isActive) return -1;
-    if (b.isActive) return 1;
-    return a.name.localeCompare(b.name);
+
+    if (valA === valB) {
+      const rankA = a.curRank !== null && a.curRank !== undefined ? a.curRank : 9999;
+      const rankB = b.curRank !== null && b.curRank !== undefined ? b.curRank : 9999;
+      if (rankA !== rankB) return rankA - rankB;
+      return a.name.localeCompare(b.name);
+    }
+
+    let res = 0;
+    if (typeof valA === 'number' && typeof valB === 'number') {
+      res = valA - valB;
+    } else {
+      res = String(valA).localeCompare(String(valB));
+    }
+    return hgSortAsc ? res : -res;
   });
 
   const rows = list.map(s => {
@@ -3989,10 +4030,11 @@ function renderHistGoldPanel() {
     }
 
     const rankStr = s.isActive ? s.curRank : '<span style="color:var(--text3)">—</span>';
+    const safeName = escapeHtml(s.name);
 
     return `<tr style="${!s.isActive ? 'opacity:0.65; background:var(--bg2);' : ''}">
       <td class="rank-c" style="text-align:center;">${rankStr}</td>
-      <td class="name-c" onclick="openSailorModal('${s.name.replace(/'/g, "\\'")}')" style="cursor:pointer; color:var(--accent); font-weight:600; text-decoration:underline;">${s.name}</td>
+      <td class="name-c" onclick="openSailorModal('${s.name.replace(/'/g, "\\'")}')" style="cursor:pointer; color:var(--accent); font-weight:600; text-decoration:underline;">${safeName}</td>
       <td class="sub-c" style="text-align:center;">${s.gender}</td>
       <td style="font-family:var(--sans);font-size:11px;color:var(--text2)">${s.enteredGold || '—'}</td>
       ${renderCell('histJun24', s.valJun24, '2024-06-30')}
@@ -4001,9 +4043,28 @@ function renderHistGoldPanel() {
       ${renderCell('histDec25', s.valDec25, '2025-12-31')}
       ${renderCell('histJun26', s.valJun26, '2026-06-30')}
     </tr>`;
-  });
+  }).join('');
   
-  body.innerHTML = rows.join('') || '<tr><td colspan="10" style="text-align:center; color:var(--text3); padding:16px;">No sailors match criteria.</td></tr>';
+  container.innerHTML = `
+    <table>
+      <thead>
+        <tr>
+          <th style="width:46px; cursor:pointer; user-select:none" onclick="handleHgSort('rank')">Rank${getHgSortIndicator('rank')}</th>
+          <th style="width:180px; cursor:pointer; user-select:none" onclick="handleHgSort('name')">Sailor${getHgSortIndicator('name')}</th>
+          <th style="width:32px; text-align:center; cursor:pointer; user-select:none" onclick="handleHgSort('gender')">G${getHgSortIndicator('gender')}</th>
+          <th style="width:100px; text-align:center; cursor:pointer; user-select:none" onclick="handleHgSort('enteredGold')">Entered Gold${getHgSortIndicator('enteredGold')}</th>
+          <th style="width:70px; text-align:center; cursor:pointer; user-select:none" onclick="handleHgSort('valJun24')">Jun 24${getHgSortIndicator('valJun24')}</th>
+          <th style="width:70px; text-align:center; cursor:pointer; user-select:none" onclick="handleHgSort('valDec24')">Dec 24${getHgSortIndicator('valDec24')}</th>
+          <th style="width:70px; text-align:center; cursor:pointer; user-select:none" onclick="handleHgSort('valJun25')">Jun 25${getHgSortIndicator('valJun25')}</th>
+          <th style="width:70px; text-align:center; cursor:pointer; user-select:none" onclick="handleHgSort('valDec25')">Dec 25${getHgSortIndicator('valDec25')}</th>
+          <th style="width:70px; text-align:center; cursor:pointer; user-select:none" onclick="handleHgSort('valJun26')">Jun 26${getHgSortIndicator('valJun26')}</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${rows || '<tr><td colspan="9" style="text-align:center; color:var(--text3); padding:16px;">No sailors match criteria.</td></tr>'}
+      </tbody>
+    </table>
+  `;
 }
 
 function renderAll() {
