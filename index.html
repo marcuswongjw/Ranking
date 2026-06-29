@@ -478,22 +478,44 @@ td{padding:8px 10px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
         <p class="card-desc">Track and filter participation in major international and regional competitions over the years (2022 – 2026).</p>
       </div>
       
-      <div class="tbl-wrap">
-        <table>
-          <thead>
-            <tr>
-              <th style="width:180px;">Sailor</th>
-              <th style="width:32px;text-align:center;">G</th>
-              <th style="width:46px;text-align:center;">Born</th>
-              <th style="width:100px;text-align:center;">Entered Gold</th>
-              <th style="text-align:center;">Optimist World Champ.</th>
-              <th style="text-align:center;">Optimist European Champ.</th>
-              <th style="text-align:center;">Optimist Asian & Oceanian Champ.</th>
-              <th style="text-align:center;">SEA Games</th>
-            </tr>
-          </thead>
-          <tbody id="major-comps-body"></tbody>
-        </table>
+      <!-- Filters and search for Major Competitions -->
+      <div class="card" style="margin-bottom:18px; padding: 12px 16px;">
+        <div style="display:flex; flex-wrap:wrap; gap:16px; align-items:center;">
+          <div class="fl" style="flex:1; min-width:200px;">
+            <label class="fl-lbl" for="mc-search">Search Sailor</label>
+            <input type="text" id="mc-search" placeholder="Search by name..." oninput="renderMajorCompsPanel()" style="width:100%;">
+          </div>
+          <div class="fl" style="width:100px;">
+            <label class="fl-lbl" for="mc-gender-filter">Gender</label>
+            <select id="mc-gender-filter" onchange="renderMajorCompsPanel()" style="width:100%; height:32px; background:var(--bg2); border:1px solid var(--border); border-radius:var(--r); color:var(--text); padding:0 8px; cursor:pointer;">
+              <option value="all">All</option>
+              <option value="M">Male (M)</option>
+              <option value="F">Female (F)</option>
+            </select>
+          </div>
+          <div class="fl" style="width:140px;">
+            <label class="fl-lbl" for="mc-gold-filter">Entered Gold</label>
+            <select id="mc-gold-filter" onchange="renderMajorCompsPanel()" style="width:100%; height:32px; background:var(--bg2); border:1px solid var(--border); border-radius:var(--r); color:var(--text); padding:0 8px; cursor:pointer;">
+              <option value="all">All</option>
+              <option value="—">— (Not Entered)</option>
+              <option value="Jan 2023">Jan 2023</option>
+              <option value="Jul 2023">Jul 2023</option>
+              <option value="Jan 2024">Jan 2024</option>
+              <option value="Jul 2024">Jul 2024</option>
+              <option value="Jan 2025">Jan 2025</option>
+              <option value="Jul 2025">Jul 2025</option>
+              <option value="Jan 2026">Jan 2026</option>
+            </select>
+          </div>
+          <div style="display:flex; align-items:center; gap:8px; margin-top:14px;">
+            <input type="checkbox" id="mc-only-participants" onchange="renderMajorCompsPanel()" checked style="width:16px; height:16px; cursor:pointer;">
+            <label for="mc-only-participants" style="font-size:12px; color:var(--text); cursor:pointer; font-weight:500;">Only show major comp participants</label>
+          </div>
+        </div>
+      </div>
+
+      <div class="tbl-wrap" id="major-comps-table-container">
+        <!-- Rendered dynamically -->
       </div>
     </div>
     <div class="panel" id="panel-hist-gold">
@@ -2125,7 +2147,7 @@ function buildCtxTable(ctx,sailor,baseSq,simSqM,posNeeded){
       <td style="font-size:9px;color:var(--text3)">${ev}</td>
     </tr>`;
   }).join('');
-  return `<table class="ct">
+  return `<div class="tbl-wrap" style="overflow-x: auto; width:100%;"><table class="ct">
     <thead>
       <tr class="ct-hdr">
         <td style="width:35px">Pos</td>
@@ -2141,7 +2163,7 @@ function buildCtxTable(ctx,sailor,baseSq,simSqM,posNeeded){
     <tbody>
       ${rows}
     </tbody>
-  </table>`;
+  </table></div>`;
 }
 
 function buildWhatIf(sailor, goal, ctx) {
@@ -3548,28 +3570,48 @@ function setSyncStatus(state, detail) {
   el.title = state === 'error' && detail ? ('Save failed: ' + detail) : '';
 }
 
+let mcSortKey = 'name';
+let mcSortAsc = true;
+
+function handleMcSort(key) {
+  if (mcSortKey === key) {
+    mcSortAsc = !mcSortAsc;
+  } else {
+    mcSortKey = key;
+    mcSortAsc = true;
+  }
+  renderMajorCompsPanel();
+}
+
+function getMcSortIndicator(key) {
+  if (mcSortKey !== key) return '';
+  return mcSortAsc ? ' ▲' : ' ▼';
+}
+
 function renderMajorCompsPanel() {
-  const body = document.getElementById('major-comps-body');
-  if (!body) return;
-  
+  const container = document.getElementById('major-comps-table-container');
+  if (!container) return;
+
+  const searchVal = (document.getElementById('mc-search')?.value || '').toLowerCase();
+  const genderFilterVal = document.getElementById('mc-gender-filter')?.value || 'all';
+  const goldFilterVal = document.getElementById('mc-gold-filter')?.value || 'all';
+  const onlyParticipants = document.getElementById('mc-only-participants')?.checked ?? true;
+
   const allSystem = getAllSailorsInSystem();
   const allSystemMap = new Map();
   allSystem.forEach(s => {
     allSystemMap.set(normalizeName(s.name), s);
   });
   
-  // Gather ALL sailors: active fleet + anyone in SAILOR_METADATA (retired/dropped/historical)
   const allNames = new Map();
   const normalizedToOriginal = new Map();
   
-  // From active regatta data
   allSystem.forEach(s => {
     const norm = normalizeName(s.name);
     normalizedToOriginal.set(norm, s.name);
     allNames.set(s.name, s.name);
   });
   
-  // From metadata (historical sailors who may not appear in any regatta)
   Object.keys(SAILOR_METADATA).forEach(name => {
     const norm = normalizeName(name);
     if (!normalizedToOriginal.has(norm)) {
@@ -3577,10 +3619,8 @@ function renderMajorCompsPanel() {
       allNames.set(name, name);
     }
   });
-  
-  const sortedNames = Array.from(allNames.values()).sort((a, b) => a.localeCompare(b));
-  
-  body.innerHTML = sortedNames.map(name => {
+
+  let list = Array.from(allNames.values()).map(name => {
     const meta = SAILOR_METADATA[name] || {};
     const norm = normalizeName(name);
     const sObj = allSystemMap.get(norm);
@@ -3594,23 +3634,124 @@ function renderMajorCompsPanel() {
     const euros = major.euros || [];
     const asians = major.asians || [];
     const seagames = major.seagames || [];
-    
-    const worldsTags = worlds.length ? worlds.sort((x, y) => x - y).map(y => `<span class="badge b-a" style="margin:2px;">${y}</span>`).join('') : '<span style="color:var(--text3)">—</span>';
-    const eurosTags = euros.length ? euros.sort((x, y) => x - y).map(y => `<span class="badge b-b" style="margin:2px;">${y}</span>`).join('') : '<span style="color:var(--text3)">—</span>';
-    const asiansTags = asians.length ? asians.sort((x, y) => x - y).map(y => `<span class="badge b-ds" style="margin:2px;">${y}</span>`).join('') : '<span style="color:var(--text3)">—</span>';
-    const seagamesTags = seagames.length ? seagames.sort((x, y) => x - y).map(y => `<span class="badge b-n" style="margin:2px;">${y}</span>`).join('') : '<span style="color:var(--text3)">—</span>';
-    
+
+    const totalComps = worlds.length + euros.length + asians.length + seagames.length;
+
+    return {
+      name,
+      gender,
+      born,
+      enteredGold,
+      worlds,
+      euros,
+      asians,
+      seagames,
+      totalComps
+    };
+  });
+
+  list = list.filter(item => {
+    if (searchVal && !item.name.toLowerCase().includes(searchVal)) return false;
+    if (genderFilterVal !== 'all' && item.gender !== genderFilterVal) return false;
+    if (goldFilterVal !== 'all') {
+      if (goldFilterVal === '—') {
+        if (item.enteredGold !== '—' && item.enteredGold !== '') return false;
+      } else {
+        if (item.enteredGold !== goldFilterVal) return false;
+      }
+    }
+    if (onlyParticipants && item.totalComps === 0) return false;
+    return true;
+  });
+
+  list.sort((a, b) => {
+    let valA, valB;
+    if (mcSortKey === 'name') {
+      valA = a.name;
+      valB = b.name;
+    } else if (mcSortKey === 'gender') {
+      valA = a.gender;
+      valB = b.gender;
+    } else if (mcSortKey === 'born') {
+      valA = a.born === '—' ? 9999 : parseInt(a.born);
+      valB = b.born === '—' ? 9999 : parseInt(b.born);
+    } else if (mcSortKey === 'enteredGold') {
+      valA = getEnteredGoldSortValue(a.enteredGold);
+      valB = getEnteredGoldSortValue(b.enteredGold);
+    } else if (mcSortKey === 'worlds') {
+      valA = a.worlds.length;
+      valB = b.worlds.length;
+    } else if (mcSortKey === 'euros') {
+      valA = a.euros.length;
+      valB = b.euros.length;
+    } else if (mcSortKey === 'asians') {
+      valA = a.asians.length;
+      valB = b.asians.length;
+    } else if (mcSortKey === 'seagames') {
+      valA = a.seagames.length;
+      valB = b.seagames.length;
+    } else {
+      valA = a.name;
+      valB = b.name;
+    }
+
+    if (valA === valB) {
+      return a.name.localeCompare(b.name);
+    }
+
+    if (typeof valA === 'string' && typeof valB === 'string') {
+      return mcSortAsc ? valA.localeCompare(valB) : valB.localeCompare(valA);
+    } else {
+      return mcSortAsc ? valA - valB : valB - valA;
+    }
+  });
+
+  function getEnteredGoldSortValue(str) {
+    if (!str || str === '—') return 999999;
+    const parts = str.split(' ');
+    if (parts.length !== 2) return 999999;
+    const year = parseInt(parts[1]);
+    const month = parts[0] === 'Jan' ? 0 : 6;
+    return year * 12 + month;
+  }
+
+  const rows = list.map(item => {
+    const worldsTags = item.worlds.length ? item.worlds.slice().sort((x, y) => x - y).map(y => `<span class="badge b-a" style="margin:2px;">${y}</span>`).join('') : '<span style="color:var(--text3)">—</span>';
+    const eurosTags = item.euros.length ? item.euros.slice().sort((x, y) => x - y).map(y => `<span class="badge b-b" style="margin:2px;">${y}</span>`).join('') : '<span style="color:var(--text3)">—</span>';
+    const asiansTags = item.asians.length ? item.asians.slice().sort((x, y) => x - y).map(y => `<span class="badge b-ds" style="margin:2px;">${y}</span>`).join('') : '<span style="color:var(--text3)">—</span>';
+    const seagamesTags = item.seagames.length ? item.seagames.slice().sort((x, y) => x - y).map(y => `<span class="badge b-n" style="margin:2px;">${y}</span>`).join('') : '<span style="color:var(--text3)">—</span>';
+
     return `<tr>
-      <td class="name-c" onclick="openSailorModal('${name.replace(/'/g, "\\'")}')" style="cursor:pointer; color:var(--accent); font-weight:600; text-decoration:underline;">${name}</td>
-      <td class="sub-c" style="text-align:center;">${gender}</td>
-      <td class="sub-c" style="text-align:center;">${born}</td>
-      <td style="font-family:var(--sans);font-size:11px;color:var(--text2);text-align:center;">${enteredGold}</td>
+      <td class="name-c" onclick="openSailorModal('${item.name.replace(/'/g, "\\'")}')" style="cursor:pointer; color:var(--accent); font-weight:600; text-decoration:underline;">${item.name}</td>
+      <td class="sub-c" style="text-align:center;">${item.gender}</td>
+      <td class="sub-c" style="text-align:center;">${item.born}</td>
+      <td style="font-family:var(--sans);font-size:11px;color:var(--text2);text-align:center;">${item.enteredGold}</td>
       <td style="text-align:center;">${worldsTags}</td>
       <td style="text-align:center;">${eurosTags}</td>
       <td style="text-align:center;">${asiansTags}</td>
       <td style="text-align:center;">${seagamesTags}</td>
     </tr>`;
   }).join('');
+
+  container.innerHTML = `
+    <table>
+      <thead>
+        <tr>
+          <th style="width:180px; cursor:pointer; user-select:none" onclick="handleMcSort('name')">Sailor${getMcSortIndicator('name')}</th>
+          <th style="width:32px; text-align:center; cursor:pointer; user-select:none" onclick="handleMcSort('gender')">G${getMcSortIndicator('gender')}</th>
+          <th style="width:46px; text-align:center; cursor:pointer; user-select:none" onclick="handleMcSort('born')">Born${getMcSortIndicator('born')}</th>
+          <th style="width:100px; text-align:center; cursor:pointer; user-select:none" onclick="handleMcSort('enteredGold')">Entered Gold${getMcSortIndicator('enteredGold')}</th>
+          <th style="text-align:center; cursor:pointer; user-select:none" onclick="handleMcSort('worlds')">Optimist World Champ.${getMcSortIndicator('worlds')}</th>
+          <th style="text-align:center; cursor:pointer; user-select:none" onclick="handleMcSort('euros')">Optimist European Champ.${getMcSortIndicator('euros')}</th>
+          <th style="text-align:center; cursor:pointer; user-select:none" onclick="handleMcSort('asians')">Optimist Asian & Oceanian Champ.${getMcSortIndicator('asians')}</th>
+          <th style="text-align:center; cursor:pointer; user-select:none" onclick="handleMcSort('seagames')">SEA Games${getMcSortIndicator('seagames')}</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${rows || '<tr><td colspan="8" style="text-align:center; color:var(--text3); padding:16px;">No sailors match criteria.</td></tr>'}
+      </tbody>
+    </table>
+  `;
 }
 
 function renderHistGoldPanel() {
