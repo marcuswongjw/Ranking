@@ -541,6 +541,21 @@ td{padding:8px 10px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
         <div class="card-title">Historical Rankings & Gold Fleet Entry</div>
         <p class="card-desc">Track when each sailor entered the Gold Fleet and their historical ranking snapshots at key milestones.</p>
       </div>
+
+      <!-- Filters and search for Historical Rankings -->
+      <div class="card" style="margin-bottom:18px; padding: 12px 16px;">
+        <div style="display:flex; flex-wrap:wrap; gap:16px; align-items:center;">
+          <div class="fl" style="flex:1; min-width:200px;">
+            <label class="fl-lbl" for="hg-search">Search Sailor</label>
+            <input type="text" id="hg-search" placeholder="Search by name..." oninput="renderHistGoldPanel()" style="width:100%;">
+          </div>
+          <div style="display:flex; align-items:center; gap:8px; margin-top:14px;">
+            <input type="checkbox" id="hg-only-active" onchange="renderHistGoldPanel()" checked style="width:16px; height:16px; cursor:pointer;">
+            <label for="hg-only-active" style="font-size:12px; color:var(--text); cursor:pointer; font-weight:500;">Only show active gold sailors</label>
+          </div>
+        </div>
+      </div>
+      
       <div class="tbl-wrap">
         <table>
           <thead>
@@ -552,6 +567,7 @@ td{padding:8px 10px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
               <th style="width:70px;text-align:center;">Jun 24</th>
               <th style="width:70px;text-align:center;">Dec 24</th>
               <th style="width:70px;text-align:center;">Jun 25</th>
+              <th style="width:70px;text-align:center;">Jul 25</th>
               <th style="width:70px;text-align:center;">Dec 25</th>
               <th style="width:70px;text-align:center;">Jun 26</th>
             </tr>
@@ -841,7 +857,7 @@ td{padding:8px 10px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
             </div>
             
             <div class="sec-lbl" style="margin-top:10px;">Historical Standings Overrides</div>
-            <div style="display:grid; grid-template-columns:1fr 1fr 1fr 1fr 1fr; gap:6px;">
+            <div style="display:grid; grid-template-columns:repeat(6, 1fr); gap:6px;">
               <div class="fl">
                 <label class="fl-lbl" for="sm-override-jun24">Jun 24</label>
                 <input type="number" id="sm-override-jun24" style="width:100%;" placeholder="Auto">
@@ -853,6 +869,10 @@ td{padding:8px 10px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
               <div class="fl">
                 <label class="fl-lbl" for="sm-override-jun25">Jun 25</label>
                 <input type="number" id="sm-override-jun25" style="width:100%;" placeholder="Auto">
+              </div>
+              <div class="fl">
+                <label class="fl-lbl" for="sm-override-jul25">Jul 25</label>
+                <input type="number" id="sm-override-jul25" style="width:100%;" placeholder="Auto">
               </div>
               <div class="fl">
                 <label class="fl-lbl" for="sm-override-dec25">Dec 25</label>
@@ -1012,6 +1032,7 @@ function openSailorModal(sailorName) {
   document.getElementById('sm-override-jun24').value = meta.histJun24 !== undefined && meta.histJun24 !== null ? meta.histJun24 : '';
   document.getElementById('sm-override-dec24').value = meta.histDec24 !== undefined && meta.histDec24 !== null ? meta.histDec24 : '';
   document.getElementById('sm-override-jun25').value = meta.histJun25 !== undefined && meta.histJun25 !== null ? meta.histJun25 : '';
+  document.getElementById('sm-override-jul25').value = meta.histJul25 !== undefined && meta.histJul25 !== null ? meta.histJul25 : '';
   document.getElementById('sm-override-dec25').value = meta.histDec25 !== undefined && meta.histDec25 !== null ? meta.histDec25 : '';
   document.getElementById('sm-override-jun26').value = meta.histJun26 !== undefined && meta.histJun26 !== null ? meta.histJun26 : '';
   
@@ -1065,6 +1086,7 @@ function saveSailorProfile() {
   const histJun24 = document.getElementById('sm-override-jun24').value !== '' ? parseInt(document.getElementById('sm-override-jun24').value) : null;
   const histDec24 = document.getElementById('sm-override-dec24').value !== '' ? parseInt(document.getElementById('sm-override-dec24').value) : null;
   const histJun25 = document.getElementById('sm-override-jun25').value !== '' ? parseInt(document.getElementById('sm-override-jun25').value) : null;
+  const histJul25 = document.getElementById('sm-override-jul25').value !== '' ? parseInt(document.getElementById('sm-override-jul25').value) : null;
   const histDec25 = document.getElementById('sm-override-dec25').value !== '' ? parseInt(document.getElementById('sm-override-dec25').value) : null;
   const histJun26 = document.getElementById('sm-override-jun26').value !== '' ? parseInt(document.getElementById('sm-override-jun26').value) : null;
 
@@ -1122,6 +1144,7 @@ function saveSailorProfile() {
     histJun24,
     histDec24,
     histJun25,
+    histJul25,
     histDec25,
     histJun26,
     g: gender,
@@ -1597,6 +1620,7 @@ function recomputeSailors() {
       histJun24: metadata.histJun24 || null,
       histDec24: metadata.histDec24 || null,
       histJun25: metadata.histJun25 || null,
+      histJul25: metadata.histJul25 || null,
       histDec25: metadata.histDec25 || null,
       histJun26: metadata.histJun26 || null
     });
@@ -3811,16 +3835,83 @@ function renderHistGoldPanel() {
   const body = document.getElementById('hist-gold-body');
   if (!body) return;
   
-  const sq = computeSquads(SAILORS);
+  const searchVal = (document.getElementById('hg-search')?.value || '').toLowerCase();
+  const onlyActive = document.getElementById('hg-only-active')?.checked ?? true;
+  
   const isEditable = isEditor();
   
-  const rows = SAILORS.map(s => {
-    const valJun24 = s.histJun24 !== null && s.histJun24 !== undefined ? s.histJun24 : '';
-    const valDec24 = s.histDec24 !== null && s.histDec24 !== undefined ? s.histDec24 : '';
-    const valJun25 = s.histJun25 !== null && s.histJun25 !== undefined ? s.histJun25 : '';
-    const valDec25 = s.histDec25 !== null && s.histDec25 !== undefined ? s.histDec25 : '';
-    const valJun26 = s.histJun26 !== null && s.histJun26 !== undefined ? s.histJun26 : '';
+  const allSystem = getAllSailorsInSystem();
+  const allSystemMap = new Map();
+  allSystem.forEach(s => {
+    allSystemMap.set(normalizeName(s.name), s);
+  });
+  
+  const allNames = new Map();
+  const normalizedToOriginal = new Map();
+  
+  allSystem.forEach(s => {
+    const norm = normalizeName(s.name);
+    normalizedToOriginal.set(norm, s.name);
+    allNames.set(s.name, s.name);
+  });
+  
+  Object.keys(SAILOR_METADATA).forEach(name => {
+    const norm = normalizeName(name);
+    if (!normalizedToOriginal.has(norm)) {
+      normalizedToOriginal.set(norm, name);
+      allNames.set(name, name);
+    }
+  });
+
+  let list = Array.from(allNames.values()).map(name => {
+    const meta = SAILOR_METADATA[name] || {};
+    const norm = normalizeName(name);
     
+    const activeObj = SAILORS.find(x => normalizeName(x.name) === norm);
+    const sObj = allSystemMap.get(norm);
+    
+    const curRank = activeObj ? activeObj.cur : null;
+    const gender = activeObj ? (activeObj.g || '—') : (meta.g || sObj?.g || '—');
+    const enteredGold = meta.enteredGold || '—';
+    
+    const valJun24 = meta.histJun24 !== undefined && meta.histJun24 !== null ? meta.histJun24 : '';
+    const valDec24 = meta.histDec24 !== undefined && meta.histDec24 !== null ? meta.histDec24 : '';
+    const valJun25 = meta.histJun25 !== undefined && meta.histJun25 !== null ? meta.histJun25 : '';
+    const valJul25 = meta.histJul25 !== undefined && meta.histJul25 !== null ? meta.histJul25 : '';
+    const valDec25 = meta.histDec25 !== undefined && meta.histDec25 !== null ? meta.histDec25 : '';
+    const valJun26 = meta.histJun26 !== undefined && meta.histJun26 !== null ? meta.histJun26 : '';
+
+    return {
+      name,
+      curRank,
+      gender,
+      enteredGold,
+      valJun24,
+      valDec24,
+      valJun25,
+      valJul25,
+      valDec25,
+      valJun26,
+      isActive: !!activeObj
+    };
+  });
+
+  list = list.filter(item => {
+    if (searchVal && !item.name.toLowerCase().includes(searchVal)) return false;
+    if (onlyActive && !item.isActive) return false;
+    return true;
+  });
+
+  list.sort((a, b) => {
+    if (a.isActive && b.isActive) {
+      return a.curRank - b.curRank;
+    }
+    if (a.isActive) return -1;
+    if (b.isActive) return 1;
+    return a.name.localeCompare(b.name);
+  });
+
+  const rows = list.map(s => {
     function renderCell(field, val, dateStr) {
       if (isEditable) {
         return `<td style="text-align:center; padding:4px;">
@@ -3834,20 +3925,23 @@ function renderHistGoldPanel() {
       }
     }
 
-    return `<tr>
-      <td class="rank-c">${s.cur}</td>
+    const rankStr = s.isActive ? s.curRank : '<span style="color:var(--text3)">—</span>';
+
+    return `<tr style="${!s.isActive ? 'opacity:0.65; background:var(--bg2);' : ''}">
+      <td class="rank-c" style="text-align:center;">${rankStr}</td>
       <td class="name-c" onclick="openSailorModal('${s.name.replace(/'/g, "\\'")}')" style="cursor:pointer; color:var(--accent); font-weight:600; text-decoration:underline;">${s.name}</td>
-      <td class="sub-c">${s.g}</td>
+      <td class="sub-c" style="text-align:center;">${s.gender}</td>
       <td style="font-family:var(--sans);font-size:11px;color:var(--text2)">${s.enteredGold || '—'}</td>
-      ${renderCell('histJun24', valJun24, '2024-06-30')}
-      ${renderCell('histDec24', valDec24, '2024-12-31')}
-      ${renderCell('histJun25', valJun25, '2025-06-30')}
-      ${renderCell('histDec25', valDec25, '2025-12-31')}
-      ${renderCell('histJun26', valJun26, '2026-06-30')}
+      ${renderCell('histJun24', s.valJun24, '2024-06-30')}
+      ${renderCell('histDec24', s.valDec24, '2024-12-31')}
+      ${renderCell('histJun25', s.valJun25, '2025-06-30')}
+      ${renderCell('histJul25', s.valJul25, '2025-07-31')}
+      ${renderCell('histDec25', s.valDec25, '2025-12-31')}
+      ${renderCell('histJun26', s.valJun26, '2026-06-30')}
     </tr>`;
   });
   
-  body.innerHTML = rows.join('');
+  body.innerHTML = rows.join('') || '<tr><td colspan="10" style="text-align:center; color:var(--text3); padding:16px;">No sailors match criteria.</td></tr>';
 }
 
 function renderAll() {
