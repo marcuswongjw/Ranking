@@ -557,6 +557,11 @@ td{padding:8px 10px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
             <button class="run-btn" onclick="document.getElementById('fleetFileInput').click()" style="background:var(--bg2); color:var(--text2); border:1px solid var(--border);">↑ Upload Fleet Excel</button>
             <input type="file" id="fleetFileInput" accept=".xlsx,.xlsm,.xls" style="display:none;" onchange="uploadFleetExcel(this)">
           </div>
+          <div class="editor-only" style="margin-top:14px; padding-top:14px; border-top:1px solid var(--border); display:flex; flex-direction:column; gap:6px;">
+            <div class="fl-lbl" style="font-weight:600; color:var(--text2);">Legacy Browser Data Recovery</div>
+            <p class="card-desc" style="margin-bottom:6px; font-size:11px; line-height:1.4;">If you have previously input dates, metadata, or major competition participations in this browser that are not showing on the cloud, you can overwrite the cloud database with this browser's local cache.</p>
+            <button class="run-btn" onclick="forceMigrateLocalToCloud()" style="background:var(--accent2); color:#fff; border:none; width:max-content; padding: 6px 12px; font-size: 11px;">↑ Overwrite Cloud with Browser Cache</button>
+          </div>
         </div>
         <div class="card">
           <div class="card-title">Fleet Reshuffle Guidelines</div>
@@ -1618,6 +1623,7 @@ function renderRankingsPanel(){
         <th style="width:46px;cursor:pointer;user-select:none" onclick="handleSort('born')">Born${getSortIndicator('born')}</th>
         <th style="width:62px;cursor:pointer;user-select:none" onclick="handleSort('club')">Club${getSortIndicator('club')}</th>
         <th style="width:66px;cursor:pointer;user-select:none" onclick="handleSort('squad')">Squad${getSortIndicator('squad')}</th>
+        <th style="width:72px;cursor:pointer;user-select:none" onclick="handleSort('enteredGold')">Entered Gold${getSortIndicator('enteredGold')}</th>
 
         <th style="width:80px;text-align:center;cursor:pointer;user-select:none" onclick="handleSort('score')">Best 3 of ${latestRegs.length}${getSortIndicator('score')}</th>
         ${regHeaders}
@@ -1725,6 +1731,7 @@ function renderRankings(){
       <td class="sub-c">${s.born}</td>
       <td class="sub-c" style="font-size:10px">${s.club}</td>
       <td>${isExcl?'<span class="badge b-n">Excl.</span>':squadBadge(squad)}</td>
+      <td class="sub-c" style="font-size:10.5px">${s.enteredGold}</td>
       <td style="text-align:center;font-family:var(--mono);font-weight:600;color:var(--accent2)">${Math.floor(s.score)}</td>
       ${cells}
     </tr>`;
@@ -3451,6 +3458,27 @@ async function maybeMigrate() {
     await saveData();
     PENDING_LOCAL_MIGRATION = null;
     alert('Data published to the cloud — all viewers now read this shared copy.');
+  }
+}
+
+async function forceMigrateLocalToCloud() {
+  if (!requireEditor()) return;
+  const legacy = readLegacyLocalState();
+  if (!legacy) {
+    alert("No legacy browser cache found in this browser.");
+    return;
+  }
+  const msg = "Are you sure you want to overwrite the Firestore cloud database with this browser's local cache? This will replace whatever is currently in the cloud database.";
+  if (confirm(msg)) {
+    try {
+      applyState(legacy);
+      recomputeSailors();
+      await saveData();
+      renderAll();
+      alert("Success! Cloud database has been overwritten with your browser's local cache.");
+    } catch (e) {
+      alert("Failed to migrate: " + e.message);
+    }
   }
 }
 
