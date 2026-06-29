@@ -40,6 +40,13 @@ function applyEditorUI() {
     btn.textContent = isEditor() ? '✓ Editing — sign out' : '🔒 Sign in to edit';
   }
   setSyncStatus(isEditor() ? (CLOUD_HAS_DATA ? 'saved' : 'unpublished') : 'view');
+  
+  if (typeof renderAll === 'function') {
+    renderAll();
+  }
+  if (typeof renderSpecificRegattaResults === 'function') {
+    renderSpecificRegattaResults();
+  }
 }
 
 async function signInEditor() {
@@ -1270,7 +1277,13 @@ function updateRegattaSailorRank(regName, sailorName, val) {
   if (!reg) return;
   const s = reg.sailors.find(x => isSameSailor(x.name, sailorName));
   if (s) {
-    s.rank = val !== '' ? parseFloat(val) : null;
+    const parsed = val.trim() !== '' ? parseInt(val.trim()) : null;
+    if (parsed !== null && (isNaN(parsed) || parsed < 1)) {
+      alert("Rank must be a positive integer.");
+      renderSpecificRegattaResults();
+      return;
+    }
+    s.rank = parsed;
     recomputeSailors();
     saveData();
     renderAll();
@@ -1284,7 +1297,13 @@ function updateRegattaSailorPoints(regName, sailorName, val) {
   if (!reg) return;
   const s = reg.sailors.find(x => isSameSailor(x.name, sailorName));
   if (s) {
-    s.nett = val !== '' ? parseFloat(val) : null;
+    const parsed = val.trim() !== '' ? parseFloat(val.trim()) : null;
+    if (parsed !== null && (isNaN(parsed) || parsed < 0)) {
+      alert("Points must be a non-negative number.");
+      renderSpecificRegattaResults();
+      return;
+    }
+    s.nett = parsed;
     recomputeSailors();
     saveData();
     renderAll();
