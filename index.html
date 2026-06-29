@@ -10,6 +10,22 @@
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500;600&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
+<script>
+  // Public by design — security is enforced by Firestore rules, not by hiding this.
+  const firebaseConfig = {
+    apiKey: "AIzaSyAVRW-zObUX1H7dx84MCsO8YN0bGJ2w9vw",
+    authDomain: "opti-ranking.firebaseapp.com",
+    projectId: "opti-ranking",
+    storageBucket: "opti-ranking.firebasestorage.app",
+    messagingSenderId: "777147150283",
+    appId: "1:777147150283:web:9648d19657d4cdaaac904e",
+    measurementId: "G-4GSYE7EX8Y"
+  };
+  firebase.initializeApp(firebaseConfig);
+</script>
 <style>
 :root{
   --bg:#f2f0eb;--bg2:#e8e5de;--bg3:#dedad2;--card:#faf9f6;
@@ -55,6 +71,8 @@ select:focus,input:focus{border-color:var(--accent)}
 .src-tag{font-family:var(--mono);font-size:9px;color:var(--text3);padding:3px 9px;background:var(--bg2);border-radius:3px;border:1px solid var(--border)}
 .src-tag.ok{color:var(--accent);background:var(--accent-l);border-color:rgba(26,71,42,.2)}
 .content{padding:22px 28px}
+.editor-only{display:none !important}
+body.is-editor .editor-only{display:inline-flex !important}
 .panel{display:none}.panel.active{display:block}
 .welcome{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:65vh;text-align:center;gap:20px}
 .drop-zone{width:460px;max-width:100%;border:2px dashed var(--border2);border-radius:12px;padding:52px 40px;cursor:pointer;transition:all .2s;background:var(--card)}
@@ -310,9 +328,11 @@ td{padding:8px 10px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
     </div>
     <div class="topbar-right">
       <span class="src-tag" id="src-tag">No file loaded</span>
-      <button onclick="clearAllData()" style="background:var(--red-l);color:var(--red);border:1px solid rgba(138,28,28,.2);border-radius:var(--r);font-size:11px;padding:6px 10px;font-family:var(--mono);cursor:pointer;font-weight:500;height:30px;transition:all .15s;margin-right:4px;">✕ Clear Data</button>
-      <button onclick="resetDatabaseToSeed()" style="background:var(--bg2);color:var(--text2);border:1px solid var(--border);border-radius:var(--r);font-size:11px;padding:6px 10px;font-family:var(--mono);cursor:pointer;font-weight:500;height:30px;transition:all .15s;margin-right:4px;">↺ Load Seed</button>
-      <button class="upload-btn" onclick="document.getElementById('fileInput').click()">↑ Load .xlsx</button>
+      <span id="sync-status" class="src-tag" style="font-family:var(--mono);">View-only</span>
+      <button class="editor-only" onclick="clearAllData()" style="background:var(--red-l);color:var(--red);border:1px solid rgba(138,28,28,.2);border-radius:var(--r);font-size:11px;padding:6px 10px;font-family:var(--mono);cursor:pointer;font-weight:500;height:30px;transition:all .15s;margin-right:4px;">✕ Clear Data</button>
+      <button class="editor-only" onclick="resetDatabaseToSeed()" style="background:var(--bg2);color:var(--text2);border:1px solid var(--border);border-radius:var(--r);font-size:11px;padding:6px 10px;font-family:var(--mono);cursor:pointer;font-weight:500;height:30px;transition:all .15s;margin-right:4px;">↺ Load Seed</button>
+      <button class="editor-only upload-btn" onclick="document.getElementById('fileInput').click()">↑ Load .xlsx</button>
+      <button id="auth-btn" onclick="signInEditor()" style="background:var(--text);color:#fff;border:none;border-radius:var(--r);font-size:11px;padding:6px 12px;font-family:var(--mono);cursor:pointer;font-weight:500;height:30px;transition:all .15s;">🔒 Sign in to edit</button>
     </div>
   </div>
   <div class="content">
@@ -839,9 +859,30 @@ td{padding:8px 10px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 <script>
 const COMP_YEAR=2026,DNS=84;
 let REGATTAS=[],SAILORS=[],EXCLUDED=new Map(),selectedReason='Declined',genderFilter='all',simCount=0,chartObjs={},SAILOR_METADATA={};
-let sortKey='score',sortAsc=true;
+let sortKey='score',sortAsc=true,lastMainView='rankings';
 
 const LOCAL_DATA_KEY = 'op_ranking_regattas_v3';
+
+// ── CLOUD (Firestore) ───────────────────────────────────────────────────────
+const db = firebase.firestore();
+const auth = firebase.auth();
+const ADMIN_EMAIL = 'marcuswongjw@gmail.com';
+const CLOUD_DOC = () => db.collection('opRanking').doc('state');
+let CURRENT_USER = null;          // set by auth state listener; non-null = editor
+let PENDING_LOCAL_MIGRATION = null; // in-memory snapshot of legacy localStorage data, pushed up on first sign-in
+let SUPPRESS_SNAPSHOT = false;     // true while we are writing, so our own echo doesn't re-render
+
+function isEditor() { return !!CURRENT_USER; }
+
+// Hard backstop used by every mutating handler. Firestore rules enforce this
+// server-side too; this just gives viewers immediate feedback instead of a
+// silent local change that vanishes on refresh.
+function requireEditor() {
+  if (isEditor()) return true;
+  setSyncStatus('locked');
+  alert('View-only mode. Click "🔒 Sign in to edit" to make changes.');
+  return false;
+}
 
 const nameNormalizationCache = new Map();
 
@@ -936,7 +977,7 @@ function openSailorModal(sailorName) {
 }
 
 function closeSailorModal() {
-  switchView('rankings');
+  switchView(lastMainView);
   if (sailorChartObj) {
     sailorChartObj.destroy();
     sailorChartObj = null;
@@ -944,6 +985,7 @@ function closeSailorModal() {
 }
 
 function saveSailorProfile() {
+  if (!requireEditor()) return;
   const origName = document.getElementById('sm-orig-name').value;
   const newName = document.getElementById('sm-name').value.trim();
   const gender = document.getElementById('sm-gender').value;
@@ -1025,24 +1067,31 @@ function saveSailorProfile() {
   recomputeSailors();
   saveData();
   renderAll();
-  switchView('rankings');
+  switchView(lastMainView);
 }
 
 function resetDatabaseToSeed() {
-  if (confirm("Are you sure you want to reset the database to default seed data? This will overwrite your current changes.")) {
-    localStorage.removeItem(LOCAL_DATA_KEY);
-    loadData();
+  if (!requireEditor()) return;
+  if (confirm("Reset the CLOUD database to default seed data? This overwrites the shared data for everyone.")) {
+    applyStateFromSeed();
+    recomputeSailors();
+    saveData();
     renderAll();
     alert("Database reset to default seed data.");
   }
 }
 
 function clearAllData() {
-  if (confirm("Are you sure you want to clear all database results? This will wipe the rankings and regattas so you can upload a new sheet from scratch.")) {
+  if (!requireEditor()) return;
+  if (confirm("Clear ALL shared cloud data (regattas, exclusions, drops, metadata)? Everyone will see an empty database until a new sheet is uploaded.")) {
     REGATTAS = [];
     SAILORS = [];
+    DROPPED_SAILORS = new Set();
+    EXCLUDED = new Map();
+    SAILOR_METADATA = {};
+    SELECTED_REGATTA_NAMES = null;
     saveData();
-    
+
     document.getElementById('sb-tag').textContent = 'No file loaded';
     document.getElementById('sb-tag').className = 'sb-tag';
     document.getElementById('sb-footer').textContent = 'Ranking Database';
@@ -1090,6 +1139,7 @@ function setupDropZone(){
 }
 
 function loadFile(file){
+  if (!requireEditor()) return;
   const n=file.name.toLowerCase();
   if(!n.endsWith('.xlsx')&&!n.endsWith('.xlsm')&&!n.endsWith('.xls')){alert('Please drop an Excel file (.xlsx, .xlsm, or .xls).');return;}
   const reader=new FileReader();
@@ -1701,7 +1751,7 @@ function addSailorInput(){
   div.className='sailor-row';div.id='sr-'+id;
   div.innerHTML=`<div class="fl"><label class="fl-lbl">Sailor</label><select id="ss-${id}" class="sim-sel" style="width:100%"><option value="">— select —</option>${opts}</select></div>
     <div class="fl"><label class="fl-lbl">Finish</label><input type="number" id="sp-${id}" min="1" max="200" value="10"></div>
-    <button class="rm-btn" onclick="document.getElementById('sr-'+id).remove()">✕</button>`;
+    <button class="rm-btn" onclick="this.closest('.sailor-row').remove()">✕</button>`;
   c.appendChild(div);
 }
 
@@ -2140,6 +2190,7 @@ function setReason(btn) {
 }
 
 function addExcl() {
+  if (!requireEditor()) return;
   const sel = document.getElementById('exclSelect');
   if (!sel || !sel.value) return;
   const name = sel.value;
@@ -2152,6 +2203,7 @@ function addExcl() {
 }
 
 function removeExcl(name) {
+  if (!requireEditor()) return;
   EXCLUDED.delete(name);
   saveData();
   renderExclusions();
@@ -2576,6 +2628,9 @@ function renderDominanceChart() {
 
 // ── NAVIGATION & VIEWS ──────────────────────────────────────────────────────
 function switchView(viewId, btn) {
+  if (viewId !== 'sailor-analysis') {
+    lastMainView = viewId;
+  }
   document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
   const targetPanel = document.getElementById('panel-' + viewId);
   if (targetPanel) targetPanel.classList.add('active');
@@ -2682,6 +2737,7 @@ function renderRegattasPanel() {
 }
 
 function updateRegattaType(idx, val) {
+  if (!requireEditor()) return;
   REGATTAS[idx].type = val;
   saveData();
   recomputeSailors();
@@ -2707,6 +2763,7 @@ function viewRegattaResults(idx) {
 }
 
 function updateRegattaName(idx, val) {
+  if (!requireEditor()) return;
   REGATTAS[idx].name = val.trim() || `Regatta ${idx + 1}`;
   REGATTAS[idx].date = getRegattaDateByName(REGATTAS[idx].name);
   saveData();
@@ -2715,6 +2772,7 @@ function updateRegattaName(idx, val) {
 }
 
 function updateRegattaDate(idx, val) {
+  if (!requireEditor()) return;
   REGATTAS[idx].date = val;
   recomputeSailors();
   saveData();
@@ -2722,6 +2780,7 @@ function updateRegattaDate(idx, val) {
 }
 
 function deleteRegatta(idx) {
+  if (!requireEditor()) return;
   if (confirm(`Are you sure you want to delete "${REGATTAS[idx].name}"?`)) {
     REGATTAS.splice(idx, 1);
     recomputeSailors();
@@ -2863,17 +2922,19 @@ function onRegattaCheckboxChange() {
       selected.push(cb.value);
     }
   });
+  if (!requireEditor()) return;
   SELECTED_REGATTA_NAMES = selected;
-  localStorage.setItem('op_ranking_selected_regattas_v3', JSON.stringify(SELECTED_REGATTA_NAMES));
   recomputeSailors();
+  saveData();
   renderAll();
 }
 
 function resetRegattasToDefault(event) {
   if (event) event.preventDefault();
+  if (!requireEditor()) return;
   SELECTED_REGATTA_NAMES = null;
-  localStorage.removeItem('op_ranking_selected_regattas_v3');
   recomputeSailors();
+  saveData();
   renderAll();
 }
 
@@ -2934,6 +2995,7 @@ function renderFleetPanel() {
 }
 
 function dropSailor(name) {
+  if (!requireEditor()) return;
   DROPPED_SAILORS.add(name);
   recomputeSailors();
   saveData();
@@ -2942,6 +3004,7 @@ function dropSailor(name) {
 }
 
 function promoteSailor(name) {
+  if (!requireEditor()) return;
   DROPPED_SAILORS.delete(name);
   recomputeSailors();
   saveData();
@@ -2950,6 +3013,7 @@ function promoteSailor(name) {
 }
 
 function addNewFleetSailor() {
+  if (!requireEditor()) return;
   const name = document.getElementById('fleet-add-name').value.trim();
   const gender = document.getElementById('fleet-add-gender').value;
   const born = parseInt(document.getElementById('fleet-add-born').value) || 2013;
@@ -3253,79 +3317,184 @@ function renderSailorPerformanceChart(sailor) {
   });
 }
 
-function saveData() {
-  localStorage.setItem(LOCAL_DATA_KEY, JSON.stringify(REGATTAS));
-  localStorage.setItem('op_ranking_dropped_v3', JSON.stringify(Array.from(DROPPED_SAILORS)));
-  localStorage.setItem('op_ranking_excluded_v3', JSON.stringify(Array.from(EXCLUDED.entries())));
-  localStorage.setItem('op_ranking_sailor_metadata_v3', JSON.stringify(SAILOR_METADATA));
+// Serialise the whole in-memory app state into one plain object for Firestore.
+// JSON round-trip strips any `undefined` (Firestore rejects undefined values).
+function serializeState() {
+  return JSON.parse(JSON.stringify({
+    regattas: REGATTAS,
+    dropped: Array.from(DROPPED_SAILORS),
+    excluded: Array.from(EXCLUDED.entries()),
+    metadata: SAILOR_METADATA,
+    selectedRegattas: SELECTED_REGATTA_NAMES === undefined ? null : SELECTED_REGATTA_NAMES
+  }));
 }
 
-function loadData() {
+// Load a state object (from cloud or legacy localStorage) into the globals.
+function applyState(s) {
+  REGATTAS = Array.isArray(s.regattas) ? s.regattas : [];
+  DROPPED_SAILORS = new Set(Array.isArray(s.dropped) ? s.dropped : []);
+  EXCLUDED = new Map(Array.isArray(s.excluded) ? s.excluded : []);
+  SAILOR_METADATA = (s.metadata && typeof s.metadata === 'object') ? s.metadata : {};
+  SELECTED_REGATTA_NAMES = (s.selectedRegattas === undefined) ? null : s.selectedRegattas;
+}
+
+function applyStateFromSeed() {
+  REGATTAS = getSeedRegattas();
+  DROPPED_SAILORS = getDefaultDroppedSailors();
+  EXCLUDED = getDefaultExcludedSailors();
+  SAILOR_METADATA = getDefaultSailorMetadata();
+  SELECTED_REGATTA_NAMES = null;
+}
+
+// One-time read of the legacy localStorage data so we can migrate it to the
+// cloud on first sign-in. Returns null if there is nothing meaningful locally.
+function readLegacyLocalState() {
   try {
     const raw = localStorage.getItem(LOCAL_DATA_KEY);
-    if (raw) {
-      REGATTAS = JSON.parse(raw);
-    } else {
-      REGATTAS = getSeedRegattas();
-    }
+    if (!raw) return null;
+    const regattas = JSON.parse(raw);
+    if (!Array.isArray(regattas) || regattas.length === 0) return null;
+    return {
+      regattas,
+      dropped: JSON.parse(localStorage.getItem('op_ranking_dropped_v3') || '[]'),
+      excluded: JSON.parse(localStorage.getItem('op_ranking_excluded_v3') || '[]'),
+      metadata: JSON.parse(localStorage.getItem('op_ranking_sailor_metadata_v3') || '{}'),
+      selectedRegattas: JSON.parse(localStorage.getItem('op_ranking_selected_regattas_v3') || 'null')
+    };
   } catch (e) {
-    console.error("Failed to parse REGATTAS:", e);
-    REGATTAS = getSeedRegattas();
+    console.error('Could not read legacy local data:', e);
+    return null;
+  }
+}
+
+// Persist current state to the cloud. Fire-and-forget from the 18 call sites —
+// callers don't await it. Writes are gated on being signed in (and again by
+// Firestore security rules server-side).
+async function saveData() {
+  if (!isEditor()) { setSyncStatus('locked'); return; }
+  setSyncStatus('saving');
+  SUPPRESS_SNAPSHOT = true;
+  try {
+    const payload = serializeState();
+    payload.updatedAt = firebase.firestore.FieldValue.serverTimestamp();
+    await CLOUD_DOC().set(payload);
+    setSyncStatus('saved');
+  } catch (e) {
+    console.error('Cloud save failed:', e);
+    setSyncStatus('error', e && e.message);
+  } finally {
+    SUPPRESS_SNAPSHOT = false;
+  }
+}
+
+// Initial load: cloud is the single source of truth. If the cloud document
+// doesn't exist yet, fall back to legacy localStorage (queued for migration)
+// or the built-in seed.
+async function loadData() {
+  let cloud = null;
+  try {
+    const snap = await CLOUD_DOC().get();
+    if (snap.exists) cloud = snap.data();
+  } catch (e) {
+    console.error('Cloud load failed:', e);
+    setSyncStatus('error', e && e.message);
   }
 
-  if (!REGATTAS || REGATTAS.length === 0) {
-    REGATTAS = getSeedRegattas();
-  }
-
-  try {
-    const rawMeta = localStorage.getItem('op_ranking_sailor_metadata_v3');
-    if (rawMeta) {
-      SAILOR_METADATA = JSON.parse(rawMeta);
+  if (cloud) {
+    // Doc exists = authoritative, even if empty (a deliberate "Clear Data" must stick).
+    applyState(cloud);
+  } else {
+    const legacy = readLegacyLocalState();
+    if (legacy) {
+      applyState(legacy);
+      PENDING_LOCAL_MIGRATION = legacy; // pushed up once an editor signs in
     } else {
-      SAILOR_METADATA = {};
+      applyStateFromSeed();
     }
-  } catch (e) {
-    console.error("Failed to parse SAILOR_METADATA:", e);
-    SAILOR_METADATA = {};
   }
-
-  try {
-    const rawDropped = localStorage.getItem('op_ranking_dropped_v3');
-    if (rawDropped) {
-      DROPPED_SAILORS = new Set(JSON.parse(rawDropped));
-    } else {
-      DROPPED_SAILORS = new Set(["Isaiah Yap Chor Hong","Tan Yi Kai Kayden","Callum Wong Joon Thang","Yong Heng Yi","Paolo Gagliard La Gala","Xie Si Duo Kiz","Cory Loh Zhi Hang","Chan Qingxuan Joel","Mohamed Mikail Bin Mohamed Shahrom","Alaric Shenthil naidu","Huang Tianyi","Kate Yeh Zi Ning","Gemma Chen Huang Heng","Isla Lee Zhi Xi","Joshua Khoo Zhuo Xi","Gerome Sim","Germaine Sim","Tham Yan Shuang Ashlea","Mikaela Rae Ng","Zeph Wan"]);
-    }
-  } catch (e) {
-    console.error("Failed to parse DROPPED_SAILORS:", e);
-    DROPPED_SAILORS = new Set(["Isaiah Yap Chor Hong","Tan Yi Kai Kayden","Callum Wong Joon Thang","Yong Heng Yi","Paolo Gagliard La Gala","Xie Si Duo Kiz","Cory Loh Zhi Hang","Chan Qingxuan Joel","Mohamed Mikail Bin Mohamed Shahrom","Alaric Shenthil naidu","Huang Tianyi","Kate Yeh Zi Ning","Gemma Chen Huang Heng","Isla Lee Zhi Xi","Joshua Khoo Zhuo Xi","Gerome Sim","Germaine Sim","Tham Yan Shuang Ashlea","Mikaela Rae Ng","Zeph Wan"]);
-  }
-  
-  try {
-    const rawExcluded = localStorage.getItem('op_ranking_excluded_v3');
-    if (rawExcluded) {
-      EXCLUDED = new Map(JSON.parse(rawExcluded));
-    } else {
-      EXCLUDED = new Map([["Wai Zhi Tong","Declined"]]);
-    }
-  } catch (e) {
-    console.error("Failed to parse EXCLUDED:", e);
-    EXCLUDED = new Map([["Wai Zhi Tong","Declined"]]);
-  }
-  
-  try {
-    const rawSelectedRegs = localStorage.getItem('op_ranking_selected_regattas_v3');
-    if (rawSelectedRegs) {
-      SELECTED_REGATTA_NAMES = JSON.parse(rawSelectedRegs);
-    } else {
-      SELECTED_REGATTA_NAMES = null;
-    }
-  } catch (e) {
-    console.error("Failed to parse SELECTED_REGATTA_NAMES:", e);
-    SELECTED_REGATTA_NAMES = null;
-  }
-  
   recomputeSailors();
+}
+
+// After an editor signs in, if the cloud is still empty but we loaded legacy
+// local data, offer to push it up as the initial cloud document.
+async function maybeMigrate() {
+  if (!isEditor() || !PENDING_LOCAL_MIGRATION) return;
+  let stillEmpty = false;
+  try {
+    const snap = await CLOUD_DOC().get();
+    stillEmpty = !snap.exists || !(snap.data() && Array.isArray(snap.data().regattas) && snap.data().regattas.length);
+  } catch (e) { return; }
+  if (!stillEmpty) { PENDING_LOCAL_MIGRATION = null; return; }
+  if (confirm('The cloud database is empty. Push this browser\'s existing data up as the starting point?')) {
+    await saveData();
+    PENDING_LOCAL_MIGRATION = null;
+    alert('Local data migrated to the cloud.');
+  }
+}
+
+// ── REAL-TIME (viewers auto-refresh when an editor saves) ────────────────────
+function subscribeRealtime() {
+  CLOUD_DOC().onSnapshot(snap => {
+    if (!snap.exists) return;
+    if (snap.metadata.hasPendingWrites) return; // our own optimistic echo
+    if (SUPPRESS_SNAPSHOT) return;
+    if (isEditor()) return;                      // don't clobber an editor's in-progress work
+    applyState(snap.data());
+    recomputeSailors();
+    renderAll();
+  }, err => console.error('Realtime listener error:', err));
+}
+
+// ── AUTH UI ──────────────────────────────────────────────────────────────────
+function initAuth() {
+  auth.onAuthStateChanged(user => {
+    // Only the designated admin account counts as an editor.
+    CURRENT_USER = (user && user.email === ADMIN_EMAIL) ? user : null;
+    applyEditorUI();
+    if (CURRENT_USER) maybeMigrate();
+  });
+}
+
+function applyEditorUI() {
+  document.body.classList.toggle('is-editor', isEditor());
+  const btn = document.getElementById('auth-btn');
+  if (btn) {
+    btn.textContent = isEditor() ? '✓ Editing — sign out' : '🔒 Sign in to edit';
+    btn.onclick = isEditor() ? signOutEditor : signInEditor;
+  }
+  setSyncStatus(isEditor() ? 'saved' : 'view');
+}
+
+async function signInEditor() {
+  const pass = prompt('Enter the editor passcode:');
+  if (!pass) return;
+  try {
+    await auth.signInWithEmailAndPassword(ADMIN_EMAIL, pass);
+  } catch (e) {
+    alert('Incorrect passcode — still in view-only mode.');
+  }
+}
+
+function signOutEditor() {
+  auth.signOut();
+}
+
+// Small status pill in the top bar reflecting the current sync/auth state.
+function setSyncStatus(state, detail) {
+  const el = document.getElementById('sync-status');
+  if (!el) return;
+  const map = {
+    view:   ['View-only',    'var(--text3)', 'var(--bg2)'],
+    locked: ['🔒 View-only', 'var(--red)',   'var(--red-l)'],
+    saving: ['Saving…',      'var(--accent2)','var(--accent2-l)'],
+    saved:  ['✓ Synced',     'var(--accent)','var(--accent-l)'],
+    error:  ['⚠ Not saved',  'var(--red)',   'var(--red-l)']
+  };
+  const [label, color, bg] = map[state] || map.view;
+  el.textContent = label;
+  el.style.color = color;
+  el.style.background = bg;
+  el.title = state === 'error' && detail ? ('Save failed: ' + detail) : '';
 }
 
 function renderMajorCompsPanel() {
@@ -3432,10 +3601,11 @@ function renderAll() {
 }
 
 // ── INITIALIZATION ──────────────────────────────────────────────────────────
-window.onload = function() {
+window.onload = async function() {
   setupDropZone();
-  loadData();
-  
+  initAuth();
+  await loadData();
+
   const sbTag = document.getElementById('sb-tag');
   if (sbTag) {
     sbTag.textContent = SAILORS.length + ' sailors';
@@ -3447,7 +3617,7 @@ window.onload = function() {
   }
   const srcTag = document.getElementById('src-tag');
   if (srcTag) {
-    srcTag.textContent = 'Local Database';
+    srcTag.textContent = 'Cloud Database';
     srcTag.className = 'src-tag ok';
   }
 
@@ -3455,6 +3625,7 @@ window.onload = function() {
   
   handleRouting();
   window.addEventListener('hashchange', handleRouting);
+  subscribeRealtime();
 };
 
 function addUpcomingRegatta() {
@@ -3471,6 +3642,7 @@ function closeAddRegattaModal() {
 }
 
 function saveNewRegatta() {
+  if (!requireEditor()) return;
   const name = document.getElementById('ar-name').value.trim();
   const date = document.getElementById('ar-date').value;
   const type = document.getElementById('ar-type').value || 'selection';
@@ -3491,6 +3663,7 @@ function saveNewRegatta() {
 }
 
 function addSailorToSpecificRegatta() {
+  if (!requireEditor()) return;
   const sel = document.getElementById('resultsRegattaSelect');
   if (!sel) return;
   const regName = sel.value;
@@ -3522,6 +3695,7 @@ function addSailorToSpecificRegatta() {
 }
 
 function updateRegattaSailorRank(regName, sailorName, val) {
+  if (!requireEditor()) return;
   const reg = REGATTAS.find(r => r.name === regName);
   if (!reg) return;
   const s = reg.sailors.find(x => isSameSailor(x.name, sailorName));
@@ -3534,6 +3708,7 @@ function updateRegattaSailorRank(regName, sailorName, val) {
 }
 
 function updateRegattaSailorPoints(regName, sailorName, val) {
+  if (!requireEditor()) return;
   const reg = REGATTAS.find(r => r.name === regName);
   if (!reg) return;
   const s = reg.sailors.find(x => isSameSailor(x.name, sailorName));
@@ -3709,6 +3884,7 @@ function closeImportModal() {
 }
 
 function confirmPendingImport() {
+  if (!requireEditor()) return;
   if (!PENDING_IMPORT_DATA) return;
   
   const mergeSelects = document.querySelectorAll('.sailor-merge-select');

@@ -1,0 +1,39 @@
+Firestore Security Rules for OP Ranking
+========================================
+
+Paste this into: Firebase console -> Firestore -> Rules tab -> Publish.
+
+These make the data PUBLICLY READABLE (anyone with the link can view the
+rankings) but WRITABLE ONLY by the signed-in admin account
+(marcuswongjw@gmail.com). Everything else in the database is denied.
+
+----------------------------------------------------------------------
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // The single shared app-state document lives at opRanking/state.
+    match /opRanking/{docId} {
+      allow read: if true;
+      allow write: if request.auth != null
+                   && request.auth.token.email == 'marcuswongjw@gmail.com';
+    }
+
+    // Deny everything else.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
+----------------------------------------------------------------------
+
+After publishing:
+  - Reads stop returning "permission-denied" (the app's seed-fallback errors
+    in the console will disappear).
+  - To edit, click "Sign in to edit" in the app and enter the passcode you
+    set when you created the marcuswongjw@gmail.com user under
+    Authentication -> Users.
+
+Note: the write rule is locked to that exact email. If you ever add more
+admin accounts, either list them here (use `in [...]`) or switch to a custom
+claim / allowlist document.
