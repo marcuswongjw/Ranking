@@ -3334,7 +3334,7 @@ function serializeState() {
   return JSON.parse(JSON.stringify({
     regattas: REGATTAS,
     dropped: Array.from(DROPPED_SAILORS),
-    excluded: Array.from(EXCLUDED.entries()),
+    excluded: Object.fromEntries(EXCLUDED), // Save as plain object/map to avoid nested arrays in Firestore
     metadata: SAILOR_METADATA,
     selectedRegattas: SELECTED_REGATTA_NAMES === undefined ? null : SELECTED_REGATTA_NAMES
   }));
@@ -3344,7 +3344,11 @@ function serializeState() {
 function applyState(s) {
   REGATTAS = Array.isArray(s.regattas) ? s.regattas : [];
   DROPPED_SAILORS = new Set(Array.isArray(s.dropped) ? s.dropped : []);
-  EXCLUDED = new Map(Array.isArray(s.excluded) ? s.excluded : []);
+  if (s.excluded && typeof s.excluded === 'object' && !Array.isArray(s.excluded)) {
+    EXCLUDED = new Map(Object.entries(s.excluded));
+  } else {
+    EXCLUDED = new Map(Array.isArray(s.excluded) ? s.excluded : []);
+  }
   SAILOR_METADATA = (s.metadata && typeof s.metadata === 'object') ? s.metadata : {};
   SELECTED_REGATTA_NAMES = (s.selectedRegattas === undefined) ? null : s.selectedRegattas;
 }
