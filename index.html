@@ -73,6 +73,18 @@ select:focus,input:focus{border-color:var(--accent)}
 .content{padding:22px 28px}
 .editor-only{display:none !important}
 body.is-editor .editor-only{display:inline-flex !important}
+/* In view-only mode, neutralise the edit forms so they can't be typed into. */
+body:not(.is-editor) #panel-sailor-analysis input,
+body:not(.is-editor) #panel-sailor-analysis select,
+body:not(.is-editor) #panel-sailor-analysis textarea,
+body:not(.is-editor) #panel-regattas input,
+body:not(.is-editor) #panel-regattas select,
+body:not(.is-editor) #panel-fleet input,
+body:not(.is-editor) #panel-fleet select,
+body:not(.is-editor) #panel-results input,
+body:not(.is-editor) #regatta-checkboxes-list input{
+  pointer-events:none;opacity:.6;background:var(--bg2);cursor:not-allowed;
+}
 .panel{display:none}.panel.active{display:block}
 .welcome{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:65vh;text-align:center;gap:20px}
 .drop-zone{width:460px;max-width:100%;border:2px dashed var(--border2);border-radius:12px;padding:52px 40px;cursor:pointer;transition:all .2s;background:var(--card)}
@@ -353,7 +365,7 @@ td{padding:8px 10px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
       <div class="card" style="margin-bottom:18px">
         <div class="card-title">Manage regattas</div>
         <p class="card-desc">Edit regatta names and dates. Regattas are automatically sorted in chronological order. The overall ranking uses the best 3 of the 5 latest regattas.</p>
-        <button onclick="addUpcomingRegatta()" style="background:var(--accent); color:#fff; border:none; border-radius:var(--r); font-size:11px; padding:6px 12px; font-family:var(--mono); cursor:pointer; font-weight:600; display:inline-flex; align-items:center; gap:6px; transition:all .15s;">＋ Add Upcoming Regatta</button>
+        <button class="editor-only" onclick="addUpcomingRegatta()" style="background:var(--accent); color:#fff; border:none; border-radius:var(--r); font-size:11px; padding:6px 12px; font-family:var(--mono); cursor:pointer; font-weight:600; display:inline-flex; align-items:center; gap:6px; transition:all .15s;">＋ Add Upcoming Regatta</button>
       </div>
       <div class="regatta-grid" id="regatta-list" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px;">
         <!-- Regatta cards will be generated here -->
@@ -543,7 +555,7 @@ td{padding:8px 10px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
             </div>
           </div>
           <div style="display:flex; gap:8px; align-items:center;">
-            <button class="run-btn" onclick="addNewFleetSailor()">＋ Add New Sailor</button>
+            <button class="run-btn editor-only" onclick="addNewFleetSailor()">＋ Add New Sailor</button>
             <button class="run-btn" onclick="document.getElementById('fleetFileInput').click()" style="background:var(--bg2); color:var(--text2); border:1px solid var(--border);">↑ Upload Fleet Excel</button>
             <input type="file" id="fleetFileInput" accept=".xlsx,.xlsm,.xls" style="display:none;" onchange="uploadFleetExcel(this)">
           </div>
@@ -644,7 +656,7 @@ td{padding:8px 10px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
           </div>
           <div style="display:flex; gap:12px;">
             <button onclick="closeImportModal()" style="padding:8px 16px; background:var(--bg2); border:1px solid var(--border); border-radius:var(--r); font-size:12px; font-weight:600; cursor:pointer; font-family:var(--mono);">✕ Cancel & Discard</button>
-            <button onclick="confirmPendingImport()" style="padding:8px 20px; background:var(--accent); color:#fff; border:none; border-radius:var(--r); font-size:12px; font-weight:600; cursor:pointer; font-family:var(--mono);">✓ Confirm & Apply Import</button>
+            <button class="editor-only" onclick="confirmPendingImport()" style="padding:8px 20px; background:var(--accent); color:#fff; border:none; border-radius:var(--r); font-size:12px; font-weight:600; cursor:pointer; font-family:var(--mono);">✓ Confirm & Apply Import</button>
           </div>
         </div>
 
@@ -667,7 +679,7 @@ td{padding:8px 10px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
         <div style="padding:12px 18px; border-bottom:1px solid var(--border); display:flex; align-items:center; justify-content:space-between; background:var(--bg2); flex-wrap:wrap; gap:10px;">
           <span id="specific-regatta-name" style="font-family:var(--mono); font-weight:600; font-size:13px;"></span>
           <span id="specific-regatta-date" style="font-family:var(--mono); font-size:11px; color:var(--text2);"></span>
-          <button onclick="addSailorToSpecificRegatta()" style="background:var(--accent); color:#fff; border:none; border-radius:3px; padding:5px 9px; font-size:10px; font-family:var(--mono); cursor:pointer; font-weight:500; margin-left:auto; transition:all .15s;">＋ Add Sailor Result</button>
+          <button class="editor-only" onclick="addSailorToSpecificRegatta()" style="background:var(--accent); color:#fff; border:none; border-radius:3px; padding:5px 9px; font-size:10px; font-family:var(--mono); cursor:pointer; font-weight:500; margin-left:auto; transition:all .15s;">＋ Add Sailor Result</button>
         </div>
         <table>
           <thead>
@@ -806,7 +818,7 @@ td{padding:8px 10px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
           </div>
           <div style="display:flex; justify-content:flex-end; gap:8px;">
             <button onclick="switchView('rankings')" style="padding:7px 14px; background:var(--bg2); border:1px solid var(--border); border-radius:var(--r); font-size:11px; cursor:pointer; font-family:var(--mono);">Cancel</button>
-            <button onclick="saveSailorProfile()" style="padding:7px 16px; background:var(--accent); color:#fff; border:none; border-radius:var(--r); font-size:11px; font-weight:600; cursor:pointer; font-family:var(--mono);">Save Changes</button>
+            <button class="editor-only" onclick="saveSailorProfile()" style="padding:7px 16px; background:var(--accent); color:#fff; border:none; border-radius:var(--r); font-size:11px; font-weight:600; cursor:pointer; font-family:var(--mono);">Save Changes</button>
           </div>
         </div>
 
