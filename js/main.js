@@ -49,6 +49,13 @@ function applyEditorUI() {
   }
   setSyncStatus(isEditor() ? (CLOUD_HAS_DATA ? 'saved' : 'unpublished') : 'view');
   
+  if (!isEditor()) {
+    const editorOnlyViews = ['simulator', 'target', 'exclusions', 'charts', 'major-comps', 'hist-gold', 'fleet'];
+    if (editorOnlyViews.includes(lastMainView)) {
+      switchView('rankings');
+    }
+  }
+
   if (typeof renderAll === 'function') {
     renderAll();
   }

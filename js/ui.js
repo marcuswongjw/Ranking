@@ -25,6 +25,12 @@ function switchView(viewId, navBtn) {
     renderHistGoldPanel();
   } else if (viewId === 'fleet') {
     renderFleetPanel();
+  } else if (viewId === 'charts') {
+    if (typeof renderCharts === 'function') renderCharts();
+  } else if (viewId === 'results') {
+    if (typeof renderSpecificRegattaResults === 'function') renderSpecificRegattaResults();
+  } else if (viewId === 'exclusions') {
+    if (typeof renderExclusions === 'function') renderExclusions();
   }
 }
 
