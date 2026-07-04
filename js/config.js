@@ -13,7 +13,12 @@ firebase.initializeApp(firebaseConfig);
 
 const auth = firebase.auth();
 const db = firebase.firestore();
-const storage = firebase.storage();
+let storage = null;
+try {
+  storage = firebase.storage();
+} catch (e) {
+  console.error('Firebase Storage unavailable (storage-compat script may have failed to load):', e);
+}
 
 // App Constants & Configuration Defaults
 const ADMIN_EMAIL = 'marcuswongjw@gmail.com';

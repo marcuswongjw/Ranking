@@ -92,6 +92,8 @@ td{padding:8px 10px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .excl-tag{font-family:var(--mono);font-size:8px;background:var(--red-l);color:var(--red);border:1px solid rgba(138,28,28,.2);padding:1px 5px;border-radius:3px;margin-left:4px}
 .excl-banner{display:flex;align-items:center;gap:8px;padding:8px 12px;background:rgba(138,28,28,.07);border:1px solid rgba(138,28,28,.18);border-radius:var(--r);margin-bottom:14px;font-size:11px;color:var(--red)}
 .two-col{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:18px}
+.sailor-analysis-grid{display:grid;grid-template-columns:1.2fr 1fr;gap:24px}
+.sailor-analysis-side{display:flex;flex-direction:column;border-left:1px solid var(--border);padding-left:24px}
 .card{background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:18px;box-shadow:var(--sh)}
 .card-title{font-family:var(--mono);font-size:12px;font-weight:600;margin-bottom:4px}
 .card-desc{font-size:11px;color:var(--text2);margin-bottom:14px;line-height:1.55}
@@ -264,6 +266,20 @@ td{padding:8px 10px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   }
   .two-col {
     grid-template-columns: 1fr;
+  }
+  .sailor-analysis-grid {
+    grid-template-columns: 1fr;
+    padding: 16px !important;
+  }
+  .sailor-analysis-side {
+    border-left: none;
+    padding-left: 0;
+    border-top: 1px solid var(--border);
+    padding-top: 16px;
+    margin-top: 16px;
+  }
+  .sailor-analysis-info-grid {
+    grid-template-columns: 1fr !important;
   }
   .charts-grid {
     grid-template-columns: 1fr;
