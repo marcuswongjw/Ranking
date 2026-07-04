@@ -51,10 +51,9 @@ body:not(.is-editor) #panel-sailor-analysis input,
 body:not(.is-editor) #panel-sailor-analysis select,
 body:not(.is-editor) #panel-sailor-analysis textarea,
 body:not(.is-editor) #panel-regattas input,
-body:not(.is-editor) #panel-regattas select,
+body:not(.is-editor) #panel-regattas select:not(#resultsRegattaSelect),
 body:not(.is-editor) #panel-fleet input,
 body:not(.is-editor) #panel-fleet select,
-body:not(.is-editor) #panel-results input,
 body:not(.is-editor) #regatta-checkboxes-list input{
   pointer-events:none;opacity:.6;background:var(--bg2);cursor:not-allowed;
 }

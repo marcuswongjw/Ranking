@@ -1201,6 +1201,12 @@ function bindStaticEventListeners() {
         return;
       }
 
+      const addSailorBtn = e.target.closest('#add-sailor-result-trigger');
+      if (addSailorBtn) {
+        addSailorToSpecificRegatta();
+        return;
+      }
+
       const uploadBtn = e.target.closest('#upload-regatta-doc-btn');
       if (uploadBtn) {
         document.getElementById('regattaDocFileInput')?.click();
