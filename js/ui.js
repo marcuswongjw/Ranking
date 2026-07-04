@@ -19,6 +19,7 @@ function switchView(viewId, navBtn) {
     renderRankingsPanel();
   } else if (viewId === 'regattas') {
     renderRegattasPanel();
+    renderSpecificRegattaResults(null);
   } else if (viewId === 'major-comps') {
     renderMajorCompsPanel();
   } else if (viewId === 'hist-gold') {
@@ -250,40 +251,93 @@ function populateResultsDropdown() {
   if (cur) sel.value = cur;
 }
 
-function renderSpecificRegattaResults() {
+let CURRENT_SELECTED_REGATTA = null;
+
+function renderSpecificRegattaResults(regName) {
   try {
     const sel = document.getElementById('resultsRegattaSelect');
     const wrap = document.getElementById('specific-regatta-results-wrap');
     const body = document.getElementById('specific-regatta-body');
-    if (!sel || !wrap || !body) return;
-    
-    const regName = sel.value;
-    if (!regName) {
-      wrap.style.display = 'none';
-      return;
+    const landing = document.getElementById('regatta-landing-view');
+    if (!wrap || !body) return;
+
+    if (regName === undefined || regName === null || typeof regName === 'object') {
+      regName = CURRENT_SELECTED_REGATTA || (sel ? sel.value : null);
     }
     
+    if (!regName) {
+      CURRENT_SELECTED_REGATTA = null;
+      wrap.style.display = 'none';
+      if (landing) landing.style.display = 'block';
+      if (sel) sel.value = '';
+      return;
+    }
+
+    CURRENT_SELECTED_REGATTA = regName;
     const reg = REGATTAS.find(r => r.name === regName);
     if (!reg) {
+      CURRENT_SELECTED_REGATTA = null;
       wrap.style.display = 'none';
+      if (landing) landing.style.display = 'block';
+      if (sel) sel.value = '';
       return;
     }
-    
+
+    if (landing) landing.style.display = 'none';
     wrap.style.display = 'block';
+
+    if (sel) {
+      sel.value = regName;
+    }
+
     const nameEl = document.getElementById('specific-regatta-name');
     if (nameEl) nameEl.textContent = reg.name;
-    const dateEl = document.getElementById('specific-regatta-date');
-    if (dateEl) dateEl.textContent = reg.date ? `Date: ${reg.date}` : 'Date: Not Set';
+
+    const dateInput = document.getElementById('specific-regatta-date-input');
+    if (dateInput) {
+      dateInput.value = reg.date || '';
+      dateInput.disabled = !isEditor();
+    }
 
     const dnsInput = document.getElementById('specific-regatta-dns');
     if (dnsInput) {
-      dnsInput.value = reg.dns !== undefined && reg.dns !== null ? reg.dns : DNS;
+      dnsInput.value = reg.dns !== undefined && reg.dns !== null ? reg.dns : '';
+      dnsInput.placeholder = reg.sailors ? reg.sailors.length : '';
       dnsInput.disabled = !isEditor();
     }
-    
+
+    // Document Upload/Download slot
+    const docContainer = document.getElementById('specific-regatta-doc-container');
+    if (docContainer) {
+      if (reg.documentUrl) {
+        const docName = reg.documentName || 'Download Results Document';
+        let deleteBtn = '';
+        if (isEditor()) {
+          deleteBtn = `<button id="delete-regatta-doc-btn" style="background:none; border:none; color:var(--red); font-size:12px; cursor:pointer; font-weight:600; display:inline-flex; align-items:center; gap:2px; margin-left: 6px;" title="Delete document">🗑️ Remove</button>`;
+        }
+        docContainer.innerHTML = `
+          <a href="${escapeHtml(reg.documentUrl)}" target="_blank" style="color:var(--accent); text-decoration:underline; font-weight:600; display:inline-flex; align-items:center; gap:4px; font-size:11.5px;">
+            📄 ${escapeHtml(docName)}
+          </a>
+          ${deleteBtn}
+        `;
+      } else {
+        if (isEditor()) {
+          docContainer.innerHTML = `
+            <button id="upload-regatta-doc-btn" style="background:var(--bg3); border:1px solid var(--border); border-radius:var(--r); padding:4px 8px; font-size:11px; cursor:pointer; display:inline-flex; align-items:center; gap:4px; font-family:var(--mono);">
+              📎 Upload Document
+            </button>
+            <input type="file" id="regattaDocFileInput" style="display:none;">
+          `;
+        } else {
+          docContainer.innerHTML = `<span style="color:var(--text3); font-style:italic; font-size:11px;">No document uploaded</span>`;
+        }
+      }
+    }
+
     const regSailors = (reg.sailors || []).filter(s => s && s.name);
     const sortedSailors = [...regSailors].sort((a, b) => (a.rank !== undefined ? a.rank : a.nett) - (b.rank !== undefined ? b.rank : b.nett));
-    
+
     body.innerHTML = sortedSailors.map((s, idx) => {
       const safeName = escapeHtml(s.name || 'Unknown');
       const rankVal = s.rank !== undefined && s.rank !== null ? s.rank : '';
@@ -306,11 +360,11 @@ function renderSpecificRegattaResults() {
         <td class="sub-c" style="font-size:10px">${escapeHtml(s.club || '—')}</td>
         <td style="text-align:center;">
           <input type="number" class="reg-rank-input" data-reg="${escapeHtml(reg.name)}" data-sailor="${safeName}" value="${rankVal}" 
-                 style="width:70px; height:24px; text-align:center; padding:2px; font-family:var(--mono);">
+                 style="width:70px; height:24px; text-align:center; padding:2px; font-family:var(--mono);" ${!isEditor() ? 'disabled' : ''}>
         </td>
         <td style="text-align:center;">
           <input type="number" class="reg-points-input" data-reg="${escapeHtml(reg.name)}" data-sailor="${safeName}" value="${pointsVal}" 
-                 style="width:70px; height:24px; text-align:center; padding:2px; font-family:var(--mono); font-weight:600; color:var(--accent2);">
+                 style="width:70px; height:24px; text-align:center; padding:2px; font-family:var(--mono); font-weight:600; color:var(--accent2);" ${!isEditor() ? 'disabled' : ''}>
         </td>
         <td style="text-align:center;"><span class="pct-b" style="background:${pctBg};color:${pctColor};font-size:9.5px;padding:3px 6px;border-radius:3px;font-weight:600">${pctLabel}</span></td>
         <td class="table-editor-only" style="text-align:center;">
@@ -765,7 +819,7 @@ function renderRankings() {
     const rowSt = isExcl ? 'opacity:.42;' : '';
     const exclTag = isExcl ? `<span class="excl-tag">${escapeHtml(EXCLUDED.get(s.name))}</span>` : '';
     
-    const validRanks = s.ranks.map(v => v === null ? DNS : v);
+    const validRanks = s.ranks.map((v, regIdx) => v === null ? getRegattaDnsPenalty(latestRegs[regIdx]) : v);
     const best3Indices = validRanks.map((v, i) => ({ v, i })).sort((a,b) => a.v - b.v).slice(0,3).map(x => x.i);
     const isBest3 = new Set(best3Indices);
 
@@ -800,22 +854,31 @@ function renderRegattasPanel() {
   if (!container) return;
   
   if (REGATTAS.length === 0) {
-    container.innerHTML = '<div class="excl-empty">No regattas uploaded yet. Drop an Excel file or click the load button.</div>';
+    container.innerHTML = '<div class="excl-empty" style="grid-column: 1 / -1;">No regattas uploaded yet. Drop an Excel file or click the load button.</div>';
     return;
   }
   
   const html = REGATTAS.map((reg, idx) => {
     const safeName = escapeHtml(reg.name);
-    return `<div class="sc-item" style="justify-content:space-between; align-items:center;">
-      <div style="display:flex; align-items:flex-start; gap:9px;">
-        <span class="sc-icon">📅</span>
-        <div>
-          <div class="sc-title">${safeName}</div>
-          <div class="sc-desc">${reg.date || '—'} · ${reg.sailors.length} sailors</div>
+    const competitorCount = reg.sailors ? reg.sailors.length : 0;
+    const dateStr = reg.date || 'Date not set';
+    
+    return `
+      <div class="card regatta-card" data-name="${safeName}" style="cursor:pointer; display:flex; flex-direction:column; justify-content:space-between; padding:18px; border:1px solid var(--border); border-radius:var(--r); background:var(--card); transition:transform 0.15s ease, box-shadow 0.15s ease;">
+        <div style="display:flex; flex-direction:column; gap:8px;">
+          <div style="font-size:16px; font-weight:700; color:var(--text); line-height:1.3;">${safeName}</div>
+          <div style="display:flex; align-items:center; gap:6px; font-size:12px; color:var(--text3); font-family:var(--mono);">
+            <span>📅 ${dateStr}</span>
+            <span>•</span>
+            <span>⛵ ${competitorCount} Sailors</span>
+          </div>
+        </div>
+        <div style="margin-top:14px; display:flex; justify-content:space-between; align-items:center;">
+          <span style="font-size:11px; color:var(--accent); font-weight:600; font-family:var(--mono);">View Results →</span>
+          ${isEditor() ? `<button class="excl-rm regatta-delete-btn" data-name="${safeName}" style="background:var(--red-l); color:var(--red); border:1px solid rgba(138,28,28,.15); height:24px; padding:0 8px; font-size:10px; border-radius:4px; font-family:var(--mono);">✕ Delete</button>` : ''}
         </div>
       </div>
-      <button class="excl-rm editor-only regatta-delete-btn" data-idx="${idx}" style="background:var(--red-l); color:var(--red); border:1px solid rgba(138,28,28,.15); height:24px; padding:0 8px; font-size:10px;">✕ Delete</button>
-    </div>`;
+    `;
   }).join('');
   
   container.innerHTML = html;

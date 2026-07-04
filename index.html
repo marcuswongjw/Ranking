@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Optimist Prime Gold Fleet Ranking</title>
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><defs><linearGradient id='g' x1='0%' y1='0%' x2='100%' y2='100%'><stop offset='0%' stop-color='%231a472a'/><stop offset='100%' stop-color='%232d4a8a'/></linearGradient></defs><rect width='100' height='100' rx='22' fill='url(%23g)'/><text x='50' y='66' font-size='46' font-weight='800' font-family='-apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, Roboto, sans-serif' fill='white' text-anchor='middle' letter-spacing='-0.03em'>OP</text></svg>">
   
   <!-- Local libraries for offline support and CDNs for Firebase -->
   <script src="js/libs/chart.umd.js"></script>
@@ -11,6 +12,7 @@
   <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-storage-compat.js"></script>
 
   <!-- External Stylesheet -->
   <link rel="stylesheet" href="css/styles.css">
@@ -31,7 +33,6 @@
   <nav class="sb-nav">
     <div class="nav-sec">Views</div>
     <button class="nav-item active" data-view="rankings"><span class="nav-dot dot-n"></span>Rankings</button>
-    <button class="nav-item" data-view="results"><span class="nav-dot dot-n"></span>Regatta Results</button>
     <button class="nav-item" data-view="regattas"><span class="nav-dot dot-n"></span>Regattas</button>
     <button class="nav-item editor-only" data-view="simulator"><span class="nav-dot dot-n"></span>Simulation</button>
     <button class="nav-item editor-only" data-view="target"><span class="nav-dot dot-n"></span>Squad target</button>
@@ -108,15 +109,63 @@
       </div>
     </div>
 
-    <!-- Regattas List View -->
+    <!-- Regattas View -->
     <div class="panel" id="panel-regattas">
-      <div class="card" style="margin-bottom:18px">
-        <div class="card-title">Manage regattas</div>
-        <p class="card-desc">Edit regatta names and dates. Regattas are automatically sorted in chronological order. The overall ranking uses the best 3 of the 5 latest regattas.</p>
-        <button class="editor-only" id="ar-modal-open-btn" style="background:var(--accent); color:#fff; border:none; border-radius:var(--r); font-size:11px; padding:6px 12px; font-family:var(--mono); cursor:pointer; font-weight:600; display:inline-flex; align-items:center; gap:6px; transition:all .15s;">＋ Add Upcoming Regatta</button>
+      <div id="regatta-landing-view">
+        <div class="card" style="margin-bottom:18px">
+          <div class="card-title">Manage regattas</div>
+          <p class="card-desc">Edit regatta names and dates. Regattas are automatically sorted in chronological order. The overall ranking uses the best 3 of the 5 latest regattas.</p>
+          <button class="editor-only" id="ar-modal-open-btn" style="background:var(--accent); color:#fff; border:none; border-radius:var(--r); font-size:11px; padding:6px 12px; font-family:var(--mono); cursor:pointer; font-weight:600; display:inline-flex; align-items:center; gap:6px; transition:all .15s;">＋ Add Upcoming Regatta</button>
+        </div>
+        <div class="regatta-grid" id="regatta-list" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px;">
+          <!-- Regatta cards will be generated here -->
+        </div>
       </div>
-      <div class="regatta-grid" id="regatta-list" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px;">
-        <!-- Regatta cards will be generated here -->
+
+      <div class="tbl-wrap" id="specific-regatta-results-wrap" style="display:none; margin-top: 18px;">
+        <div style="padding:12px 18px; border-bottom:1px solid var(--border); display:flex; align-items:center; justify-content:space-between; background:var(--bg2); flex-wrap:wrap; gap:10px;">
+          <button id="regatta-back-btn" style="background:var(--bg3); color:var(--text); border:1px solid var(--border); border-radius:var(--r); font-size:11.5px; padding:6px 12px; cursor:pointer; font-family:var(--mono); font-weight:500;">← Back to List</button>
+          
+          <span id="specific-regatta-name" style="font-family:var(--mono); font-weight:600; font-size:13px;"></span>
+
+          <div style="display:flex; align-items:center; gap:6px;">
+            <label class="fl-lbl" for="resultsRegattaSelect" style="margin:0; font-family:var(--mono); font-size:11px;">Select Regatta:</label>
+            <select id="resultsRegattaSelect" style="height:28px; font-size:11.5px; background:var(--card); border:1px solid var(--border); border-radius:var(--r); color:var(--text); padding:0 6px;"></select>
+          </div>
+
+          <div style="display:flex; align-items:center; gap:6px; font-family:var(--mono); font-size:11.5px; color:var(--text2);">
+            <span>Date:</span>
+            <input type="date" id="specific-regatta-date-input" style="height:24px; padding:2px 6px; border:1px solid var(--border); border-radius:var(--r); background:var(--card); color:var(--text); font-size:11.5px;">
+          </div>
+
+          <div style="display:flex; align-items:center; gap:6px; font-family:var(--mono); font-size:11.5px; color:var(--text2);">
+            <span>Total Sailors in Regatta:</span>
+            <input type="number" id="specific-regatta-dns" style="width:55px; height:24px; text-align:center; border:1px solid var(--border); border-radius:var(--r); background:var(--card); color:var(--text);" min="1">
+          </div>
+
+          <div id="specific-regatta-doc-container" style="display:flex; align-items:center; gap:6px;"></div>
+
+          <div style="display:flex; gap:6px; align-items:center; margin-left:auto;">
+            <button class="editor-only" id="add-sailor-result-trigger" style="background:var(--accent); color:#fff; border:none; border-radius:3px; padding:6px 12px; font-size:11px; font-family:var(--mono); cursor:pointer; font-weight:600; transition:all .15s;">＋ Add Sailor Result</button>
+            <button class="editor-only regatta-delete-btn-detail" style="background:var(--red-l); color:var(--red); border:1px solid rgba(138,28,28,.15); border-radius:3px; padding:6px 12px; font-size:11px; font-family:var(--mono); cursor:pointer; font-weight:600; transition:all .15s;">✕ Delete Regatta</button>
+          </div>
+        </div>
+        <table>
+          <thead>
+            <tr>
+              <th style="width:60px">Rank</th>
+              <th>Sailor</th>
+              <th style="width:50px">Gender</th>
+              <th style="width:60px">Born</th>
+              <th>Club</th>
+              <th style="width:120px; text-align:center">Rank in Reg.</th>
+              <th style="width:120px; text-align:center">Points</th>
+              <th style="width:90px; text-align:center">Percentile</th>
+              <th class="table-editor-only" style="width:70px; text-align:center">Action</th>
+            </tr>
+          </thead>
+          <tbody id="specific-regatta-body"></tbody>
+        </table>
       </div>
     </div>
 
@@ -453,44 +502,7 @@
       </div>
     </div>
 
-    <!-- Regatta Results View -->
-    <div class="panel" id="panel-results">
-      <div class="card" style="margin-bottom:18px">
-        <div class="card-title">Regatta Results Viewer</div>
-        <p class="card-desc">Select any uploaded regatta to view its full results list and date.</p>
-        <div class="fl" style="max-width:300px;">
-          <label class="fl-lbl" for="resultsRegattaSelect">Select Regatta</label>
-          <select id="resultsRegattaSelect" style="width:100%;height:32px;"></select>
-        </div>
-      </div>
-      <div class="tbl-wrap" id="specific-regatta-results-wrap" style="display:none;">
-        <div style="padding:12px 18px; border-bottom:1px solid var(--border); display:flex; align-items:center; justify-content:space-between; background:var(--bg2); flex-wrap:wrap; gap:10px;">
-          <span id="specific-regatta-name" style="font-family:var(--mono); font-weight:600; font-size:13px;"></span>
-          <span id="specific-regatta-date" style="font-family:var(--mono); font-size:11px; color:var(--text2);"></span>
-          <div style="display:flex; align-items:center; gap:6px; font-family:var(--mono); font-size:11.5px; color:var(--text2);">
-            <span>Regatta DNS:</span>
-            <input type="number" id="specific-regatta-dns" style="width:55px; height:22px; text-align:center; border:1px solid var(--border); border-radius:var(--r); background:var(--card); color:var(--text);" min="1">
-          </div>
-          <button class="editor-only" id="add-sailor-result-trigger" style="background:var(--accent); color:#fff; border:none; border-radius:3px; padding:5px 9px; font-size:10px; font-family:var(--mono); cursor:pointer; font-weight:500; margin-left:auto; transition:all .15s;">＋ Add Sailor Result</button>
-        </div>
-        <table>
-          <thead>
-            <tr>
-              <th style="width:60px">Rank</th>
-              <th>Sailor</th>
-              <th style="width:50px">Gender</th>
-              <th style="width:60px">Born</th>
-              <th>Club</th>
-              <th style="width:120px; text-align:center">Rank in Reg.</th>
-              <th style="width:120px; text-align:center">Points</th>
-              <th style="width:90px; text-align:center">Percentile</th>
-              <th class="table-editor-only" style="width:70px; text-align:center">Action</th>
-            </tr>
-          </thead>
-          <tbody id="specific-regatta-body"></tbody>
-        </table>
-      </div>
-    </div>
+
 
     <!-- Sailor Edit / Analysis Panel (Full Page) -->
     <div class="panel" id="panel-sailor-analysis">

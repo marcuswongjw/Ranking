@@ -13,6 +13,7 @@ firebase.initializeApp(firebaseConfig);
 
 const auth = firebase.auth();
 const db = firebase.firestore();
+const storage = firebase.storage();
 
 // App Constants & Configuration Defaults
 const ADMIN_EMAIL = 'marcuswongjw@gmail.com';

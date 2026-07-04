@@ -1011,10 +1011,20 @@ function bindStaticEventListeners() {
     if (btn) removeExcl(btn.getAttribute('data-name'));
   });
 
-  // Regattas List deletion delegation
+  // Regatta list landing view clicks
   document.getElementById('regatta-list')?.addEventListener('click', e => {
-    const btn = e.target.closest('.regatta-delete-btn');
-    if (btn) deleteRegatta(parseInt(btn.getAttribute('data-idx')));
+    const deleteBtn = e.target.closest('.regatta-delete-btn');
+    if (deleteBtn) {
+      e.stopPropagation();
+      deleteRegattaEntirely(deleteBtn.getAttribute('data-name'));
+      return;
+    }
+
+    const card = e.target.closest('.regatta-card');
+    if (card) {
+      const regName = card.getAttribute('data-name');
+      renderSpecificRegattaResults(regName);
+    }
   });
 
   // Fleet list active/dropped delegation
@@ -1164,13 +1174,62 @@ function bindStaticEventListeners() {
   });
 
   // Regatta results select change listener
-  document.getElementById('resultsRegattaSelect')?.addEventListener('change', () => renderSpecificRegattaResults());
+  document.getElementById('resultsRegattaSelect')?.addEventListener('change', e => {
+    renderSpecificRegattaResults(e.target.value);
+  });
   document.getElementById('specific-regatta-dns')?.addEventListener('change', e => {
-    const regSelect = document.getElementById('resultsRegattaSelect');
-    if (regSelect && regSelect.value) {
-      updateRegattaDns(regSelect.value, e.target.value);
+    if (CURRENT_SELECTED_REGATTA) {
+      updateRegattaDns(CURRENT_SELECTED_REGATTA, e.target.value);
     }
   });
+
+  // Regatta details view delegation
+  const regResultsWrap = document.getElementById('specific-regatta-results-wrap');
+  if (regResultsWrap) {
+    regResultsWrap.addEventListener('click', e => {
+      const backBtn = e.target.closest('#regatta-back-btn');
+      if (backBtn) {
+        renderSpecificRegattaResults(null);
+        return;
+      }
+
+      const delDetailBtn = e.target.closest('.regatta-delete-btn-detail');
+      if (delDetailBtn) {
+        if (CURRENT_SELECTED_REGATTA) {
+          deleteRegattaEntirely(CURRENT_SELECTED_REGATTA);
+        }
+        return;
+      }
+
+      const uploadBtn = e.target.closest('#upload-regatta-doc-btn');
+      if (uploadBtn) {
+        document.getElementById('regattaDocFileInput')?.click();
+        return;
+      }
+
+      const deleteDocBtn = e.target.closest('#delete-regatta-doc-btn');
+      if (deleteDocBtn) {
+        if (CURRENT_SELECTED_REGATTA) {
+          deleteRegattaDocument(CURRENT_SELECTED_REGATTA);
+        }
+        return;
+      }
+    });
+
+    regResultsWrap.addEventListener('change', e => {
+      const dateInput = e.target.closest('#specific-regatta-date-input');
+      if (dateInput) {
+        updateRegattaDate(CURRENT_SELECTED_REGATTA, dateInput.value);
+        return;
+      }
+
+      const fileInput = e.target.closest('#regattaDocFileInput');
+      if (fileInput) {
+        handleRegattaDocUpload(fileInput, CURRENT_SELECTED_REGATTA);
+        return;
+      }
+    });
+  }
 
   // Target Simulator UI elements
   document.getElementById('targetSailor')?.addEventListener('change', () => runTarget());
@@ -1350,4 +1409,88 @@ function removeSailorFromSpecificRegatta(regName, sailorName) {
   saveData();
   renderAll();
   renderSpecificRegattaResults();
+}
+
+function updateRegattaDate(regName, dateString) {
+  if (!requireEditor()) return;
+  const reg = REGATTAS.find(r => r.name === regName);
+  if (!reg) return;
+  reg.date = dateString;
+  recomputeSailors();
+  saveData();
+  renderAll();
+  renderSpecificRegattaResults(regName);
+}
+
+function deleteRegattaEntirely(regName) {
+  if (!requireEditor()) return;
+  const idx = REGATTAS.findIndex(r => r.name === regName);
+  if (idx === -1) return;
+  if (!confirm(`Are you sure you want to delete the regatta "${regName}"? This will delete all sailor results inside it.`)) return;
+  
+  REGATTAS.splice(idx, 1);
+  recomputeSailors();
+  saveData();
+  renderAll();
+  renderSpecificRegattaResults(null);
+}
+
+async function uploadRegattaDocument(regName, file) {
+  if (!requireEditor()) return;
+  try {
+    setSyncStatus('saving');
+    const ref = storage.ref().child(`regattas/${regName}/${file.name}`);
+    const snapshot = await ref.put(file);
+    const url = await snapshot.ref.getDownloadURL();
+    
+    const reg = REGATTAS.find(r => r.name === regName);
+    if (reg) {
+      reg.documentUrl = url;
+      reg.documentName = file.name;
+      
+      saveData();
+      renderSpecificRegattaResults(regName);
+      alert("Document uploaded successfully!");
+    }
+  } catch (err) {
+    console.error("Upload error:", err);
+    setSyncStatus('error', err.message);
+    alert("Failed to upload document: " + err.message);
+  }
+}
+
+async function deleteRegattaDocument(regName) {
+  if (!requireEditor()) return;
+  const reg = REGATTAS.find(r => r.name === regName);
+  if (!reg) return;
+  if (!reg.documentUrl) return;
+  
+  if (!confirm("Are you sure you want to remove the document for this regatta?")) return;
+  
+  try {
+    setSyncStatus('saving');
+    try {
+      const ref = storage.refFromURL(reg.documentUrl);
+      await ref.delete();
+    } catch (storageErr) {
+      console.warn("Storage deletion warning (might already be deleted or permission denied):", storageErr);
+    }
+    
+    delete reg.documentUrl;
+    delete reg.documentName;
+    
+    saveData();
+    renderSpecificRegattaResults(regName);
+    alert("Document removed successfully!");
+  } catch (err) {
+    console.error("Removal error:", err);
+    setSyncStatus('error', err.message);
+    alert("Failed to remove document: " + err.message);
+  }
+}
+
+function handleRegattaDocUpload(inputEl, regName) {
+  const file = inputEl.files[0];
+  if (!file) return;
+  uploadRegattaDocument(regName, file);
 }

@@ -45,8 +45,8 @@ function isSameSailor(nameA, nameB) {
 }
 
 function getRegattaPercentileBase(reg) {
-  if (reg && reg.dns !== undefined && reg.dns !== null && reg.dns > 1) {
-    return reg.dns - 1;
+  if (reg && reg.dns !== undefined && reg.dns !== null && reg.dns > 0) {
+    return reg.dns;
   }
   if (!reg || !reg.sailors || reg.sailors.length === 0) return 1;
   let maxRank = 0;
@@ -56,7 +56,7 @@ function getRegattaPercentileBase(reg) {
       maxRank = r;
     }
   });
-  return maxRank > 1 ? maxRank - 1 : 1;
+  return maxRank > 0 ? maxRank : 1;
 }
 
 function isAgeDropped(born) {
@@ -135,8 +135,10 @@ function getHistoricalRank(sailorName, dateStr) {
         return sInReg ? (sInReg.rank !== undefined && sInReg.rank !== null ? sInReg.rank : sInReg.nett) : null;
       });
       
-      const validScores = scores.map(v => v === null ? DNS : v);
-      while (validScores.length < 5) validScores.push(DNS);
+      const validScores = scores.map((v, regIdx) => v === null ? getRegattaDnsPenalty(activeRegs[regIdx]) : v);
+      while (validScores.length < 5) {
+        validScores.push(getRegattaDnsPenalty(activeRegs[validScores.length]));
+      }
       const sorted = validScores.slice().sort((a,b)=>a-b);
       const score = sorted.slice(0,3).reduce((a,b)=>a+b,0);
       sysSailors.push({ name: originalName, score, ranks: validScores });
@@ -144,11 +146,11 @@ function getHistoricalRank(sailorName, dateStr) {
     
     sysSailors.sort((a,b) => {
       if (a.score !== b.score) return a.score - b.score;
-      const rA = [...a.ranks].sort((x,y)=>(x===null?DNS:x) - (y===null?DNS:y));
-      const rB = [...b.ranks].sort((x,y)=>(x===null?DNS:x) - (y===null?DNS:y));
+      const rA = [...a.ranks].sort((x,y)=>x-y);
+      const rB = [...b.ranks].sort((x,y)=>x-y);
       for (let i=0; i<5; i++) {
-        const valA = rA[i] !== undefined && rA[i] !== null ? rA[i] : DNS;
-        const valB = rB[i] !== undefined && rB[i] !== null ? rB[i] : DNS;
+        const valA = rA[i] !== undefined && rA[i] !== null ? rA[i] : getRegattaDnsPenalty(activeRegs[i]);
+        const valB = rB[i] !== undefined && rB[i] !== null ? rB[i] : getRegattaDnsPenalty(activeRegs[i]);
         if (valA !== valB) return valA - valB;
       }
       return 0;

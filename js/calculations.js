@@ -1,3 +1,11 @@
+function getRegattaDnsPenalty(reg) {
+  if (!reg) return DNS;
+  if (reg.name === "Simulated Regatta") return DNS;
+  if (reg.dns === DNS) return DNS;
+  const total = (reg.dns !== undefined && reg.dns !== null) ? parseInt(reg.dns) : (reg.sailors ? reg.sailors.length : 0);
+  return total + 1;
+}
+
 function ageGroup(born) {
   const a = COMP_YEAR - born;
   return a >= 13 ? 13 : a === 12 ? 12 : a === 11 ? 11 : 10;
@@ -159,13 +167,13 @@ function recomputeSailors() {
     const validScores = s.scores.map((v, regIdx) => {
       if (v === null || v === undefined) {
         const reg = latestRegs[regIdx];
-        return reg && reg.dns !== undefined && reg.dns !== null ? reg.dns : DNS;
+        return getRegattaDnsPenalty(reg);
       }
       return v;
     });
     while (validScores.length < latestRegs.length) {
       const reg = latestRegs[validScores.length];
-      validScores.push(reg && reg.dns !== undefined && reg.dns !== null ? reg.dns : DNS);
+      validScores.push(getRegattaDnsPenalty(reg));
     }
     const sortedScores = validScores.slice().sort((a, b) => a - b);
     const score = sortedScores.slice(0, 3).reduce((a, b) => a + b, 0);
@@ -192,12 +200,12 @@ function recomputeSailors() {
   computed.sort((a, b) => {
     if (a.score !== b.score) return a.score - b.score;
     
-    const ranksA = a.ranks.map((v, regIdx) => v === null ? (latestRegs[regIdx]?.dns || DNS) : v).sort((x, y) => x - y);
-    const ranksB = b.ranks.map((v, regIdx) => v === null ? (latestRegs[regIdx]?.dns || DNS) : v).sort((x, y) => x - y);
+    const ranksA = a.ranks.map((v, regIdx) => v === null ? getRegattaDnsPenalty(latestRegs[regIdx]) : v).sort((x, y) => x - y);
+    const ranksB = b.ranks.map((v, regIdx) => v === null ? getRegattaDnsPenalty(latestRegs[regIdx]) : v).sort((x, y) => x - y);
     
     for (let i = 0; i < Math.max(ranksA.length, ranksB.length); i++) {
-      const rA = ranksA[i] !== undefined ? ranksA[i] : DNS;
-      const rB = ranksB[i] !== undefined ? ranksB[i] : DNS;
+      const rA = ranksA[i] !== undefined ? ranksA[i] : getRegattaDnsPenalty(latestRegs[i]);
+      const rB = ranksB[i] !== undefined ? ranksB[i] : getRegattaDnsPenalty(latestRegs[i]);
       if (rA !== rB) return rA - rB;
     }
     return 0;
@@ -237,17 +245,17 @@ function calcSimScore(sailor, simSailors, rankingMode = false) {
   const scores = simulatedRegsList.map(reg => {
     if (reg.name === "Simulated Regatta") return simPos;
     const sInReg = reg.sailors.find(x => isSameSailor(x.name, sailor.name));
-    const fallbackDns = reg.dns !== undefined && reg.dns !== null ? reg.dns : DNS;
+    const fallbackDns = getRegattaDnsPenalty(reg);
     if (rankingMode) {
       return sInReg ? (sInReg.rank !== undefined && sInReg.rank !== null ? sInReg.rank : (sInReg.nett !== null ? sInReg.nett : fallbackDns)) : null;
     }
     return sInReg ? (sInReg.rank !== undefined && sInReg.rank !== null ? sInReg.rank : sInReg.nett) : null;
   });
   
-  const validScores = scores.map((v, regIdx) => v === null ? (simulatedRegsList[regIdx]?.dns || DNS) : v);
+  const validScores = scores.map((v, regIdx) => v === null ? getRegattaDnsPenalty(simulatedRegsList[regIdx]) : v);
   while (validScores.length < simulatedRegsList.length) {
     const reg = simulatedRegsList[validScores.length];
-    validScores.push(reg && reg.dns !== undefined && reg.dns !== null ? reg.dns : DNS);
+    validScores.push(getRegattaDnsPenalty(reg));
   }
   const sorted = validScores.sort((a,b) => a - b);
   return sorted.slice(0,3).reduce((a,b) => a + b, 0);
@@ -373,11 +381,11 @@ function runTarget(){
     const simRegs = [...latestRegs, { dns: DNS }];
     simScores.sort((a, b) => {
       if (a.score !== b.score) return a.score - b.score;
-      const ranksA = a.ranks.map((v, regIdx) => v === null ? (simRegs[regIdx]?.dns || DNS) : v).sort((x, y) => x - y);
-      const ranksB = b.ranks.map((v, regIdx) => v === null ? (simRegs[regIdx]?.dns || DNS) : v).sort((x, y) => x - y);
+      const ranksA = a.ranks.map((v, regIdx) => v === null ? getRegattaDnsPenalty(simRegs[regIdx]) : v).sort((x, y) => x - y);
+      const ranksB = b.ranks.map((v, regIdx) => v === null ? getRegattaDnsPenalty(simRegs[regIdx]) : v).sort((x, y) => x - y);
       for (let i = 0; i < Math.max(ranksA.length, ranksB.length); i++) {
-        const rA = ranksA[i] !== undefined ? ranksA[i] : DNS;
-        const rB = ranksB[i] !== undefined ? ranksB[i] : DNS;
+        const rA = ranksA[i] !== undefined ? ranksA[i] : getRegattaDnsPenalty(simRegs[i]);
+        const rB = ranksB[i] !== undefined ? ranksB[i] : getRegattaDnsPenalty(simRegs[i]);
         if (rA !== rB) return rA - rB;
       }
       return 0;
@@ -451,11 +459,11 @@ function renderTargetSimulation(simulatedPos) {
   const simRegsM = [...latestRegs, { dns: DNS }];
   simScoresM.sort((a, b) => {
     if (a.score !== b.score) return a.score - b.score;
-    const ranksA = a.ranks.map((v, regIdx) => v === null ? (simRegsM[regIdx]?.dns || DNS) : v).sort((x, y) => x - y);
-    const ranksB = b.ranks.map((v, regIdx) => v === null ? (simRegsM[regIdx]?.dns || DNS) : v).sort((x, y) => x - y);
+    const ranksA = a.ranks.map((v, regIdx) => v === null ? getRegattaDnsPenalty(simRegsM[regIdx]) : v).sort((x, y) => x - y);
+    const ranksB = b.ranks.map((v, regIdx) => v === null ? getRegattaDnsPenalty(simRegsM[regIdx]) : v).sort((x, y) => x - y);
     for (let i = 0; i < Math.max(ranksA.length, ranksB.length); i++) {
-      const rA = ranksA[i] !== undefined ? ranksA[i] : DNS;
-      const rB = ranksB[i] !== undefined ? ranksB[i] : DNS;
+      const rA = ranksA[i] !== undefined ? ranksA[i] : getRegattaDnsPenalty(simRegsM[i]);
+      const rB = ranksB[i] !== undefined ? ranksB[i] : getRegattaDnsPenalty(simRegsM[i]);
       if (rA !== rB) return rA - rB;
     }
     return 0;
