@@ -44,11 +44,11 @@ function switchView(viewId, navBtn, skipHash) {
   }
 }
 
-function openSailorModal(sailorName) {
+function openSailorModal(sailorName, skipHash) {
   const allSystem = getAllSailorsInSystem();
   let sailor = allSystem.find(s => isSameSailor(s.name, sailorName));
   const meta = SAILOR_METADATA[sailorName] || {};
-  
+
   if (!sailor) {
     sailor = {
       name: sailorName,
@@ -58,21 +58,16 @@ function openSailorModal(sailorName) {
       school: meta.school || ''
     };
   }
-  
+
   document.getElementById('sm-orig-name').value = sailor.name;
   document.getElementById('sm-name').value = sailor.name;
   document.getElementById('sm-gender').value = sailor.g || meta.g || 'M';
   document.getElementById('sm-born').value = sailor.born || meta.born || '';
   document.getElementById('sm-club').value = sailor.club || meta.club || '';
   document.getElementById('sm-school').value = sailor.school || meta.school || '';
-  
+
   document.getElementById('sm-entered-gold').value = meta.enteredGold || '—';
-  document.getElementById('sm-override-jun24').value = meta.histJun24 !== undefined && meta.histJun24 !== null ? meta.histJun24 : '';
-  document.getElementById('sm-override-dec24').value = meta.histDec24 !== undefined && meta.histDec24 !== null ? meta.histDec24 : '';
-  document.getElementById('sm-override-jun25').value = meta.histJun25 !== undefined && meta.histJun25 !== null ? meta.histJun25 : '';
-  document.getElementById('sm-override-dec25').value = meta.histDec25 !== undefined && meta.histDec25 !== null ? meta.histDec25 : '';
-  document.getElementById('sm-override-jun26').value = meta.histJun26 !== undefined && meta.histJun26 !== null ? meta.histJun26 : '';
-  
+
   const major = meta.majorComps || {};
   const worlds = major.worlds || [];
   const euros = major.euros || [];
@@ -84,48 +79,48 @@ function openSailorModal(sailorName) {
   document.querySelectorAll('.mc-asians').forEach(cb => cb.checked = asians.includes(parseInt(cb.value)));
   document.querySelectorAll('.mc-seagames').forEach(cb => cb.checked = seagames.includes(parseInt(cb.value)));
 
-  // Squad status per half-year period (Jan/Jul of last year and this year),
-  // stored under year-suffixed metadata keys shared with the rankings locks.
-  const squadContainer = document.getElementById('sm-squad-status-container');
-  if (squadContainer) {
-    const periods = [];
-    [COMP_YEAR - 1, COMP_YEAR].forEach(y => {
-      const yy = String(y).slice(-2);
-      periods.push({ label: 'Jan ' + yy, key: 'squadJan' + yy });
-      periods.push({ label: 'Jul ' + yy, key: 'squadJul' + yy });
-    });
-    squadContainer.innerHTML = periods.map(p => {
-      const cur = meta[p.key] || '';
-      return `<div class="fl">
-        <label class="fl-lbl">${p.label}</label>
-        <select class="sm-squad-select" data-field="${p.key}" style="width:100%; height:28px; font-size:11px;">
-          <option value="">—</option>
-          ${['Nat A', 'Nat B', 'DS'].map(o => `<option value="${o}" ${cur === o ? 'selected' : ''}>${o}</option>`).join('')}
+  // Combined Standings & Squad History: one row per half-year snapshot, with
+  // the rank override input (auto rank as placeholder) and the squad status
+  // select for the squad period that snapshot determines. Squad keys are
+  // shared with the rankings-table lock dropdowns.
+  const histSquadContainer = document.getElementById('sm-hist-squad-container');
+  if (histSquadContainer) {
+    const periods = [
+      { snap: 'Jun 24', date: '2024-06-30', histId: 'sm-override-jun24', metaKey: 'histJun24', squadKey: 'squadJul24', squadLbl: 'Jul 24' },
+      { snap: 'Dec 24', date: '2024-12-31', histId: 'sm-override-dec24', metaKey: 'histDec24', squadKey: 'squadJan25', squadLbl: 'Jan 25' },
+      { snap: 'Jun 25', date: '2025-06-30', histId: 'sm-override-jun25', metaKey: 'histJun25', squadKey: 'squadJul25', squadLbl: 'Jul 25' },
+      { snap: 'Dec 25', date: '2025-12-31', histId: 'sm-override-dec25', metaKey: 'histDec25', squadKey: 'squadJan26', squadLbl: 'Jan 26' },
+      { snap: 'Jun 26', date: '2026-06-30', histId: 'sm-override-jun26', metaKey: 'histJun26', squadKey: 'squadJul26', squadLbl: 'Jul 26' }
+    ];
+    histSquadContainer.innerHTML = periods.map(p => {
+      const rankVal = meta[p.metaKey] !== undefined && meta[p.metaKey] !== null ? meta[p.metaKey] : '';
+      const autoRank = getHistoricalRank(sailor.name, p.date);
+      const curSquad = meta[p.squadKey] || '';
+      return `<div style="display:grid; grid-template-columns:86px 1fr 1fr; gap:8px; align-items:center;">
+        <span style="font-family:var(--mono); font-size:10.5px; color:var(--text2);">${p.snap}</span>
+        <input type="number" id="${p.histId}" value="${rankVal}" placeholder="${autoRank !== '—' ? autoRank : 'Auto'}"
+               style="width:100%; height:28px; font-size:11px;" title="Standing as of ${p.snap} (blank = auto)">
+        <select class="sm-squad-select" data-field="${p.squadKey}" style="width:100%; height:28px; font-size:11px;" title="Squad for ${p.squadLbl}">
+          <option value="">— ${p.squadLbl} —</option>
+          ${['Nat A', 'Nat B', 'DS'].map(o => `<option value="${o}" ${curSquad === o ? 'selected' : ''}>${o} (${p.squadLbl})</option>`).join('')}
         </select>
       </div>`;
     }).join('');
   }
 
-  const container = document.getElementById('sm-scores-container');
-  if (!container) return;
-  
-  const scoreRows = REGATTAS.map((reg, regIdx) => {
-    const sInReg = reg.sailors.find(x => isSameSailor(x.name, sailor.name));
-    const val = sInReg ? (sInReg.rank !== undefined && sInReg.rank !== null ? sInReg.rank : sInReg.nett) : '';
-    const safeRegName = escapeHtml(reg.name);
-    return `<div class="wi-row" style="padding:6px 10px; margin-bottom:4px;">
-      <div class="wi-name" style="font-size:11px; font-family:var(--mono);">${safeRegName}</div>
-      <input type="number" class="sm-reg-score" data-reg-idx="${regIdx}" value="${val !== null && val !== undefined ? val : ''}" style="width:65px; height:26px; font-size:10px; text-align:center;" placeholder="DNS">
-    </div>`;
-  }).join('');
-  
-  container.innerHTML = scoreRows;
-  
   // Show modal view
   document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
   document.getElementById('panel-sailor-analysis').classList.add('active');
 
   renderSailorPerformanceSummary(sailor);
+
+  // Give each sailor profile its own URL (skip on back/forward navigation)
+  if (!skipHash) {
+    const newHash = '#sailor/' + encodeURIComponent(sailor.name);
+    if (window.location.hash !== newHash) {
+      history.pushState({ sailor: sailor.name }, '', newHash);
+    }
+  }
 }
 
 function closeSailorModal() {
@@ -468,23 +463,16 @@ function renderSailorPerformanceSummary(sailor) {
   const meta = SAILOR_METADATA[sailor.name] || {};
   const enteredGold = meta.enteredGold || '—';
   const goldEntryDate = parseGoldEntryDate(enteredGold);
-
-  const sortedRegs = [...REGATTAS]
-    .filter(reg => !goldEntryDate || !reg.date || new Date(reg.date) >= goldEntryDate)
-    .sort((a, b) => {
-      const dA = a.date ? new Date(a.date) : new Date(0);
-      const dB = b.date ? new Date(b.date) : new Date(0);
-      return dA - dB;
-    });
+  const isPreGold = reg => goldEntryDate && reg.date && new Date(reg.date) < goldEntryDate;
 
   let best = Infinity;
   let sum = 0;
   let count = 0;
-
-  const chronoResults = [];
   const venueScores = {};
 
-  sortedRegs.forEach(reg => {
+  // Stats only count results from gold fleet entry onward
+  REGATTAS.forEach(reg => {
+    if (isPreGold(reg)) return;
     const sInReg = reg.sailors.find(x => isSameSailor(x.name, sailor.name));
     const val = sInReg ? (sInReg.rank !== undefined && sInReg.rank !== null ? sInReg.rank : sInReg.nett) : null;
 
@@ -493,9 +481,6 @@ function renderSailorPerformanceSummary(sailor) {
       sum += val;
       count++;
 
-      chronoResults.push({ name: reg.name, date: reg.date, rank: val, reg: reg });
-
-      // Accumulate venue averages
       const venue = reg.name.split(' ')[0] || 'Unknown';
       if (!venueScores[venue]) venueScores[venue] = [];
       venueScores[venue].push(val);
@@ -514,7 +499,7 @@ function renderSailorPerformanceSummary(sailor) {
   if (noticeEl) {
     if (goldEntryDate) {
       noticeEl.style.display = 'block';
-      noticeEl.textContent = `Showing results from Gold Fleet entry onward (${enteredGold}). Earlier results are excluded.`;
+      noticeEl.textContent = `Stats count results from Gold Fleet entry onward (${enteredGold}). Earlier results are dimmed.`;
     } else {
       noticeEl.style.display = 'none';
     }
@@ -533,28 +518,46 @@ function renderSailorPerformanceSummary(sailor) {
   const venueEl = document.getElementById('sm-stat-venue');
   if (venueEl) venueEl.textContent = bestVenue;
 
-  // Chronological per-regatta results (most recent first) with percentile finish
-  const historyRows = chronoResults.slice().reverse().map(r => {
-    const base = getRegattaPercentileBase(r.reg);
-    const pct = base > 0 ? (r.rank / base) * 100 : 100;
-    const pctRounded = Math.min(100, Math.max(1, Math.round(pct)));
-    let pctColor, pctBg;
-    if (pct <= 25) { pctColor = 'var(--accent)'; pctBg = 'var(--accent-l)'; }
-    else if (pct <= 50) { pctColor = 'var(--accent2)'; pctBg = 'var(--accent2-l)'; }
-    else if (pct <= 75) { pctColor = 'var(--accent3)'; pctBg = 'var(--accent3-l)'; }
-    else { pctColor = 'var(--red)'; pctBg = 'var(--red-l)'; }
+  // Combined regatta results: one row per regatta (most recent first), with an
+  // editable rank input (data-reg-idx keyed to REGATTAS order, read by
+  // saveSailorProfile) and the percentile badge for entered results.
+  const resultsContainer = document.getElementById('sm-results-container');
+  if (!resultsContainer) return;
 
-    return `
-    <div style="display:flex; justify-content:space-between; align-items:center; padding:6px 0; border-bottom:1px solid var(--border); gap:8px;">
-      <span style="font-size:11px; color:var(--text2); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${escapeHtml(r.name)}</span>
-      <span style="display:inline-flex; align-items:center; gap:6px; flex-shrink:0;">
-        <span style="font-size:11px; font-weight:600; font-family:var(--mono); color:var(--accent);">P${r.rank}</span>
-        <span style="font-size:9.5px; font-weight:600; font-family:var(--mono); color:${pctColor}; background:${pctBg}; padding:2px 6px; border-radius:3px;">Top ${pctRounded}%</span>
-      </span>
-    </div>`;
+  const rows = REGATTAS.map((reg, regIdx) => {
+    const sInReg = reg.sailors.find(x => isSameSailor(x.name, sailor.name));
+    const val = sInReg ? (sInReg.rank !== undefined && sInReg.rank !== null ? sInReg.rank : sInReg.nett) : null;
+    const hasResult = val !== null && val !== undefined;
+
+    let pctBadge = '<span style="width:64px;"></span>';
+    if (hasResult) {
+      const base = getRegattaPercentileBase(reg);
+      const pct = base > 0 ? (val / base) * 100 : 100;
+      const pctRounded = Math.min(100, Math.max(1, Math.round(pct)));
+      let pctColor, pctBg;
+      if (pct <= 25) { pctColor = 'var(--accent)'; pctBg = 'var(--accent-l)'; }
+      else if (pct <= 50) { pctColor = 'var(--accent2)'; pctBg = 'var(--accent2-l)'; }
+      else if (pct <= 75) { pctColor = 'var(--accent3)'; pctBg = 'var(--accent3-l)'; }
+      else { pctColor = 'var(--red)'; pctBg = 'var(--red-l)'; }
+      pctBadge = `<span style="width:64px; text-align:center; font-size:9.5px; font-weight:600; font-family:var(--mono); color:${pctColor}; background:${pctBg}; padding:2px 0; border-radius:3px;">Top ${pctRounded}%</span>`;
+    }
+
+    const preGold = isPreGold(reg);
+    return { regIdx, preGold, date: reg.date, html: `
+      <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; padding:3px 0; border-bottom:1px solid var(--border); ${preGold ? 'opacity:.45;' : ''}"
+           ${preGold ? 'title="Before Gold Fleet entry — not counted in stats"' : ''}>
+        <span style="font-size:11px; color:var(--text2); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${escapeHtml(reg.name)}</span>
+        <span style="display:inline-flex; align-items:center; gap:6px; flex-shrink:0;">
+          ${pctBadge}
+          <input type="number" class="sm-reg-score" data-reg-idx="${regIdx}" value="${hasResult ? val : ''}"
+                 style="width:60px; height:24px; font-size:10px; text-align:center;" placeholder="DNS">
+        </span>
+      </div>` };
   });
 
-  document.getElementById('sm-stat-history').innerHTML = historyRows.join('') || '<div style="padding:6px 0; color:var(--text3);">No results recorded yet.</div>';
+  // Most recent regatta first (REGATTAS is kept chronologically ascending)
+  resultsContainer.innerHTML = rows.slice().reverse().map(r => r.html).join('')
+    || '<div style="padding:6px 0; color:var(--text3);">No regattas loaded yet.</div>';
 }
 
 function renderComparisonChart() {

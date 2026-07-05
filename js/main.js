@@ -1047,15 +1047,26 @@ function bindStaticEventListeners() {
 
   // Handle browser back/forward navigation via popstate
   window.addEventListener('popstate', e => {
-    const viewId = (e.state && e.state.viewId) || viewIdFromHash(window.location.hash) || 'rankings';
+    const hash = window.location.hash || '';
+    if (hash.startsWith('#sailor/')) {
+      openSailorModal(decodeURIComponent(hash.slice('#sailor/'.length)), /*skipHash=*/true);
+      return;
+    }
+    const viewId = (e.state && e.state.viewId) || viewIdFromHash(hash) || 'rankings';
     switchView(viewId, null, /*skipHash=*/true);
   });
 
-  // On first load, navigate to the tab indicated by the URL hash (if any)
-  const initialView = viewIdFromHash(window.location.hash);
-  if (initialView && initialView !== 'rankings') {
-    // Defer until after data has loaded so renders work correctly
-    dataLoadedPromise.then(() => switchView(initialView, null, /*skipHash=*/true));
+  // On first load, navigate to the tab or sailor profile in the URL hash (if any)
+  const initialHash = window.location.hash || '';
+  if (initialHash.startsWith('#sailor/')) {
+    const sailorName = decodeURIComponent(initialHash.slice('#sailor/'.length));
+    // Defer until after data has loaded so the profile has results to show
+    dataLoadedPromise.then(() => openSailorModal(sailorName, /*skipHash=*/true));
+  } else {
+    const initialView = viewIdFromHash(initialHash);
+    if (initialView && initialView !== 'rankings') {
+      dataLoadedPromise.then(() => switchView(initialView, null, /*skipHash=*/true));
+    }
   }
 
   // Sidebar Logo view trigger
