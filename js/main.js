@@ -925,24 +925,55 @@ function submitAddRegatta() {
   const addGold = document.getElementById('ar-add-gold-sailors')?.checked ?? false;
   const sailors = [];
   if (addGold) {
+    // Build a map from normalised name → canonical name for every known sailor,
+    // so we can look up SAILOR_METADATA regardless of minor name-casing differences.
+    const normToCanonical = new Map(); // normalised → canonical name used as SAILOR_METADATA key
+    const normToSysObj  = new Map();  // normalised → object with g/born/club/school
+
+    // 1. Start with SAILOR_METADATA keys (these may include sailors not yet in any regatta)
+    Object.keys(SAILOR_METADATA).forEach(n => {
+      const norm = normalizeName(n);
+      if (!normToCanonical.has(norm)) normToCanonical.set(norm, n);
+    });
+
+    // 2. Layer in allSystem sailors (gives us the g/born/club/school profile)
     const allSystem = getAllSailorsInSystem();
-    const allNames = new Set(allSystem.map(s => s.name));
-    Object.keys(SAILOR_METADATA).forEach(n => allNames.add(n));
-    
-    allNames.forEach(n => {
-      const meta = SAILOR_METADATA[n] || {};
-      if (meta.enteredGold && meta.enteredGold !== '—') {
-        const sysSailor = allSystem.find(s => isSameSailor(s.name, n));
-        sailors.push({
-          name: n,
-          g: sysSailor?.g || meta.g || 'M',
-          born: sysSailor?.born || meta.born || 0,
-          club: sysSailor?.club || meta.club || '',
-          school: sysSailor?.school || meta.school || '',
-          nett: null,
-          rank: null
-        });
-      }
+    allSystem.forEach(s => {
+      const norm = normalizeName(s.name);
+      normToSysObj.set(norm, s);
+      // If this name wasn't in SAILOR_METADATA yet, record it as canonical too
+      if (!normToCanonical.has(norm)) normToCanonical.set(norm, s.name);
+    });
+
+    normToCanonical.forEach((canonicalName, norm) => {
+      const meta = SAILOR_METADATA[canonicalName] || {};
+
+      // Must have a current Gold Fleet entry date
+      if (!meta.enteredGold || meta.enteredGold === '—') return;
+
+      // Resolve profile data from allSystem (for g/born/club/school)
+      const sysObj = normToSysObj.get(norm);
+      const born   = sysObj?.born   || meta.born   || 0;
+      const g      = sysObj?.g      || meta.g      || 'M';
+      const club   = sysObj?.club   || meta.club   || '';
+      const school = sysObj?.school || meta.school || '';
+
+      // Exclude age-limit-dropped sailors (born too early for Optimist class)
+      if (isAgeDropped(born)) return;
+
+      // Exclude manually dropped sailors
+      if (DROPPED_SAILORS.has(canonicalName)) return;
+      // Also check by normalised name in case casing differs
+      let isDropped = false;
+      DROPPED_SAILORS.forEach(d => { if (normalizeName(d) === norm) isDropped = true; });
+      if (isDropped) return;
+
+      sailors.push({
+        name: sysObj?.name || canonicalName,
+        g, born, club, school,
+        nett: null,
+        rank: null
+      });
     });
   }
 
