@@ -340,7 +340,14 @@ function renderSpecificRegattaResults(regName) {
     }
 
     const regSailors = (reg.sailors || []).filter(s => s && s.name);
-    const sortedSailors = [...regSailors].sort((a, b) => (a.rank !== undefined ? a.rank : a.nett) - (b.rank !== undefined ? b.rank : b.nett));
+    const sortedSailors = [...regSailors].sort((a, b) => {
+      const valA = (a.rank !== undefined && a.rank !== null) ? a.rank : ((a.nett !== undefined && a.nett !== null) ? a.nett : null);
+      const valB = (b.rank !== undefined && b.rank !== null) ? b.rank : ((b.nett !== undefined && b.nett !== null) ? b.nett : null);
+      if (valA === null && valB === null) return a.name.localeCompare(b.name);
+      if (valA === null) return 1;
+      if (valB === null) return -1;
+      return valA - valB;
+    });
 
     body.innerHTML = sortedSailors.map((s, idx) => {
       const safeName = escapeHtml(s.name || 'Unknown');

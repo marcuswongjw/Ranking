@@ -894,6 +894,8 @@ function openAddRegattaModal() {
   document.getElementById('ar-name').value = '';
   document.getElementById('ar-date').value = new Date().toISOString().split('T')[0];
   document.getElementById('ar-dns').value = '100';
+  const cb = document.getElementById('ar-add-gold-sailors');
+  if (cb) cb.checked = false;
   document.getElementById('addRegattaModal').style.display = 'flex';
 }
 
@@ -920,18 +922,46 @@ function submitAddRegatta() {
     return;
   }
 
+  const addGold = document.getElementById('ar-add-gold-sailors')?.checked ?? false;
+  const sailors = [];
+  if (addGold) {
+    const allSystem = getAllSailorsInSystem();
+    const allNames = new Set(allSystem.map(s => s.name));
+    Object.keys(SAILOR_METADATA).forEach(n => allNames.add(n));
+    
+    allNames.forEach(n => {
+      const meta = SAILOR_METADATA[n] || {};
+      if (meta.enteredGold && meta.enteredGold !== '—') {
+        const sysSailor = allSystem.find(s => isSameSailor(s.name, n));
+        sailors.push({
+          name: n,
+          g: sysSailor?.g || meta.g || 'M',
+          born: sysSailor?.born || meta.born || 0,
+          club: sysSailor?.club || meta.club || '',
+          school: sysSailor?.school || meta.school || '',
+          nett: null,
+          rank: null
+        });
+      }
+    });
+  }
+
   REGATTAS.push({
     name: name,
     date: date,
     dns: dns,
-    sailors: []
+    sailors: sailors
   });
 
   recomputeSailors();
   saveData();
   renderAll();
   closeAddRegattaModal();
-  alert(`Added upcoming regatta "${name}". You can now add sailor scores in their profiles.`);
+  if (addGold) {
+    alert(`Added upcoming regatta "${name}" and populated with ${sailors.length} Gold Fleet sailors.`);
+  } else {
+    alert(`Added upcoming regatta "${name}". You can now add sailor scores in their profiles.`);
+  }
 }
 
 function toggleRegattaDropdown() {
