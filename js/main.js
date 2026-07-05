@@ -1296,6 +1296,27 @@ function bindStaticEventListeners() {
       updateRegattaSailorPoints(pointsInput.getAttribute('data-reg'), pointsInput.getAttribute('data-sailor'), e.target.value);
       return;
     }
+
+    // Squad status lock selects on the rankings table
+    const squadSel = e.target.closest('.squad-lock-select');
+    if (squadSel) {
+      if (!requireEditor()) {
+        renderRankings();
+        return;
+      }
+      const name = squadSel.getAttribute('data-sailor');
+      const field = squadSel.getAttribute('data-field');
+      const val = squadSel.value;
+      if (!SAILOR_METADATA[name]) SAILOR_METADATA[name] = {};
+      if (val) {
+        SAILOR_METADATA[name][field] = val;
+      } else {
+        delete SAILOR_METADATA[name][field];
+      }
+      saveData();
+      renderRankings();
+      return;
+    }
   });
 
   // Regatta results select change listener
