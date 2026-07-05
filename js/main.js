@@ -905,14 +905,13 @@ function submitAddRegatta() {
   if (!requireEditor()) return;
   const name = document.getElementById('ar-name').value.trim();
   const date = document.getElementById('ar-date').value;
-  const dnsVal = document.getElementById('ar-dns').value.trim();
-  const dns = dnsVal !== '' ? parseInt(dnsVal) : null;
+  const dns = parseInt(document.getElementById('ar-dns').value);
   if (!name || !date) {
     alert("Please fill in both name and date.");
     return;
   }
-  if (dns !== null && (isNaN(dns) || dns < 1)) {
-    alert("Total sailors in regatta must be a positive integer.");
+  if (isNaN(dns) || dns < 1) {
+    alert("Please enter the total number of sailors in the regatta (positive integer).");
     return;
   }
 
@@ -1428,8 +1427,8 @@ function updateRegattaDns(regName, val) {
   if (!requireEditor()) return;
   const reg = REGATTAS.find(r => r.name === regName);
   if (!reg) return;
-  const parsed = val.trim() !== '' ? parseInt(val.trim()) : null;
-  if (parsed !== null && (isNaN(parsed) || parsed < 1)) {
+  const parsed = parseInt(val);
+  if (isNaN(parsed) || parsed < 1) {
     alert("Total sailors in regatta must be a positive integer.");
     renderSpecificRegattaResults();
     return;
