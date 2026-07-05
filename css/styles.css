@@ -44,6 +44,7 @@ select:focus,input:focus{border-color:var(--accent)}
 .content{padding:22px 28px}
 .editor-only{display:none !important}
 body.is-editor .editor-only{display:inline-flex !important}
+body.is-editor .editor-only.bulk-edit-hidden{display:none !important}
 .table-editor-only{display:none !important}
 body.is-editor .table-editor-only{display:table-cell !important}
 /* In view-only mode, neutralise the edit forms so they can't be typed into. */
