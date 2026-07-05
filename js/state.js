@@ -20,6 +20,8 @@ let mcSortKey = 'rank';
 let mcSortAsc = true;
 let hgSortKey = 'rank';
 let hgSortAsc = true;
+let BULK_EDIT_MODE = false;
+let BULK_EDIT_SNAPSHOT = null;
 
 // Firestore collection hook
 const CLOUD_DOC = () => db.collection('opRanking').doc('state');

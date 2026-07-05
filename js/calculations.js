@@ -5,15 +5,19 @@ function getRegattaDnsPenalty(reg) {
   return total + 1;
 }
 
-function ageGroup(born) {
-  const a = COMP_YEAR - born;
+function ageGroup(born, refYear = COMP_YEAR) {
+  const a = refYear - born;
   return a >= 13 ? 13 : a === 12 ? 12 : a === 11 ? 11 : 10;
 }
 
-function computeSquads(sailorList) {
+// refYear lets callers project squad allocation onto a future reference year
+// (e.g. COMP_YEAR + 1 for the next selection cycle), re-bucketing ages and
+// dropping sailors who will have retired (16+) by that year, while still
+// using each sailor's current best-3 score.
+function computeSquads(sailorList, refYear = COMP_YEAR) {
   const res = new Map();
   ['M','F'].forEach(g => {
-    const pool = sailorList.filter(s => s.g === g && !EXCLUDED.has(s.name) && s.born >= (COMP_YEAR - 15))
+    const pool = sailorList.filter(s => s.g === g && !EXCLUDED.has(s.name) && s.born >= (refYear - 15))
       .map(s => ({ ...s, _sc: s.simScore !== undefined ? s.simScore : s.score })).sort((a,b) => a._sc - b._sc);
     pool.slice(0,8).forEach(s => res.set(s.name, 'Nat A'));
     const rem = () => pool.filter(s => !res.has(s.name));
@@ -22,7 +26,7 @@ function computeSquads(sailorList) {
       if (nbF >= 8) break;
       const av = Math.min(quota, 8 - nbF);
       const aged = rem().filter(s => {
-        const a = COMP_YEAR - s.born;
+        const a = refYear - s.born;
         return ag === 13 ? a === 13 : ag === 12 ? a === 12 : a <= 11;
       });
       let f = 0;
@@ -43,9 +47,9 @@ function computeSquads(sailorList) {
     }
   });
 
-  const dsEl = g => sailorList.filter(s => s.g === g && !EXCLUDED.has(s.name) && s.born >= (COMP_YEAR - 12) && !res.has(s.name))
+  const dsEl = g => sailorList.filter(s => s.g === g && !EXCLUDED.has(s.name) && s.born >= (refYear - 12) && !res.has(s.name))
     .map(s => ({ ...s, _sc: s.simScore !== undefined ? s.simScore : s.score })).sort((a,b) => a._sc - b._sc);
-  
+
   const dsF = { M: 0, F: 0 };
   ['M','F'].forEach(g => {
     const pool = dsEl(g);
@@ -53,7 +57,7 @@ function computeSquads(sailorList) {
       if (dsF[g] >= 8) break;
       const av = Math.min(quota, 8 - dsF[g]);
       const aged = pool.filter(s => {
-        const a = COMP_YEAR - s.born;
+        const a = refYear - s.born;
         return ag === 12 ? a === 12 : ag === 11 ? a === 11 : a <= 10;
       });
       let f = 0;
@@ -70,7 +74,7 @@ function computeSquads(sailorList) {
     const need = 8 - dsF[g];
     if (need <= 0) return;
     let n = 0;
-    for (const s of dsEl(g).filter(s => (COMP_YEAR - s.born) <= 11 && !res.has(s.name))) {
+    for (const s of dsEl(g).filter(s => (refYear - s.born) <= 11 && !res.has(s.name))) {
       if (n >= need) break;
       res.set(s.name, 'DS');
       dsF[g]++;
@@ -80,7 +84,7 @@ function computeSquads(sailorList) {
 
   const tot = dsF.M + dsF.F;
   if (tot < 16) {
-    const cross = ['M','F'].flatMap(g => dsEl(g).filter(s => (COMP_YEAR - s.born) <= 11 && !res.has(s.name))).sort((a,b) => a._sc - b._sc);
+    const cross = ['M','F'].flatMap(g => dsEl(g).filter(s => (refYear - s.born) <= 11 && !res.has(s.name))).sort((a,b) => a._sc - b._sc);
     let n = tot;
     for (const s of cross) {
       if (n >= 16) break;

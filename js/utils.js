@@ -72,9 +72,9 @@ function parseGoldEntryDate(enteredGold) {
   return new Date(parseInt(m[2]), GOLD_ENTRY_MONTHS[m[1]], 1);
 }
 
-function isAgeDropped(born) {
+function isAgeDropped(born, refYear = COMP_YEAR) {
   if (!born) return false;
-  return born <= (COMP_YEAR - 16);
+  return born <= (refYear - 16);
 }
 
 function getAgeLimitCutoffYear() {

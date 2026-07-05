@@ -79,6 +79,10 @@ function applyEditorUI() {
     if (editorOnlyViews.includes(lastMainView)) {
       switchView('rankings');
     }
+    if (BULK_EDIT_MODE) {
+      BULK_EDIT_MODE = false;
+      BULK_EDIT_SNAPSHOT = null;
+    }
   }
 
   if (typeof renderAll === 'function') {
@@ -1177,8 +1181,17 @@ function bindStaticEventListeners() {
   // Dynamic dialog modals controls
   document.getElementById('ar-modal-open-btn')?.addEventListener('click', () => openAddRegattaModal());
   document.getElementById('ar-modal-close-btn')?.addEventListener('click', () => closeAddRegattaModal());
+  document.getElementById('ar-modal-close-btn-cancel')?.addEventListener('click', () => closeAddRegattaModal());
   document.getElementById('ar-modal-submit-btn')?.addEventListener('click', () => submitAddRegatta());
-  
+
+  // Add Sailor Result Modal controls
+  document.getElementById('asr-modal-close-btn')?.addEventListener('click', () => closeAddSailorResultModal());
+  document.getElementById('asr-modal-cancel-btn')?.addEventListener('click', () => closeAddSailorResultModal());
+  document.getElementById('asr-modal-submit-btn')?.addEventListener('click', () => submitAddSailorResult());
+  document.querySelectorAll('.asr-mode-btn').forEach(btn => {
+    btn.addEventListener('click', () => setAsrMode(btn.getAttribute('data-mode')));
+  });
+
   // Sailor Profile Modal buttons
   document.getElementById('sm-save-btn')?.addEventListener('click', () => saveSailorProfile());
   document.querySelectorAll('.back-to-rankings-btn').forEach(btn => {
@@ -1287,6 +1300,13 @@ function bindStaticEventListeners() {
 
   // Regatta results select change listener
   document.getElementById('resultsRegattaSelect')?.addEventListener('change', e => {
+    if (BULK_EDIT_MODE) {
+      if (!confirm("Discard unsaved bulk edits for this regatta?")) {
+        e.target.value = CURRENT_SELECTED_REGATTA || '';
+        return;
+      }
+      cancelBulkEdit();
+    }
     renderSpecificRegattaResults(e.target.value);
   });
   document.getElementById('specific-regatta-dns')?.addEventListener('change', e => {
@@ -1301,6 +1321,10 @@ function bindStaticEventListeners() {
     regResultsWrap.addEventListener('click', e => {
       const backBtn = e.target.closest('#regatta-back-btn');
       if (backBtn) {
+        if (BULK_EDIT_MODE) {
+          if (!confirm("Discard unsaved bulk edits for this regatta?")) return;
+          cancelBulkEdit();
+        }
         renderSpecificRegattaResults(null);
         return;
       }
@@ -1315,7 +1339,27 @@ function bindStaticEventListeners() {
 
       const addSailorBtn = e.target.closest('#add-sailor-result-trigger');
       if (addSailorBtn) {
-        addSailorToSpecificRegatta();
+        openAddSailorResultModal();
+        return;
+      }
+
+      const bulkEditToggleBtn = e.target.closest('#bulk-edit-toggle-btn');
+      if (bulkEditToggleBtn) {
+        enableBulkEdit();
+        return;
+      }
+
+      const bulkEditSaveBtn = e.target.closest('#bulk-edit-save-btn');
+      if (bulkEditSaveBtn) {
+        saveBulkEditChanges();
+        return;
+      }
+
+      const bulkEditCancelBtn = e.target.closest('#bulk-edit-cancel-btn');
+      if (bulkEditCancelBtn) {
+        if (confirm("Discard unsaved bulk edits for this regatta?")) {
+          cancelBulkEdit();
+        }
         return;
       }
 
@@ -1367,86 +1411,120 @@ function bindStaticEventListeners() {
   });
 }
 
-function addSailorToSpecificRegatta() {
+function openAddSailorResultModal() {
   if (!requireEditor()) return;
-  const sel = document.getElementById('resultsRegattaSelect');
-  if (!sel) return;
-  const regName = sel.value;
-  if (!regName) return;
-  const reg = REGATTAS.find(r => r.name === regName);
+  if (!CURRENT_SELECTED_REGATTA) return;
+  const reg = REGATTAS.find(r => r.name === CURRENT_SELECTED_REGATTA);
   if (!reg) return;
-  
-  const name = prompt("Enter sailor name to add to this regatta:");
-  if (name === null) return; // cancelled
-  const nameTrimmed = name.trim();
-  if (!nameTrimmed) {
-    alert("Sailor name cannot be empty.");
-    return;
+
+  const nameEl = document.getElementById('asr-regatta-name');
+  if (nameEl) nameEl.textContent = `Adding a result to "${reg.name}"`;
+
+  const inRegatta = new Set(reg.sailors.map(s => normalizeName(s.name)));
+  const candidates = getAllSailorsInSystem()
+    .filter(s => !inRegatta.has(normalizeName(s.name)))
+    .sort((a, b) => a.name.localeCompare(b.name));
+
+  const select = document.getElementById('asr-existing-select');
+  if (select) {
+    select.innerHTML = '<option value="">— choose sailor —</option>' +
+      candidates.map(s => `<option value="${escapeHtml(s.name)}">${escapeHtml(s.name)}</option>`).join('');
   }
-  
-  const existing = SAILORS.find(s => isSameSailor(s.name, nameTrimmed));
-  let gender = existing ? existing.g : null;
-  let born = existing ? existing.born : null;
-  let club = existing ? existing.club : "";
-  let school = existing ? existing.school : "";
-  
-  if (!existing) {
-    // Prompt and validate gender for new sailor
-    let gInput = null;
-    while (true) {
-      gInput = prompt("This is a new sailor. Enter Gender (M or F):");
-      if (gInput === null) return; // cancelled
-      gInput = gInput.trim().toUpperCase();
-      if (gInput === 'M' || gInput === 'F') {
-        gender = gInput;
-        break;
-      }
-      alert("Invalid input. Gender must be strictly 'M' or 'F'.");
+
+  document.getElementById('asr-new-name').value = '';
+  document.getElementById('asr-new-gender').value = 'M';
+  document.getElementById('asr-new-born').value = '';
+  document.getElementById('asr-new-club').value = '';
+  document.getElementById('asr-new-school').value = '';
+  document.getElementById('asr-rank').value = '';
+  document.getElementById('asr-points').value = '';
+
+  setAsrMode(candidates.length > 0 ? 'existing' : 'new');
+  document.getElementById('addSailorResultModal').style.display = 'flex';
+}
+
+function closeAddSailorResultModal() {
+  document.getElementById('addSailorResultModal').style.display = 'none';
+}
+
+function setAsrMode(mode) {
+  document.querySelectorAll('.asr-mode-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.getAttribute('data-mode') === mode);
+  });
+  document.getElementById('asr-existing-wrap').style.display = mode === 'existing' ? 'flex' : 'none';
+  document.getElementById('asr-new-wrap').style.display = mode === 'new' ? 'flex' : 'none';
+}
+
+function getAsrMode() {
+  const active = document.querySelector('.asr-mode-btn.active');
+  return active ? active.getAttribute('data-mode') : 'existing';
+}
+
+function submitAddSailorResult() {
+  if (!requireEditor()) return;
+  if (!CURRENT_SELECTED_REGATTA) return;
+  const reg = REGATTAS.find(r => r.name === CURRENT_SELECTED_REGATTA);
+  if (!reg) return;
+
+  const mode = getAsrMode();
+  let name, gender, born, club, school;
+
+  if (mode === 'existing') {
+    name = document.getElementById('asr-existing-select').value;
+    if (!name) {
+      alert("Please select a sailor.");
+      return;
     }
-    
-    // Prompt and validate birth year for new sailor
-    let bornInput = null;
+    const info = getAllSailorsInSystem().find(s => s.name === name);
+    gender = info ? info.g : null;
+    born = info ? info.born : null;
+    club = info ? info.club : '';
+    school = info ? info.school : '';
+  } else {
+    name = document.getElementById('asr-new-name').value.trim();
+    if (!name) {
+      alert("Sailor name cannot be empty.");
+      return;
+    }
+    if (getAllSailorsInSystem().some(s => isSameSailor(s.name, name))) {
+      alert("A sailor with this name already exists — use \"Existing Sailor\" instead.");
+      return;
+    }
+    gender = document.getElementById('asr-new-gender').value;
     const minBirthYear = COMP_YEAR - 20;
     const maxBirthYear = COMP_YEAR;
-    while (true) {
-      bornInput = prompt(`Enter Birth Year (4-digit year between ${minBirthYear} and ${maxBirthYear}):`);
-      if (bornInput === null) return; // cancelled
-      const year = parseInt(bornInput.trim());
-      if (!isNaN(year) && year >= minBirthYear && year <= maxBirthYear) {
-        born = year;
-        break;
-      }
-      alert(`Invalid input. Birth year must be a 4-digit number between ${minBirthYear} and ${maxBirthYear}.`);
+    born = parseInt(document.getElementById('asr-new-born').value);
+    if (isNaN(born) || born < minBirthYear || born > maxBirthYear) {
+      alert(`Please enter a valid Birth Year (between ${minBirthYear} and ${maxBirthYear}).`);
+      return;
     }
-    
-    // Optional prompts for club and school
-    const clubInput = prompt("Enter Club (optional):");
-    if (clubInput !== null) club = clubInput.trim();
-    const schoolInput = prompt("Enter School (optional):");
-    if (schoolInput !== null) school = schoolInput.trim();
+    club = document.getElementById('asr-new-club').value.trim();
+    school = document.getElementById('asr-new-school').value.trim();
   }
-  
-  const rankStr = prompt("Enter Rank in Regatta:", "1");
-  if (rankStr === null) return; // cancelled
-  const rank = parseInt(rankStr.trim());
-  if (isNaN(rank) || rank < 1) {
-    alert("Invalid rank. Rank must be a positive integer greater than or equal to 1.");
+
+  if (reg.sailors.some(s => isSameSailor(s.name, name))) {
+    alert("This sailor already has a result in this regatta.");
     return;
   }
-  
-  const pointsStr = prompt("Enter Points (leave blank if none):");
-  if (pointsStr === null) return; // cancelled
+
+  const rank = parseInt(document.getElementById('asr-rank').value);
+  if (isNaN(rank) || rank < 1) {
+    alert("Please enter a valid Rank (positive integer).");
+    return;
+  }
+
+  const pointsRaw = document.getElementById('asr-points').value.trim();
   let pointsVal = null;
-  if (pointsStr.trim() !== '') {
-    pointsVal = parseFloat(pointsStr.trim());
+  if (pointsRaw !== '') {
+    pointsVal = parseFloat(pointsRaw);
     if (isNaN(pointsVal) || pointsVal < 0) {
-      alert("Invalid points. Points must be a non-negative number.");
+      alert("Points must be a non-negative number.");
       return;
     }
   }
-  
+
   reg.sailors.push({
-    name: nameTrimmed,
+    name,
     g: gender,
     born: born,
     club: club,
@@ -1454,11 +1532,66 @@ function addSailorToSpecificRegatta() {
     rank: rank,
     nett: pointsVal
   });
-  
+
   recomputeSailors();
   saveData();
   renderAll();
   renderSpecificRegattaResults();
+  closeAddSailorResultModal();
+}
+
+// Bulk edit mode: defer recompute/save/re-render until the editor explicitly
+// saves, so editing many rank/points fields in sequence doesn't re-sort the
+// table or round-trip to Firestore on every keystroke.
+function enableBulkEdit() {
+  if (!requireEditor()) return;
+  if (!CURRENT_SELECTED_REGATTA) return;
+  const reg = REGATTAS.find(r => r.name === CURRENT_SELECTED_REGATTA);
+  if (!reg) return;
+  BULK_EDIT_MODE = true;
+  BULK_EDIT_SNAPSHOT = JSON.parse(JSON.stringify(reg.sailors));
+  updateBulkEditUI();
+}
+
+function saveBulkEditChanges() {
+  BULK_EDIT_MODE = false;
+  BULK_EDIT_SNAPSHOT = null;
+  recomputeSailors();
+  saveData();
+  renderAll();
+  renderSpecificRegattaResults();
+  updateBulkEditUI();
+}
+
+function cancelBulkEdit() {
+  if (BULK_EDIT_SNAPSHOT && CURRENT_SELECTED_REGATTA) {
+    const reg = REGATTAS.find(r => r.name === CURRENT_SELECTED_REGATTA);
+    if (reg) reg.sailors = BULK_EDIT_SNAPSHOT;
+  }
+  BULK_EDIT_MODE = false;
+  BULK_EDIT_SNAPSHOT = null;
+  recomputeSailors();
+  renderAll();
+  renderSpecificRegattaResults();
+  updateBulkEditUI();
+}
+
+function updateBulkEditUI() {
+  // toggle/add/delete carry the CSS "editor-only" class (display:inline-flex !important
+  // for editors), so they're hidden during bulk edit via the higher-specificity
+  // ".editor-only.bulk-edit-hidden" rule rather than inline styles, which the
+  // "editor-only" rule's !important would otherwise override.
+  const toggleBtn = document.getElementById('bulk-edit-toggle-btn');
+  const addBtn = document.getElementById('add-sailor-result-trigger');
+  const deleteBtn = document.querySelector('.regatta-delete-btn-detail');
+  [toggleBtn, addBtn, deleteBtn].forEach(btn => {
+    if (btn) btn.classList.toggle('bulk-edit-hidden', BULK_EDIT_MODE);
+  });
+
+  const saveBtn = document.getElementById('bulk-edit-save-btn');
+  const cancelBtn = document.getElementById('bulk-edit-cancel-btn');
+  if (saveBtn) saveBtn.style.display = BULK_EDIT_MODE ? 'inline-flex' : 'none';
+  if (cancelBtn) cancelBtn.style.display = BULK_EDIT_MODE ? 'inline-flex' : 'none';
 }
 
 function updateRegattaSailorRank(regName, sailorName, val) {
@@ -1474,6 +1607,7 @@ function updateRegattaSailorRank(regName, sailorName, val) {
       return;
     }
     s.rank = parsed;
+    if (BULK_EDIT_MODE) return;
     recomputeSailors();
     saveData();
     renderAll();
@@ -1494,6 +1628,7 @@ function updateRegattaSailorPoints(regName, sailorName, val) {
       return;
     }
     s.nett = parsed;
+    if (BULK_EDIT_MODE) return;
     recomputeSailors();
     saveData();
     renderAll();

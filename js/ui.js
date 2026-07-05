@@ -375,20 +375,22 @@ function renderSpecificRegattaResults(regName) {
         <td class="sub-c">${escapeHtml(String(s.born || '—'))}</td>
         <td class="sub-c" style="font-size:10px">${escapeHtml(s.club || '—')}</td>
         <td style="text-align:center;">
-          <input type="number" class="reg-rank-input" data-reg="${escapeHtml(reg.name)}" data-sailor="${safeName}" value="${rankVal}" 
+          <input type="number" class="reg-rank-input" data-reg="${escapeHtml(reg.name)}" data-sailor="${safeName}" value="${rankVal}"
                  style="width:70px; height:24px; text-align:center; padding:2px; font-family:var(--mono);" ${!isEditor() ? 'disabled' : ''}>
         </td>
         <td style="text-align:center;">
-          <input type="number" class="reg-points-input" data-reg="${escapeHtml(reg.name)}" data-sailor="${safeName}" value="${pointsVal}" 
+          <input type="number" class="reg-points-input" data-reg="${escapeHtml(reg.name)}" data-sailor="${safeName}" value="${pointsVal}"
                  style="width:70px; height:24px; text-align:center; padding:2px; font-family:var(--mono); font-weight:600; color:var(--accent2);" ${!isEditor() ? 'disabled' : ''}>
         </td>
         <td style="text-align:center;"><span class="pct-b" style="background:${pctBg};color:${pctColor};font-size:9.5px;padding:3px 6px;border-radius:3px;font-weight:600">${pctLabel}</span></td>
         <td class="table-editor-only" style="text-align:center;">
-          <button class="reg-sailor-delete-btn" data-reg="${escapeHtml(reg.name)}" data-sailor="${safeName}" 
-                  style="background:none; border:none; color:var(--red); cursor:pointer; font-weight:bold; font-size:14px;" title="Remove Sailor">✕</button>
+          <button class="reg-sailor-delete-btn" data-reg="${escapeHtml(reg.name)}" data-sailor="${safeName}"
+                  style="background:none; border:none; color:var(--red); cursor:pointer; font-weight:bold; font-size:14px;" title="Remove Sailor" ${BULK_EDIT_MODE ? 'disabled' : ''}>✕</button>
         </td>
       </tr>`;
     }).join('') || '<tr><td colspan="9" style="text-align:center;color:var(--text3);padding:24px">No results entered yet.</td></tr>';
+
+    if (typeof updateBulkEditUI === 'function') updateBulkEditUI();
   } catch (err) {
     console.error("Error in renderSpecificRegattaResults:", err);
   }
@@ -749,7 +751,8 @@ function renderRankingsPanel() {
           <th style="width:32px;cursor:pointer;user-select:none" class="sort-header" data-sort="gender">G${getSortIndicator('gender')}</th>
           <th style="width:46px;cursor:pointer;user-select:none" class="sort-header" data-sort="born">Born${getSortIndicator('born')}</th>
           <th style="width:110px;cursor:pointer;user-select:none" class="sort-header" data-sort="club">Club${getSortIndicator('club')}</th>
-          <th style="width:105px;cursor:pointer;user-select:none" class="sort-header" data-sort="squad">Squad${getSortIndicator('squad')}</th>
+          <th style="width:105px;cursor:pointer;user-select:none" class="sort-header" data-sort="squad">${escapeHtml('Squad (Jul ' + String(COMP_YEAR).slice(-2) + ')')}${getSortIndicator('squad')}</th>
+          <th style="width:105px;cursor:pointer;user-select:none" class="sort-header" data-sort="squadNext">${escapeHtml('Squad (Jan ' + String(COMP_YEAR + 1).slice(-2) + ')')}${getSortIndicator('squadNext')}</th>
           <th style="width:80px;text-align:center;cursor:pointer;user-select:none" class="sort-header" data-sort="score">Best 3 of ${latestRegs.length}${getSortIndicator('score')}</th>
           ${regHeaders}
         </tr></thead>
@@ -768,7 +771,8 @@ function renderRankings() {
   const nm = document.getElementById('nameSearch').value.toLowerCase();
   const t50 = document.getElementById('top50').checked;
   const sq = computeSquads(SAILORS);
-  
+  const sqNext = computeSquads(SAILORS, COMP_YEAR + 1);
+
   const latestRegs = getActiveRegattas();
 
   // Count squad distributions
@@ -819,6 +823,9 @@ function renderRankings() {
     } else if (sortKey === 'squad') {
       valA = squadNameOrder(sq.get(a.name));
       valB = squadNameOrder(sq.get(b.name));
+    } else if (sortKey === 'squadNext') {
+      valA = squadNameOrder(sqNext.get(a.name));
+      valB = squadNameOrder(sqNext.get(b.name));
     } else if (sortKey === 'enteredGold') {
       valA = a.enteredGold || '—';
       valB = b.enteredGold || '—';
@@ -848,9 +855,11 @@ function renderRankings() {
   body.innerHTML = data.map(s => {
     const isExcl = EXCLUDED.has(s.name);
     const squad = isExcl ? null : (sq.get(s.name) || null);
+    const isRetiringNext = isAgeDropped(s.born, COMP_YEAR + 1);
+    const squadNext = isExcl ? null : (sqNext.get(s.name) || null);
     const rowSt = isExcl ? 'opacity:.42;' : '';
     const exclTag = isExcl ? `<span class="excl-tag">${escapeHtml(EXCLUDED.get(s.name))}</span>` : '';
-    
+
     const validRanks = s.ranks.map((v, regIdx) => v === null ? getRegattaDnsPenalty(latestRegs[regIdx]) : v);
     const best3Indices = validRanks.map((v, i) => ({ v, i })).sort((a,b) => a.v - b.v).slice(0,3).map(x => x.i);
     const isBest3 = new Set(best3Indices);
@@ -873,10 +882,11 @@ function renderRankings() {
       <td class="sub-c">${safeBorn}</td>
       <td class="sub-c" style="font-size:10px">${safeClub}</td>
       <td>${isExcl ? '<span class="badge b-n">Excl.</span>' : squadBadge(squad)}</td>
+      <td>${isExcl ? '<span class="badge b-n">Excl.</span>' : isRetiringNext ? '<span class="badge b-n" style="background:var(--red-l);color:var(--red)" title="Turns 16 by then — ages out of the Gold Fleet">Retiring</span>' : squadBadge(squadNext)}</td>
       <td class="score-c" style="text-align:center">${s.score}</td>
       ${cells}
     </tr>`;
-  }).join('') || '<tr><td colspan="7" style="text-align:center;color:var(--text3);padding:24px">No sailors match criteria.</td></tr>';
+  }).join('') || '<tr><td colspan="8" style="text-align:center;color:var(--text3);padding:24px">No sailors match criteria.</td></tr>';
 
   renderComparisonChart();
 }
