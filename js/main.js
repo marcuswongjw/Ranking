@@ -948,9 +948,6 @@ function submitAddRegatta() {
     normToCanonical.forEach((canonicalName, norm) => {
       const meta = SAILOR_METADATA[canonicalName] || {};
 
-      // Must have a current Gold Fleet entry date
-      if (!meta.enteredGold || meta.enteredGold === '—') return;
-
       // Resolve profile data from allSystem (for g/born/club/school)
       const sysObj = normToSysObj.get(norm);
       const born   = sysObj?.born   || meta.born   || 0;
