@@ -149,7 +149,7 @@ function getHistoricalRank(sailorName, dateStr) {
       });
       
       const validScores = scores.map((v, regIdx) => v === null ? getRegattaDnsPenalty(activeRegs[regIdx]) : v);
-      while (validScores.length < 5) {
+      while (validScores.length < activeRegs.length) {
         validScores.push(getRegattaDnsPenalty(activeRegs[validScores.length]));
       }
       const sorted = validScores.slice().sort((a,b)=>a-b);
@@ -161,7 +161,7 @@ function getHistoricalRank(sailorName, dateStr) {
       if (a.score !== b.score) return a.score - b.score;
       const rA = [...a.ranks].sort((x,y)=>x-y);
       const rB = [...b.ranks].sort((x,y)=>x-y);
-      for (let i=0; i<5; i++) {
+      for (let i = 0; i < activeRegs.length; i++) {
         const valA = rA[i] !== undefined && rA[i] !== null ? rA[i] : getRegattaDnsPenalty(activeRegs[i]);
         const valB = rB[i] !== undefined && rB[i] !== null ? rB[i] : getRegattaDnsPenalty(activeRegs[i]);
         if (valA !== valB) return valA - valB;

@@ -19,7 +19,11 @@ function switchView(viewId, navBtn) {
     renderRankingsPanel();
   } else if (viewId === 'regattas') {
     renderRegattasPanel();
-    renderSpecificRegattaResults(null);
+    if (navBtn || !CURRENT_SELECTED_REGATTA) {
+      renderSpecificRegattaResults(null);
+    } else {
+      renderSpecificRegattaResults(CURRENT_SELECTED_REGATTA);
+    }
   } else if (viewId === 'major-comps') {
     renderMajorCompsPanel();
   } else if (viewId === 'hist-gold') {
@@ -920,7 +924,7 @@ function renderExclusions() {
         <div class="excl-name">${safeName}</div>
         <div class="excl-reason">${safeReason}</div>
       </div>
-      <button class="excl-rm editor-only excl-remove-btn" data-name="${name.replace(/'/g, "\\'")}">✕ Remove</button>
+      <button class="excl-rm editor-only excl-remove-btn" data-name="${safeName}">✕ Remove</button>
     </div>`;
   }).join('');
   
@@ -1288,11 +1292,11 @@ function renderFleetPanel() {
       <div style="display:flex;align-items:center;gap:10px">
         <span style="font-family:var(--mono);font-size:10px;color:var(--text3);min-width:32px">${rankStr}</span>
         <div>
-          <div class="excl-name name-c" data-sailor="${s.name.replace(/'/g, "\\'")}" style="cursor:pointer; color:var(--accent); text-decoration:underline; font-weight:600;">${safeName}</div>
+          <div class="excl-name name-c" data-sailor="${safeName}" style="cursor:pointer; color:var(--accent); text-decoration:underline; font-weight:600;">${safeName}</div>
           <div class="excl-reason">${safeGender} · ${safeBorn} · ${safeClub}</div>
         </div>
       </div>
-      <button class="excl-rm fleet-drop-btn" data-sailor="${s.name.replace(/'/g, "\\'")}" style="background:var(--red-l); color:var(--red); border:1px solid rgba(138,28,28,.15); min-width:65px; height:24px; padding:0 8px;">✕ Drop</button>
+      <button class="excl-rm fleet-drop-btn" data-sailor="${safeName}" style="background:var(--red-l); color:var(--red); border:1px solid rgba(138,28,28,.15); min-width:65px; height:24px; padding:0 8px;">✕ Drop</button>
     </div>`;
   }).join('') || '<div class="excl-empty">No active sailors.</div>';
 
@@ -1304,18 +1308,17 @@ function renderFleetPanel() {
   
   droppedList.innerHTML = droppedSailors.map(s => {
     const isAutoDrop = isAgeDropped(s.born);
-    const actionButton = isAutoDrop 
-      ? `<span class="badge b-n" style="background:var(--red-l); color:var(--red); font-size:9px; padding:3px 6px;">Age Limit (>15)</span>`
-      : `<button class="excl-rm fleet-promote-btn" data-sailor="${s.name.replace(/'/g, "\\'")}" style="background:var(--accent-l); color:var(--accent); border:1px solid rgba(26,71,42,.15); min-width:90px; height:24px; padding:0 8px;">＋ Re-promote</button>`;
-    
     const safeName = escapeHtml(s.name);
     const safeGender = escapeHtml(s.g);
     const safeBorn = escapeHtml(s.born);
     const safeClub = escapeHtml(s.club || 'No Club');
+    const actionButton = isAutoDrop
+      ? `<span class="badge b-n" style="background:var(--red-l); color:var(--red); font-size:9px; padding:3px 6px;">Age Limit (>15)</span>`
+      : `<button class="excl-rm fleet-promote-btn" data-sailor="${safeName}" style="background:var(--accent-l); color:var(--accent); border:1px solid rgba(26,71,42,.15); min-width:90px; height:24px; padding:0 8px;">＋ Re-promote</button>`;
 
     return `<div class="excl-item" style="margin-bottom:4px; opacity:0.8;">
       <div>
-        <div class="excl-name name-c" data-sailor="${s.name.replace(/'/g, "\\'")}" style="cursor:pointer; color:var(--accent); text-decoration:underline; font-weight:600;">${safeName}</div>
+        <div class="excl-name name-c" data-sailor="${safeName}" style="cursor:pointer; color:var(--accent); text-decoration:underline; font-weight:600;">${safeName}</div>
         <div class="excl-reason">${safeGender} · ${safeBorn} · ${safeClub}</div>
       </div>
       ${actionButton}

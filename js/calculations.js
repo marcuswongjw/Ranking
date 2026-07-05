@@ -1,6 +1,7 @@
 function getRegattaDnsPenalty(reg) {
   if (!reg) return DNS;
   const total = (reg.dns !== undefined && reg.dns !== null) ? parseInt(reg.dns) : (reg.sailors ? reg.sailors.length : 0);
+  if (total <= 0) return DNS;
   return total + 1;
 }
 
@@ -237,7 +238,7 @@ function calcSimScore(sailor, simSailors, rankingMode = false) {
       name: "Simulated Regatta",
       date: "2026-12-31",
       sailors: [],
-      dns: DNS
+      dns: DNS - 1
     }
   ];
   
@@ -290,7 +291,7 @@ function runSimulation() {
     name: "Simulated Regatta",
     date: "2026-12-31",
     sailors: simSailors.map(ss => ({ ...ss, g: ss.g, born: ss.born, club: ss.club })),
-    dns: DNS
+    dns: DNS - 1
   });
   
   recomputeSailors();
@@ -378,7 +379,7 @@ function runTarget(){
       };
     });
     
-    const simRegs = [...latestRegs, { dns: DNS }];
+    const simRegs = [...latestRegs, { dns: DNS - 1 }];
     simScores.sort((a, b) => {
       if (a.score !== b.score) return a.score - b.score;
       const ranksA = a.ranks.map((v, regIdx) => v === null ? getRegattaDnsPenalty(simRegs[regIdx]) : v).sort((x, y) => x - y);
@@ -456,7 +457,7 @@ function renderTargetSimulation(simulatedPos) {
       ranks: [...s.ranks, isSameSailor(s.name, sailor.name) ? simulatedPos : null] 
     };
   });
-  const simRegsM = [...latestRegs, { dns: DNS }];
+  const simRegsM = [...latestRegs, { dns: DNS - 1 }];
   simScoresM.sort((a, b) => {
     if (a.score !== b.score) return a.score - b.score;
     const ranksA = a.ranks.map((v, regIdx) => v === null ? getRegattaDnsPenalty(simRegsM[regIdx]) : v).sort((x, y) => x - y);
@@ -583,7 +584,7 @@ function buildWhatIf(sailor, goal, ctx) {
       name: "Simulated Regatta",
       date: "2026-12-31",
       sailors: [{ name: sailor.name, g: sailor.g, born: sailor.born, club: sailor.club, nett: pos, rank: pos }],
-      dns: DNS
+      dns: DNS - 1
     });
     recomputeSailors();
     const sq = computeSquads(SAILORS).get(sailor.name);

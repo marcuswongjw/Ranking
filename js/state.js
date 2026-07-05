@@ -121,7 +121,7 @@ async function loadData() {
     setSyncStatus('error', e && e.message);
   }
 
-  if (cloud && Array.isArray(cloud.regattas) && cloud.regattas.length > 0) {
+  if (cloud && Array.isArray(cloud.regattas)) {
     CLOUD_HAS_DATA = true;
     applyState(cloud);
   } else {
@@ -143,7 +143,7 @@ async function maybeMigrate() {
   let cloudHasData = false;
   try {
     const snap = await CLOUD_DOC().get();
-    cloudHasData = snap.exists && snap.data() && Array.isArray(snap.data().regattas) && snap.data().regattas.length > 0;
+    cloudHasData = snap.exists && snap.data() && Array.isArray(snap.data().regattas);
   } catch (e) { return; }
   if (cloudHasData) { CLOUD_HAS_DATA = true; PENDING_LOCAL_MIGRATION = null; return; }
   

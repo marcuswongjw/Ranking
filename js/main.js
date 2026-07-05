@@ -1,8 +1,10 @@
 // Main Application Initialization & Event Listeners
 
+let dataLoadedPromise = null;
+
 document.addEventListener('DOMContentLoaded', () => {
   initAuth();
-  loadData();
+  dataLoadedPromise = loadData();
   setupDropZone();
   bindStaticEventListeners();
 });
@@ -16,7 +18,7 @@ function subscribeRealtime() {
     if (isEditor()) return;                      // don't clobber an editor's in-progress work
     
     const data = snap.data();
-    if (data && Array.isArray(data.regattas) && data.regattas.length > 0) {
+    if (data && Array.isArray(data.regattas)) {
       CLOUD_HAS_DATA = true;
       applyState(data);
     } else {
@@ -30,15 +32,38 @@ function subscribeRealtime() {
 
 // Authentication
 function initAuth() {
-  auth.onAuthStateChanged(user => {
+  auth.onAuthStateChanged(async user => {
     CURRENT_USER = (user && user.email === ADMIN_EMAIL) ? user : null;
     applyEditorUI();
     if (CURRENT_USER) {
-      maybeMigrate();
+      if (dataLoadedPromise) await dataLoadedPromise;
+      await maybeMigrate();
+      backfillRegattaTotalSailors();
     }
     // Subscribe to updates in real-time
     subscribeRealtime();
   });
+}
+
+// One-time migration: legacy regattas created before "Total Sailors" was a
+// mandatory field don't have reg.dns set. Backfill it with the number of
+// sailor results currently entered (i.e. the fallback DNS score - 1) so the
+// editor can review/correct each regatta's true fleet size in the UI.
+function backfillRegattaTotalSailors() {
+  if (!isEditor()) return;
+  let changed = false;
+  REGATTAS.forEach(reg => {
+    if (reg.dns === undefined || reg.dns === null) {
+      reg.dns = Math.max(reg.sailors ? reg.sailors.length : 0, 1);
+      changed = true;
+    }
+  });
+  if (changed) {
+    recomputeSailors();
+    saveData();
+    renderAll();
+    renderSpecificRegattaResults();
+  }
 }
 
 function applyEditorUI() {
@@ -880,13 +905,14 @@ function submitAddRegatta() {
   if (!requireEditor()) return;
   const name = document.getElementById('ar-name').value.trim();
   const date = document.getElementById('ar-date').value;
-  const dns = parseInt(document.getElementById('ar-dns').value);
+  const dnsVal = document.getElementById('ar-dns').value.trim();
+  const dns = dnsVal !== '' ? parseInt(dnsVal) : null;
   if (!name || !date) {
     alert("Please fill in both name and date.");
     return;
   }
-  if (isNaN(dns) || dns < 1) {
-    alert("Please enter the total number of sailors in the regatta (positive integer).");
+  if (dns !== null && (isNaN(dns) || dns < 1)) {
+    alert("Total sailors in regatta must be a positive integer.");
     return;
   }
 
@@ -1078,7 +1104,9 @@ function bindStaticEventListeners() {
   
   // Sailor Profile Modal buttons
   document.getElementById('sm-save-btn')?.addEventListener('click', () => saveSailorProfile());
-  document.getElementById('sm-cancel-btn')?.addEventListener('click', () => closeSailorModal());
+  document.querySelectorAll('.back-to-rankings-btn').forEach(btn => {
+    btn.addEventListener('click', () => closeSailorModal());
+  });
 
   // Spreadsheet import verification modal buttons
   document.getElementById('import-modal-confirm-btn')?.addEventListener('click', () => confirmPendingImport());
@@ -1400,8 +1428,8 @@ function updateRegattaDns(regName, val) {
   if (!requireEditor()) return;
   const reg = REGATTAS.find(r => r.name === regName);
   if (!reg) return;
-  const parsed = parseInt(val);
-  if (isNaN(parsed) || parsed < 1) {
+  const parsed = val.trim() !== '' ? parseInt(val.trim()) : null;
+  if (parsed !== null && (isNaN(parsed) || parsed < 1)) {
     alert("Total sailors in regatta must be a positive integer.");
     renderSpecificRegattaResults();
     return;
