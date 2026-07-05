@@ -1,8 +1,10 @@
 // Main Application Initialization & Event Listeners
 
+let dataLoadedPromise = null;
+
 document.addEventListener('DOMContentLoaded', () => {
   initAuth();
-  loadData();
+  dataLoadedPromise = loadData();
   setupDropZone();
   bindStaticEventListeners();
 });
@@ -16,7 +18,7 @@ function subscribeRealtime() {
     if (isEditor()) return;                      // don't clobber an editor's in-progress work
     
     const data = snap.data();
-    if (data && Array.isArray(data.regattas) && data.regattas.length > 0) {
+    if (data && Array.isArray(data.regattas)) {
       CLOUD_HAS_DATA = true;
       applyState(data);
     } else {
@@ -30,15 +32,38 @@ function subscribeRealtime() {
 
 // Authentication
 function initAuth() {
-  auth.onAuthStateChanged(user => {
+  auth.onAuthStateChanged(async user => {
     CURRENT_USER = (user && user.email === ADMIN_EMAIL) ? user : null;
     applyEditorUI();
     if (CURRENT_USER) {
-      maybeMigrate();
+      if (dataLoadedPromise) await dataLoadedPromise;
+      await maybeMigrate();
+      backfillRegattaTotalSailors();
     }
     // Subscribe to updates in real-time
     subscribeRealtime();
   });
+}
+
+// One-time migration: legacy regattas created before "Total Sailors" was a
+// mandatory field don't have reg.dns set. Backfill it with the number of
+// sailor results currently entered (i.e. the fallback DNS score - 1) so the
+// editor can review/correct each regatta's true fleet size in the UI.
+function backfillRegattaTotalSailors() {
+  if (!isEditor()) return;
+  let changed = false;
+  REGATTAS.forEach(reg => {
+    if (reg.dns === undefined || reg.dns === null) {
+      reg.dns = Math.max(reg.sailors ? reg.sailors.length : 0, 1);
+      changed = true;
+    }
+  });
+  if (changed) {
+    recomputeSailors();
+    saveData();
+    renderAll();
+    renderSpecificRegattaResults();
+  }
 }
 
 function applyEditorUI() {
@@ -868,6 +893,7 @@ function openAddRegattaModal() {
   if (!requireEditor()) return;
   document.getElementById('ar-name').value = '';
   document.getElementById('ar-date').value = new Date().toISOString().split('T')[0];
+  document.getElementById('ar-dns').value = '';
   document.getElementById('addRegattaModal').style.display = 'flex';
 }
 
@@ -879,22 +905,28 @@ function submitAddRegatta() {
   if (!requireEditor()) return;
   const name = document.getElementById('ar-name').value.trim();
   const date = document.getElementById('ar-date').value;
+  const dns = parseInt(document.getElementById('ar-dns').value);
   if (!name || !date) {
     alert("Please fill in both name and date.");
     return;
   }
-  
+  if (isNaN(dns) || dns < 1) {
+    alert("Please enter the total number of sailors in the regatta (positive integer).");
+    return;
+  }
+
   if (REGATTAS.some(r => r.name.toLowerCase() === name.toLowerCase())) {
     alert("A regatta with this name already exists.");
     return;
   }
-  
+
   REGATTAS.push({
     name: name,
     date: date,
+    dns: dns,
     sailors: []
   });
-  
+
   recomputeSailors();
   saveData();
   renderAll();
@@ -1393,9 +1425,10 @@ function updateRegattaDns(regName, val) {
   if (!requireEditor()) return;
   const reg = REGATTAS.find(r => r.name === regName);
   if (!reg) return;
-  const parsed = val !== '' ? parseInt(val) : null;
-  if (parsed !== null && (isNaN(parsed) || parsed < 1)) {
-    alert("DNS must be a positive integer.");
+  const parsed = parseInt(val);
+  if (isNaN(parsed) || parsed < 1) {
+    alert("Total sailors in regatta must be a positive integer.");
+    renderSpecificRegattaResults();
     return;
   }
   reg.dns = parsed;
@@ -1443,6 +1476,10 @@ function deleteRegattaEntirely(regName) {
 
 async function uploadRegattaDocument(regName, file) {
   if (!requireEditor()) return;
+  if (!storage) {
+    alert("Document uploads are unavailable right now (storage failed to load). Please refresh the page and try again.");
+    return;
+  }
   try {
     setSyncStatus('saving');
     const ref = storage.ref().child(`regattas/${regName}/${file.name}`);
@@ -1475,11 +1512,15 @@ async function deleteRegattaDocument(regName) {
   
   try {
     setSyncStatus('saving');
-    try {
-      const ref = storage.refFromURL(reg.documentUrl);
-      await ref.delete();
-    } catch (storageErr) {
-      console.warn("Storage deletion warning (might already be deleted or permission denied):", storageErr);
+    if (!storage) {
+      console.warn("Storage unavailable; skipping remote file deletion, removing reference only.");
+    } else {
+      try {
+        const ref = storage.refFromURL(reg.documentUrl);
+        await ref.delete();
+      } catch (storageErr) {
+        console.warn("Storage deletion warning (might already be deleted or permission denied):", storageErr);
+      }
     }
     
     delete reg.documentUrl;

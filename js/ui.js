@@ -19,7 +19,11 @@ function switchView(viewId, navBtn) {
     renderRankingsPanel();
   } else if (viewId === 'regattas') {
     renderRegattasPanel();
-    renderSpecificRegattaResults(null);
+    if (navBtn || !CURRENT_SELECTED_REGATTA) {
+      renderSpecificRegattaResults(null);
+    } else {
+      renderSpecificRegattaResults(CURRENT_SELECTED_REGATTA);
+    }
   } else if (viewId === 'major-comps') {
     renderMajorCompsPanel();
   } else if (viewId === 'hist-gold') {
@@ -261,7 +265,7 @@ function renderSpecificRegattaResults(regName) {
     const landing = document.getElementById('regatta-landing-view');
     if (!wrap || !body) return;
 
-    if (regName === undefined || regName === null || typeof regName === 'object') {
+    if (regName === undefined) {
       regName = CURRENT_SELECTED_REGATTA || (sel ? sel.value : null);
     }
     
@@ -412,39 +416,42 @@ function destroyCharts() {
 function renderSailorPerformanceChart(sailor) {
   const chartEl = document.getElementById('sailorPerformanceChart');
   if (!chartEl) return;
-  
-  const sortedRegs = [...REGATTAS].sort((a, b) => {
-    const dA = a.date ? new Date(a.date) : new Date(0);
-    const dB = b.date ? new Date(b.date) : new Date(0);
-    return dA - dB;
-  });
+
+  const meta = SAILOR_METADATA[sailor.name] || {};
+  const enteredGold = meta.enteredGold || '—';
+  const goldEntryDate = parseGoldEntryDate(enteredGold);
+
+  const sortedRegs = [...REGATTAS]
+    .filter(reg => !goldEntryDate || !reg.date || new Date(reg.date) >= goldEntryDate)
+    .sort((a, b) => {
+      const dA = a.date ? new Date(a.date) : new Date(0);
+      const dB = b.date ? new Date(b.date) : new Date(0);
+      return dA - dB;
+    });
 
   const labels = [];
   const ranksData = [];
-  const historyHtml = [];
-  
+
   let best = Infinity;
   let sum = 0;
   let count = 0;
 
-  const allFinishes = [];
-  const allPoints = [];
+  const chronoResults = [];
   const venueScores = {};
 
   sortedRegs.forEach(reg => {
     const sInReg = reg.sailors.find(x => isSameSailor(x.name, sailor.name));
     const val = sInReg ? (sInReg.rank !== undefined && sInReg.rank !== null ? sInReg.rank : sInReg.nett) : null;
-    
+
     if (val !== null && val !== undefined) {
       labels.push(reg.name);
       ranksData.push(val);
       if (val < best) best = val;
       sum += val;
       count++;
-      
-      const safeName = escapeHtml(reg.name);
-      allFinishes.push(`${safeName}: P${val}`);
-      
+
+      chronoResults.push({ name: reg.name, date: reg.date, rank: val });
+
       // Accumulate venue averages
       const venue = reg.name.split(' ')[0] || 'Unknown';
       if (!venueScores[venue]) venueScores[venue] = [];
@@ -453,40 +460,53 @@ function renderSailorPerformanceChart(sailor) {
   });
 
   const avg = count > 0 ? (sum / count).toFixed(1) : '—';
-  
-  // Render performance indicators
-  const meta = SAILOR_METADATA[sailor.name] || {};
-  const enteredGold = meta.enteredGold || '—';
-  const rankJun25 = meta.histJun25 !== undefined && meta.histJun25 !== null ? `#${meta.histJun25}` : getHistoricalRank(sailor.name, '2025-06-30');
-  const rankDec25 = meta.histDec25 !== undefined && meta.histDec25 !== null ? `#${meta.histDec25}` : getHistoricalRank(sailor.name, '2025-12-31');
-  const rankJun26 = meta.histJun26 !== undefined && meta.histJun26 !== null ? `#${meta.histJun26}` : getHistoricalRank(sailor.name, '2026-06-30');
+
+  document.getElementById('sm-stat-best').textContent = best === Infinity ? '—' : 'P' + best;
+  document.getElementById('sm-stat-avg').textContent = count > 0 ? 'P' + avg : '—';
+
+  const noticeEl = document.getElementById('sm-gold-fleet-notice');
+  if (noticeEl) {
+    if (goldEntryDate) {
+      noticeEl.style.display = 'block';
+      noticeEl.textContent = `Showing results from Gold Fleet entry onward (${escapeHtml(enteredGold)}). Earlier results are excluded.`;
+    } else {
+      noticeEl.style.display = 'none';
+    }
+  }
+
+  // Best venue = lowest average rank among venues with results
+  let bestVenue = '—';
+  let bestVenueAvg = Infinity;
+  Object.entries(venueScores).forEach(([venue, scores]) => {
+    const venueAvg = scores.reduce((a, b) => a + b, 0) / scores.length;
+    if (venueAvg < bestVenueAvg) {
+      bestVenueAvg = venueAvg;
+      bestVenue = venue;
+    }
+  });
 
   document.getElementById('sm-stat-progress').innerHTML = `
-    <div style="font-size:24px; font-weight:600; font-family:var(--mono); color:var(--accent);">${best === Infinity ? '—' : 'P' + best}</div>
-    <div style="font-size:10px; color:var(--text3); text-transform:uppercase; margin-top:2px;">Best Finish</div>
-    <div style="margin-top:8px; font-size:11px; font-family:var(--mono); color:var(--text2);">Average: ${avg}</div>
+    <div style="font-size:14px; font-weight:600; color:var(--text2);">${escapeHtml(enteredGold)}</div>
+    <div style="font-size:10px; color:var(--text3); text-transform:uppercase; margin-top:2px;">Entered Gold Fleet</div>
+    <div style="margin-top:6px; font-size:11px; color:var(--text3);">${count} gold fleet event${count === 1 ? '' : 's'} recorded</div>
   `;
 
   document.getElementById('sm-stat-profile').innerHTML = `
     <div style="font-size:14px; font-weight:600; color:var(--text2);">${escapeHtml(sailor.club || 'No Club')}</div>
     <div style="font-size:10px; color:var(--text3); text-transform:uppercase; margin-top:2px;">Club</div>
-    <div style="margin-top:6px; font-size:11px; color:var(--text3);">Born: ${sailor.born || '—'} · Gender: ${sailor.g || '—'}</div>
+    <div style="margin-top:6px; font-size:11px; color:var(--text3);">Born: ${escapeHtml(String(sailor.born || '—'))} · Gender: ${escapeHtml(sailor.g || '—')}</div>
+    <div style="margin-top:4px; font-size:11px; color:var(--text3);">Best venue: ${escapeHtml(bestVenue)}</div>
   `;
 
-  // Render history milestones
-  const histRows = [
-    { label: 'Entered Gold', value: enteredGold },
-    { label: 'Jun 25 Snapshot', value: rankJun25 },
-    { label: 'Dec 25 Snapshot', value: rankDec25 },
-    { label: 'Jun 26 Snapshot', value: rankJun26 }
-  ].map(h => `
-    <div style="display:flex; justify-content:space-between; align-items:center; padding:6px 0; border-bottom:1px solid var(--border);">
-      <span style="font-size:11px; color:var(--text2);">${h.label}</span>
-      <span style="font-size:11px; font-weight:600; font-family:var(--mono); color:var(--accent);">${escapeHtml(h.value)}</span>
+  // Render actual chronological per-regatta results (most recent first)
+  const historyRows = chronoResults.slice().reverse().map(r => `
+    <div style="display:flex; justify-content:space-between; align-items:center; padding:6px 0; border-bottom:1px solid var(--border); gap:8px;">
+      <span style="font-size:11px; color:var(--text2); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${escapeHtml(r.name)}</span>
+      <span style="font-size:11px; font-weight:600; font-family:var(--mono); color:var(--accent); flex-shrink:0;">P${r.rank}</span>
     </div>
   `);
-  
-  document.getElementById('sm-stat-history').innerHTML = histRows.join('');
+
+  document.getElementById('sm-stat-history').innerHTML = historyRows.join('') || '<div style="padding:6px 0; color:var(--text3);">No results recorded yet.</div>';
 
   if (chartObjs.sailorPerformance) {
     chartObjs.sailorPerformance.destroy();
@@ -1373,4 +1393,7 @@ function renderAll() {
   populateResultsDropdown();
   populateRegattaCheckboxList();
   updateDatabaseSourceTags();
+  if (CURRENT_SELECTED_REGATTA) {
+    renderSpecificRegattaResults(CURRENT_SELECTED_REGATTA);
+  }
 }
