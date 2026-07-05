@@ -1176,13 +1176,14 @@ function bindStaticEventListeners() {
   document.getElementById('mc-only-participants')?.addEventListener('change', () => renderMajorCompsPanel());
   document.getElementById('mc-search')?.addEventListener('input', () => renderMajorCompsPanel());
 
-  // Dominance chart filters click delegator
-  document.getElementById('dominance-filters')?.addEventListener('click', e => {
-    const btn = e.target.closest('.dominance-filter-btn');
-    if (btn) {
-      const squad = btn.getAttribute('data-squad');
-      filterDominanceChart(squad, btn);
-    }
+  // Chart sailors list modal (opened by clicking a bar in the Analysis charts)
+  document.getElementById('chart-modal-close-btn')?.addEventListener('click', () => closeChartSailorsModal());
+  document.getElementById('chartSailorsModal')?.addEventListener('click', e => {
+    if (e.target === e.currentTarget) closeChartSailorsModal();
+  });
+  document.getElementById('chart-sailors-body')?.addEventListener('click', e => {
+    // The global .name-c delegation opens the profile; also dismiss the modal
+    if (e.target.closest('.name-c')) closeChartSailorsModal();
   });
 
   // Historical gold panel elements

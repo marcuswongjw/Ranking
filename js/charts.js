@@ -4,7 +4,7 @@
 function renderCharts() {
   try {
     if (typeof Chart === 'undefined') {
-      const containerIds = ['distChart', 'scatterChart', 'clubChart', 'yearChart', 'dominanceChart'];
+      const containerIds = ['distChart', 'scatterChart', 'clubChart', 'yearChart'];
       containerIds.forEach(id => {
         const el = document.getElementById(id);
         if (el && el.parentElement) {
@@ -174,16 +174,58 @@ function renderCharts() {
       }
     });
 
-    // 5. Club Dominance - delegated to separate function for filtering
-    renderDominanceChart();
   } catch (err) {
     console.error("Error rendering charts:", err);
   }
 }
 
-function filterDominanceChart(squad, btn) {
-  dominanceFilter = squad;
-  document.querySelectorAll('.dominance-filter-btn').forEach(b => b.classList.remove('active'));
-  if (btn) btn.classList.add('active');
-  renderDominanceChart();
+// Show the sailors behind a clicked chart bar in the chartSailorsModal.
+function handleChartClick(chartId, clickedLabel, datasetLabel) {
+  const modal = document.getElementById('chartSailorsModal');
+  const titleEl = document.getElementById('chart-sailors-title');
+  const descEl = document.getElementById('chart-sailors-desc');
+  const body = document.getElementById('chart-sailors-body');
+  if (!modal || !body) return;
+
+  const sq = computeSquads(SAILORS);
+  let matched = [];
+  let title = 'Sailors';
+
+  if (chartId === 'yearChart') {
+    const born = parseInt(clickedLabel);
+    const gender = datasetLabel.includes('(F)') ? 'F' : 'M';
+    matched = SAILORS.filter(s => s.born === born && s.g === gender);
+    title = `${gender === 'F' ? 'Girls' : 'Boys'} born ${born}`;
+  } else if (chartId === 'distChart') {
+    matched = SAILORS.filter(s => {
+      const squad = EXCLUDED.has(s.name) ? 'None' : (sq.get(s.name) || 'None');
+      return squad === clickedLabel;
+    });
+    title = `${clickedLabel} squad`;
+  }
+
+  matched.sort((a, b) => a.cur - b.cur);
+
+  body.innerHTML = matched.map(s => {
+    const safeName = escapeHtml(s.name);
+    const squad = EXCLUDED.has(s.name) ? null : (sq.get(s.name) || null);
+    return `<tr>
+      <td style="font-family:var(--mono); font-size:11px;">#${s.cur}</td>
+      <td class="name-c" data-sailor="${safeName}" style="cursor:pointer; color:var(--accent); font-weight:600; text-decoration:underline;">${safeName}</td>
+      <td style="font-size:11px;">${escapeHtml(s.g || '—')}</td>
+      <td style="font-size:11px;">${escapeHtml(String(s.born || '—'))}</td>
+      <td style="font-size:11px;">${escapeHtml(s.club || '—')}</td>
+      <td>${EXCLUDED.has(s.name) ? '<span class="badge b-n">Excl.</span>' : squadBadge(squad)}</td>
+      <td style="text-align:right; font-family:var(--mono); font-size:11px;">${Math.floor(s.score)}</td>
+    </tr>`;
+  }).join('') || '<tr><td colspan="7" style="text-align:center; color:var(--text3); padding:20px;">No sailors match.</td></tr>';
+
+  if (titleEl) titleEl.textContent = title;
+  if (descEl) descEl.textContent = `${matched.length} sailor${matched.length === 1 ? '' : 's'} — click a name to open their profile.`;
+  modal.style.display = 'flex';
+}
+
+function closeChartSailorsModal() {
+  const modal = document.getElementById('chartSailorsModal');
+  if (modal) modal.style.display = 'none';
 }

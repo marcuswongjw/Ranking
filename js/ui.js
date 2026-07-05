@@ -451,7 +451,7 @@ function populateRegattaCheckboxList() {
 }
 
 function destroyCharts() {
-  ['sailorPerformance', 'comparison', 'dist', 'scatter', 'club', 'year', 'dominance'].forEach(key => {
+  ['comparison', 'dist', 'scatter', 'club', 'year'].forEach(key => {
     if (chartObjs[key]) {
       chartObjs[key].destroy();
       chartObjs[key] = null;
@@ -669,8 +669,12 @@ function renderRankingsPanel() {
 
   const latestRegs = getActiveRegattas();
   const regHeaders = latestRegs.map((reg, idx) => {
-    const safeTitle = escapeHtml(reg.name);
-    return `<th style="width:65px;text-align:center;cursor:pointer;user-select:none" class="hide-mobile sort-header" data-sort="reg_${idx}">${safeTitle}${getSortIndicator('reg_' + idx)}</th>`;
+    // Break "SAFYC (Mar 26)" into two lines: name on top, "(Mar 26)" below
+    const m = String(reg.name).match(/^(.*?)\s*(\([^)]*\))\s*$/);
+    const title = m
+      ? `${escapeHtml(m[1])}<br><span style="font-weight:400;color:var(--text3)">${escapeHtml(m[2])}</span>`
+      : escapeHtml(reg.name);
+    return `<th style="width:65px;text-align:center;cursor:pointer;user-select:none;white-space:normal;line-height:1.35" class="hide-mobile sort-header" data-sort="reg_${idx}">${title}${getSortIndicator('reg_' + idx)}</th>`;
   }).join('');
 
   container.innerHTML = `
@@ -735,7 +739,6 @@ function renderRankingsPanel() {
           <th style="width:180px;cursor:pointer;user-select:none" class="sort-header" data-sort="name">Sailor${getSortIndicator('name')}</th>
           <th style="width:32px;cursor:pointer;user-select:none" class="sort-header" data-sort="gender">G${getSortIndicator('gender')}</th>
           <th style="width:46px;cursor:pointer;user-select:none" class="sort-header" data-sort="born">Born${getSortIndicator('born')}</th>
-          <th style="width:105px;cursor:pointer;user-select:none" class="sort-header" data-sort="squadJan">${escapeHtml('Squad (Jan ' + String(COMP_YEAR).slice(-2) + ')')}${getSortIndicator('squadJan')}</th>
           <th style="width:105px;cursor:pointer;user-select:none" class="sort-header" data-sort="squad">${escapeHtml('Squad (Jul ' + String(COMP_YEAR).slice(-2) + ')')}${getSortIndicator('squad')}</th>
           <th style="width:105px;cursor:pointer;user-select:none" class="sort-header" data-sort="squadNext">${escapeHtml('Squad (Jan ' + String(COMP_YEAR + 1).slice(-2) + ')')}${getSortIndicator('squadNext')}</th>
           <th style="width:80px;text-align:center;cursor:pointer;user-select:none" class="sort-header" data-sort="score">Best 3 of ${latestRegs.length}${getSortIndicator('score')}</th>
@@ -759,9 +762,8 @@ function renderRankings() {
   const sqNext = computeSquads(SAILORS, COMP_YEAR + 1);
 
   // Manually locked squad statuses, stored per sailor in SAILOR_METADATA
-  // under year-suffixed keys (e.g. squadJan26 / squadJul26 for COMP_YEAR 2026).
+  // under year-suffixed keys (e.g. squadJul26 for COMP_YEAR 2026).
   const yy = String(COMP_YEAR).slice(-2);
-  const squadJanKey = 'squadJan' + yy;
   const squadJulKey = 'squadJul' + yy;
   const squadLock = (name, key) => (SAILOR_METADATA[name] || {})[key] || null;
 
@@ -809,9 +811,6 @@ function renderRankings() {
     } else if (sortKey === 'born') {
       valA = a.born;
       valB = b.born;
-    } else if (sortKey === 'squadJan') {
-      valA = squadNameOrder(squadLock(a.name, squadJanKey));
-      valB = squadNameOrder(squadLock(b.name, squadJanKey));
     } else if (sortKey === 'squad') {
       valA = squadNameOrder(squadLock(a.name, squadJulKey) || sq.get(a.name));
       valB = squadNameOrder(squadLock(b.name, squadJulKey) || sq.get(b.name));
@@ -866,7 +865,6 @@ function renderRankings() {
     const safeGender = escapeHtml(s.g);
     const safeBorn = escapeHtml(s.born);
 
-    const lockJan = squadLock(s.name, squadJanKey);
     const lockJul = squadLock(s.name, squadJulKey);
     const squadLockCell = (field, locked, autoLabel) => {
       if (!isEditor()) return locked ? squadBadge(locked) : (autoLabel !== null ? squadBadge(autoLabel) : '<span class="badge b-n">—</span>');
@@ -883,13 +881,12 @@ function renderRankings() {
       <td class="name-c" data-sailor="${safeName}" style="cursor:pointer; color:var(--accent); font-weight:600; text-decoration:underline;">${safeName}${exclTag}</td>
       <td class="sub-c">${safeGender}</td>
       <td class="sub-c">${safeBorn}</td>
-      <td>${squadLockCell(squadJanKey, lockJan, null)}</td>
       <td>${isExcl && !lockJul && !isEditor() ? '<span class="badge b-n">Excl.</span>' : squadLockCell(squadJulKey, lockJul, isExcl ? null : squad)}</td>
       <td>${isExcl ? '<span class="badge b-n">Excl.</span>' : isRetiringNext ? '<span class="badge b-n" style="background:var(--red-l);color:var(--red)" title="Turns 16 by then — ages out of the Gold Fleet">Retiring</span>' : squadBadge(squadNext)}</td>
       <td class="score-c" style="text-align:center">${s.score}</td>
       ${cells}
     </tr>`;
-  }).join('') || '<tr><td colspan="8" style="text-align:center;color:var(--text3);padding:24px">No sailors match criteria.</td></tr>';
+  }).join('') || '<tr><td colspan="7" style="text-align:center;color:var(--text3);padding:24px">No sailors match criteria.</td></tr>';
 
   renderComparisonChart();
 }
