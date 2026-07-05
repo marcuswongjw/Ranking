@@ -147,6 +147,9 @@
 
           <div style="display:flex; gap:6px; align-items:center; margin-left:auto;">
             <button class="editor-only" id="add-sailor-result-trigger" style="background:var(--accent); color:#fff; border:none; border-radius:3px; padding:6px 12px; font-size:11px; font-family:var(--mono); cursor:pointer; font-weight:600; transition:all .15s;">＋ Add Sailor Result</button>
+            <button class="editor-only" id="bulk-edit-toggle-btn" style="background:var(--bg3); color:var(--text); border:1px solid var(--border); border-radius:3px; padding:6px 12px; font-size:11px; font-family:var(--mono); cursor:pointer; font-weight:600; transition:all .15s;">✎ Bulk Edit</button>
+            <button id="bulk-edit-save-btn" style="display:none; background:var(--accent); color:#fff; border:none; border-radius:3px; padding:6px 12px; font-size:11px; font-family:var(--mono); cursor:pointer; font-weight:600; transition:all .15s;">💾 Save All Changes</button>
+            <button id="bulk-edit-cancel-btn" style="display:none; background:var(--bg2); color:var(--text); border:1px solid var(--border); border-radius:3px; padding:6px 12px; font-size:11px; font-family:var(--mono); cursor:pointer; font-weight:600; transition:all .15s;">✕ Cancel</button>
             <button class="editor-only regatta-delete-btn-detail" style="background:var(--red-l); color:var(--red); border:1px solid rgba(138,28,28,.15); border-radius:3px; padding:6px 12px; font-size:11px; font-family:var(--mono); cursor:pointer; font-weight:600; transition:all .15s;">✕ Delete Regatta</button>
           </div>
         </div>
@@ -464,6 +467,73 @@
       </div>
     </div>
     
+    <!-- Add Sailor Result Modal -->
+    <div id="addSailorResultModal" class="drop-overlay" style="background:rgba(0,0,0,.6); align-items:center; justify-content:center; display:none; position:fixed; inset:0; z-index:200;">
+      <div class="card" style="width:380px; max-width:90%; background:var(--card); border:1px solid var(--border); box-shadow:0 10px 30px rgba(0,0,0,.3); display:flex; flex-direction:column; padding:24px; border-radius:12px; position:relative;">
+        <button id="asr-modal-close-btn" style="position:absolute; top:16px; right:16px; background:none; border:none; color:var(--text3); font-size:16px; cursor:pointer;" aria-label="Close modal">✕</button>
+        <div class="card-title" style="font-size:16px; margin-bottom:4px; font-family:var(--mono);">Add Sailor Result</div>
+        <p class="card-desc" id="asr-regatta-name" style="font-size:11px; margin-bottom:16px;"></p>
+        <div style="display:flex; flex-direction:column; gap:12px; margin-bottom:20px;">
+          <div style="display:flex; gap:6px;">
+            <button type="button" class="pill active asr-mode-btn" data-mode="existing" style="flex:1;">Existing Sailor</button>
+            <button type="button" class="pill asr-mode-btn" data-mode="new" style="flex:1;">New Sailor</button>
+          </div>
+
+          <div class="fl" id="asr-existing-wrap">
+            <label class="fl-lbl" for="asr-existing-select">Sailor</label>
+            <select id="asr-existing-select" style="width:100%;">
+              <option value="">— choose sailor —</option>
+            </select>
+          </div>
+
+          <div id="asr-new-wrap" style="display:none; flex-direction:column; gap:12px;">
+            <div class="fl">
+              <label class="fl-lbl" for="asr-new-name">Sailor Name</label>
+              <input type="text" id="asr-new-name" style="width:100%;">
+            </div>
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+              <div class="fl">
+                <label class="fl-lbl" for="asr-new-gender">Gender</label>
+                <select id="asr-new-gender" style="width:100%;">
+                  <option value="M">Male (M)</option>
+                  <option value="F">Female (F)</option>
+                </select>
+              </div>
+              <div class="fl">
+                <label class="fl-lbl" for="asr-new-born">Birth Year</label>
+                <input type="number" id="asr-new-born" style="width:100%;">
+              </div>
+            </div>
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+              <div class="fl">
+                <label class="fl-lbl" for="asr-new-club">Club</label>
+                <input type="text" id="asr-new-club" style="width:100%;">
+              </div>
+              <div class="fl">
+                <label class="fl-lbl" for="asr-new-school">School</label>
+                <input type="text" id="asr-new-school" style="width:100%;">
+              </div>
+            </div>
+          </div>
+
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+            <div class="fl">
+              <label class="fl-lbl" for="asr-rank">Rank in Regatta</label>
+              <input type="number" id="asr-rank" min="1" style="width:100%;">
+            </div>
+            <div class="fl">
+              <label class="fl-lbl" for="asr-points">Points (optional)</label>
+              <input type="number" id="asr-points" min="0" style="width:100%;">
+            </div>
+          </div>
+        </div>
+        <div style="display:flex; justify-content:flex-end; gap:8px;">
+          <button id="asr-modal-cancel-btn" style="padding:7px 14px; background:var(--bg2); border:1px solid var(--border); border-radius:var(--r); font-size:11px; cursor:pointer; font-family:var(--mono);">Cancel</button>
+          <button id="asr-modal-submit-btn" style="padding:7px 16px; background:var(--accent); color:#fff; border:none; border-radius:var(--r); font-size:11px; font-weight:600; cursor:pointer; font-family:var(--mono);">Add Result</button>
+        </div>
+      </div>
+    </div>
+
     <!-- Chart Click Sailors List Modal -->
     <div id="chartSailorsModal" class="drop-overlay" style="background:rgba(0,0,0,.6); align-items:center; justify-content:center; display:none; position:fixed; inset:0; z-index:200;">
       <div class="card" style="width:650px; max-width:95%; height:450px; background:var(--card); border:1px solid var(--border); box-shadow:0 10px 30px rgba(0,0,0,.3); display:flex; flex-direction:column; padding:24px; border-radius:12px; position:relative;">
