@@ -1,19 +1,24 @@
-function switchView(viewId, navBtn) {
+function switchView(viewId, navBtn, skipHash) {
   document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
   const panel = document.getElementById('panel-' + viewId);
   if (panel) panel.classList.add('active');
 
   document.querySelectorAll('.nav-item').forEach(btn => btn.classList.remove('active'));
-  if (navBtn) {
-    navBtn.classList.add('active');
-  } else {
-    const selector = `.nav-item[onclick*="${viewId}"]`;
-    const found = document.querySelector(selector);
-    if (found) found.classList.add('active');
-  }
-  
+  // Prefer the passed navBtn, fall back to any nav-item with matching data-view
+  const matchedNav = navBtn || document.querySelector(`.nav-item[data-view="${viewId}"]`);
+  if (matchedNav) matchedNav.classList.add('active');
+
   lastMainView = viewId;
   destroyCharts();
+
+  // Update the URL hash so each tab has its own URL (skip on back/forward navigation
+  // to avoid duplicate history entries).
+  if (!skipHash) {
+    const newHash = '#' + viewId;
+    if (window.location.hash !== newHash) {
+      history.pushState({ viewId }, '', newHash);
+    }
+  }
 
   if (viewId === 'rankings') {
     renderRankingsPanel();
@@ -1105,6 +1110,57 @@ function renderHistGoldPanel() {
   
   const isEditable = isEditor();
   
+  // Render the bulk-edit toolbar only once (avoid re-rendering if already present)
+  let bulkBar = document.getElementById('hg-bulk-bar');
+  if (isEditable && !bulkBar) {
+    const filterCard = document.querySelector('#panel-hist-gold .card:nth-child(2)');
+    if (filterCard) {
+      bulkBar = document.createElement('div');
+      bulkBar.id = 'hg-bulk-bar';
+      bulkBar.className = 'card';
+      bulkBar.style.cssText = 'margin-bottom:18px; padding:12px 16px; display:flex; flex-wrap:wrap; align-items:center; gap:12px;';
+      bulkBar.innerHTML = `
+        <span style="font-size:12px; font-weight:600; font-family:var(--mono); color:var(--text2);">Bulk Edit:</span>
+        <select id="hg-bulk-field" style="height:30px; font-size:12px; background:var(--bg2); border:1px solid var(--border); border-radius:var(--r); color:var(--text); padding:0 8px; cursor:pointer;">
+          <option value="enteredGold">Entered Gold</option>
+        </select>
+        <select id="hg-bulk-value" style="height:30px; font-size:12px; background:var(--bg2); border:1px solid var(--border); border-radius:var(--r); color:var(--text); padding:0 8px; cursor:pointer;">
+          <option value="—">— none / unknown —</option>
+          <option value="Jan 2023">Jan 2023</option>
+          <option value="Jul 2023">Jul 2023</option>
+          <option value="Jan 2024">Jan 2024</option>
+          <option value="Jul 2024">Jul 2024</option>
+          <option value="Jan 2025">Jan 2025</option>
+          <option value="Jul 2025">Jul 2025</option>
+          <option value="Jan 2026">Jan 2026</option>
+          <option value="Jul 2026">Jul 2026</option>
+        </select>
+        <button id="hg-bulk-apply" style="padding:5px 14px; background:var(--accent); color:#fff; border:none; border-radius:var(--r); font-size:11px; font-weight:600; cursor:pointer; font-family:var(--mono); transition:all .15s;">Apply to selected</button>
+        <span id="hg-bulk-count" style="font-size:11px; color:var(--text3); font-family:var(--mono);">0 selected</span>
+      `;
+      filterCard.insertAdjacentElement('afterend', bulkBar);
+
+      document.getElementById('hg-bulk-apply')?.addEventListener('click', () => {
+        if (!requireEditor()) return;
+        const checked = document.querySelectorAll('.hg-row-cb:checked');
+        if (checked.length === 0) { alert('No sailors selected.'); return; }
+        const field = document.getElementById('hg-bulk-field')?.value;
+        const val = document.getElementById('hg-bulk-value')?.value;
+        checked.forEach(cb => {
+          const name = cb.getAttribute('data-sailor');
+          if (!name) return;
+          if (!SAILOR_METADATA[name]) SAILOR_METADATA[name] = {};
+          if (field === 'enteredGold') SAILOR_METADATA[name].enteredGold = val;
+        });
+        recomputeSailors();
+        saveData();
+        renderAll();
+      });
+    }
+  } else if (!isEditable && bulkBar) {
+    bulkBar.remove();
+  }
+  
   const allSystem = getAllSailorsInSystem();
   const allSystemMap = new Map();
   allSystem.forEach(s => {
@@ -1230,8 +1286,12 @@ function renderHistGoldPanel() {
     const safeName = escapeHtml(s.name);
     const safeGender = escapeHtml(s.gender);
     const safeEntered = escapeHtml(s.enteredGold);
+    const cbCol = isEditable
+      ? `<td style="text-align:center; padding:4px;"><input type="checkbox" class="hg-row-cb" data-sailor="${safeName}" style="width:15px; height:15px; cursor:pointer;"></td>`
+      : '';
 
     return `<tr style="${!s.isActive ? 'opacity:0.65; background:var(--bg2);' : ''}">
+      ${cbCol}
       <td class="rank-c" style="text-align:center;">${rankStr}</td>
       <td class="name-c" data-sailor="${safeName}" style="cursor:pointer; color:var(--accent); font-weight:600; text-decoration:underline;">${safeName}</td>
       <td class="sub-c" style="text-align:center;">${safeGender}</td>
@@ -1243,11 +1303,17 @@ function renderHistGoldPanel() {
       ${renderCell('histJun26', s.valJun26, '2026-06-30')}
     </tr>`;
   }).join('');
-  
+
+  const selectAllTh = isEditable
+    ? `<th style="width:36px; text-align:center;"><input type="checkbox" id="hg-select-all" title="Select all" style="width:15px;height:15px;cursor:pointer;"></th>`
+    : '';
+  const colSpan = isEditable ? 10 : 9;
+
   container.innerHTML = `
     <table>
       <thead>
         <tr>
+          ${selectAllTh}
           <th style="width:46px; cursor:pointer; user-select:none" class="hg-sort-header" data-sort="rank">Rank${getHgSortIndicator('rank')}</th>
           <th style="width:180px; cursor:pointer; user-select:none" class="hg-sort-header" data-sort="name">Sailor${getHgSortIndicator('name')}</th>
           <th style="width:32px; text-align:center; cursor:pointer; user-select:none" class="hg-sort-header" data-sort="gender">G${getHgSortIndicator('gender')}</th>
@@ -1260,10 +1326,36 @@ function renderHistGoldPanel() {
         </tr>
       </thead>
       <tbody>
-        ${rows || '<tr><td colspan="9" style="text-align:center; color:var(--text3); padding:16px;">No records match criteria.</td></tr>'}
+        ${rows || `<tr><td colspan="${colSpan}" style="text-align:center; color:var(--text3); padding:16px;">No records match criteria.</td></tr>`}
       </tbody>
     </table>
   `;
+
+  // Wire up select-all checkbox
+  const selectAll = document.getElementById('hg-select-all');
+  if (selectAll) {
+    selectAll.addEventListener('change', () => {
+      document.querySelectorAll('.hg-row-cb').forEach(cb => { cb.checked = selectAll.checked; });
+      updateBulkCount();
+    });
+  }
+  // Wire up individual checkboxes to update count
+  container.querySelectorAll('.hg-row-cb').forEach(cb => {
+    cb.addEventListener('change', updateBulkCount);
+  });
+}
+
+function updateBulkCount() {
+  const countEl = document.getElementById('hg-bulk-count');
+  if (!countEl) return;
+  const n = document.querySelectorAll('.hg-row-cb:checked').length;
+  countEl.textContent = `${n} selected`;
+  const selectAll = document.getElementById('hg-select-all');
+  if (selectAll) {
+    const total = document.querySelectorAll('.hg-row-cb').length;
+    selectAll.indeterminate = n > 0 && n < total;
+    selectAll.checked = n > 0 && n === total;
+  }
 }
 
 function renderFleetPanel() {

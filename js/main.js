@@ -996,6 +996,13 @@ function resetRegattasToDefault(event) {
   renderAll();
 }
 
+// Resolve a view ID from the current URL hash; returns null if not a known tab.
+const VALID_VIEWS = ['rankings', 'regattas', 'simulator', 'target', 'exclusions', 'charts', 'major-comps', 'hist-gold', 'fleet'];
+function viewIdFromHash(hash) {
+  const id = (hash || '').replace(/^#/, '');
+  return VALID_VIEWS.includes(id) ? id : null;
+}
+
 // Bind all page events programmatically (replaces inline elements)
 function bindStaticEventListeners() {
   // Navigation sidebar buttons (using data-view attribute)
@@ -1005,6 +1012,19 @@ function bindStaticEventListeners() {
       if (viewId) switchView(viewId, btn);
     });
   });
+
+  // Handle browser back/forward navigation via popstate
+  window.addEventListener('popstate', e => {
+    const viewId = (e.state && e.state.viewId) || viewIdFromHash(window.location.hash) || 'rankings';
+    switchView(viewId, null, /*skipHash=*/true);
+  });
+
+  // On first load, navigate to the tab indicated by the URL hash (if any)
+  const initialView = viewIdFromHash(window.location.hash);
+  if (initialView && initialView !== 'rankings') {
+    // Defer until after data has loaded so renders work correctly
+    dataLoadedPromise.then(() => switchView(initialView, null, /*skipHash=*/true));
+  }
 
   // Sidebar Logo view trigger
   document.querySelector('.sb-logo')?.addEventListener('click', () => switchView('rankings'));
