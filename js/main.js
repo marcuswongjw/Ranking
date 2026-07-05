@@ -893,7 +893,7 @@ function openAddRegattaModal() {
   if (!requireEditor()) return;
   document.getElementById('ar-name').value = '';
   document.getElementById('ar-date').value = new Date().toISOString().split('T')[0];
-  document.getElementById('ar-dns').value = '';
+  document.getElementById('ar-dns').value = '100';
   document.getElementById('addRegattaModal').style.display = 'flex';
 }
 

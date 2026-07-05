@@ -880,7 +880,7 @@ function renderRegattasPanel() {
   
   const html = REGATTAS.map((reg, idx) => {
     const safeName = escapeHtml(reg.name);
-    const competitorCount = reg.sailors ? reg.sailors.length : 0;
+    const competitorCount = (reg.dns !== undefined && reg.dns !== null) ? reg.dns : (reg.sailors ? reg.sailors.length : 0);
     const dateStr = reg.date || 'Date not set';
     
     return `
@@ -1173,20 +1173,20 @@ function renderHistGoldPanel() {
       valA = a.enteredGold === '—' ? 'zzzz' : a.enteredGold;
       valB = b.enteredGold === '—' ? 'zzzz' : b.enteredGold;
     } else if (hgSortKey === 'valJun24') {
-      valA = a.valJun24 !== '' && a.valJun24 !== null && a.valJun24 !== undefined ? a.valJun24 : 9999;
-      valB = b.valJun24 !== '' && b.valJun24 !== null && b.valJun24 !== undefined ? b.valJun24 : 9999;
+      valA = getHistoricalSortValue(a, 'valJun24', '2024-06-30');
+      valB = getHistoricalSortValue(b, 'valJun24', '2024-06-30');
     } else if (hgSortKey === 'valDec24') {
-      valA = a.valDec24 !== '' && a.valDec24 !== null && a.valDec24 !== undefined ? a.valDec24 : 9999;
-      valB = b.valDec24 !== '' && b.valDec24 !== null && b.valDec24 !== undefined ? b.valDec24 : 9999;
+      valA = getHistoricalSortValue(a, 'valDec24', '2024-12-31');
+      valB = getHistoricalSortValue(b, 'valDec24', '2024-12-31');
     } else if (hgSortKey === 'valJun25') {
-      valA = a.valJun25 !== '' && a.valJun25 !== null && a.valJun25 !== undefined ? a.valJun25 : 9999;
-      valB = b.valJun25 !== '' && b.valJun25 !== null && b.valJun25 !== undefined ? b.valJun25 : 9999;
+      valA = getHistoricalSortValue(a, 'valJun25', '2025-06-30');
+      valB = getHistoricalSortValue(b, 'valJun25', '2025-06-30');
     } else if (hgSortKey === 'valDec25') {
-      valA = a.valDec25 !== '' && a.valDec25 !== null && a.valDec25 !== undefined ? a.valDec25 : 9999;
-      valB = b.valDec25 !== '' && b.valDec25 !== null && b.valDec25 !== undefined ? b.valDec25 : 9999;
+      valA = getHistoricalSortValue(a, 'valDec25', '2025-12-31');
+      valB = getHistoricalSortValue(b, 'valDec25', '2025-12-31');
     } else if (hgSortKey === 'valJun26') {
-      valA = a.valJun26 !== '' && a.valJun26 !== null && a.valJun26 !== undefined ? a.valJun26 : 9999;
-      valB = b.valJun26 !== '' && b.valJun26 !== null && b.valJun26 !== undefined ? b.valJun26 : 9999;
+      valA = getHistoricalSortValue(a, 'valJun26', '2026-06-30');
+      valB = getHistoricalSortValue(b, 'valJun26', '2026-06-30');
     }
 
     if (valA === valB) {

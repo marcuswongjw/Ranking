@@ -95,6 +95,15 @@ function squadNameOrder(squad) {
 }
 
 function getHistoricalRank(sailorName, dateStr) {
+  const meta = SAILOR_METADATA[sailorName];
+  if (meta) {
+    if (dateStr === '2024-06-30' && meta.histJun24 !== undefined && meta.histJun24 !== null) return `#${meta.histJun24}`;
+    if (dateStr === '2024-12-31' && meta.histDec24 !== undefined && meta.histDec24 !== null) return `#${meta.histDec24}`;
+    if (dateStr === '2025-06-30' && meta.histJun25 !== undefined && meta.histJun25 !== null) return `#${meta.histJun25}`;
+    if (dateStr === '2025-12-31' && meta.histDec25 !== undefined && meta.histDec25 !== null) return `#${meta.histDec25}`;
+    if (dateStr === '2026-06-30' && meta.histJun26 !== undefined && meta.histJun26 !== null) return `#${meta.histJun26}`;
+  }
+
   const cacheKey = `optimist_${sailorName}_${dateStr}`;
   if (historicalRankCache.has(cacheKey)) {
     return historicalRankCache.get(cacheKey);
@@ -179,7 +188,7 @@ function getHistoricalRank(sailorName, dateStr) {
 }
 
 function getHistoricalSortValue(sailor, prop, dateStr) {
-  if (sailor[prop] !== null && sailor[prop] !== undefined) {
+  if (sailor[prop] !== null && sailor[prop] !== undefined && sailor[prop] !== '') {
     return sailor[prop];
   }
   const hist = getHistoricalRank(sailor.name, dateStr);
@@ -187,5 +196,5 @@ function getHistoricalSortValue(sailor, prop, dateStr) {
     const num = parseInt(hist.substring(1));
     if (!isNaN(num)) return num;
   }
-  return 999;
+  return 9999;
 }
