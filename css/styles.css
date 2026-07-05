@@ -95,6 +95,7 @@ td{padding:8px 10px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .two-col{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:18px}
 .sailor-analysis-grid{display:grid;grid-template-columns:1.2fr 1fr;gap:24px}
 .sailor-analysis-side{display:flex;flex-direction:column;border-left:1px solid var(--border);padding-left:24px}
+.sm-grid-4{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
 .card{background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:18px;box-shadow:var(--sh)}
 .card-title{font-family:var(--mono);font-size:12px;font-weight:600;margin-bottom:4px}
 .card-desc{font-size:11px;color:var(--text2);margin-bottom:14px;line-height:1.55}
@@ -281,6 +282,9 @@ td{padding:8px 10px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   }
   .sailor-analysis-info-grid {
     grid-template-columns: 1fr !important;
+  }
+  .sm-grid-4 {
+    grid-template-columns: 1fr 1fr;
   }
   .charts-grid {
     grid-template-columns: 1fr;
