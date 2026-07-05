@@ -1,7 +1,5 @@
 function getRegattaDnsPenalty(reg) {
   if (!reg) return DNS;
-  if (reg.name === "Simulated Regatta") return DNS;
-  if (reg.dns === DNS) return DNS;
   const total = (reg.dns !== undefined && reg.dns !== null) ? parseInt(reg.dns) : (reg.sailors ? reg.sailors.length : 0);
   return total + 1;
 }
@@ -238,7 +236,8 @@ function calcSimScore(sailor, simSailors, rankingMode = false) {
     {
       name: "Simulated Regatta",
       date: "2026-12-31",
-      sailors: []
+      sailors: [],
+      dns: DNS
     }
   ];
   
@@ -290,7 +289,8 @@ function runSimulation() {
   REGATTAS.push({
     name: "Simulated Regatta",
     date: "2026-12-31",
-    sailors: simSailors.map(ss => ({ ...ss, g: ss.g, born: ss.born, club: ss.club }))
+    sailors: simSailors.map(ss => ({ ...ss, g: ss.g, born: ss.born, club: ss.club })),
+    dns: DNS
   });
   
   recomputeSailors();
@@ -582,7 +582,8 @@ function buildWhatIf(sailor, goal, ctx) {
     REGATTAS.push({
       name: "Simulated Regatta",
       date: "2026-12-31",
-      sailors: [{ name: sailor.name, g: sailor.g, born: sailor.born, club: sailor.club, nett: pos, rank: pos }]
+      sailors: [{ name: sailor.name, g: sailor.g, born: sailor.born, club: sailor.club, nett: pos, rank: pos }],
+      dns: DNS
     });
     recomputeSailors();
     const sq = computeSquads(SAILORS).get(sailor.name);

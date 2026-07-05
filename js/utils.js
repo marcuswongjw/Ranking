@@ -11,7 +11,7 @@ function escapeHtml(str) {
   if (typeof str !== 'string') return String(str);
   const div = document.createElement('div');
   div.textContent = str;
-  return div.innerHTML;
+  return div.innerHTML.replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 }
 
 /**
@@ -57,6 +57,19 @@ function getRegattaPercentileBase(reg) {
     }
   });
   return maxRank > 0 ? maxRank : 1;
+}
+
+const GOLD_ENTRY_MONTHS = { Jan: 0, Feb: 1, Mar: 2, Apr: 3, May: 4, Jun: 5, Jul: 6, Aug: 7, Sep: 8, Oct: 9, Nov: 10, Dec: 11 };
+
+/**
+ * Parse a "Mon YYYY" gold fleet entry date (e.g. "Jul 2025") into a Date.
+ * Returns null if unset/unknown ("—") or unparseable.
+ */
+function parseGoldEntryDate(enteredGold) {
+  if (!enteredGold || enteredGold === '—') return null;
+  const m = String(enteredGold).match(/^(\w{3})\s+(\d{4})$/);
+  if (!m || GOLD_ENTRY_MONTHS[m[1]] === undefined) return null;
+  return new Date(parseInt(m[2]), GOLD_ENTRY_MONTHS[m[1]], 1);
 }
 
 function isAgeDropped(born) {

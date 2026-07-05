@@ -1103,7 +1103,9 @@ function bindStaticEventListeners() {
   
   // Sailor Profile Modal buttons
   document.getElementById('sm-save-btn')?.addEventListener('click', () => saveSailorProfile());
-  document.getElementById('sm-cancel-btn')?.addEventListener('click', () => closeSailorModal());
+  document.querySelectorAll('.back-to-rankings-btn').forEach(btn => {
+    btn.addEventListener('click', () => closeSailorModal());
+  });
 
   // Spreadsheet import verification modal buttons
   document.getElementById('import-modal-confirm-btn')?.addEventListener('click', () => confirmPendingImport());
