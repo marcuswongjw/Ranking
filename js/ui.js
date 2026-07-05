@@ -1154,7 +1154,7 @@ function renderHistGoldPanel() {
 
   list = list.filter(item => {
     if (searchVal && !item.name.toLowerCase().includes(searchVal)) return false;
-    if (onlyActive && !item.isActive) return false;
+    if (onlyActive && !item.isActive && (item.enteredGold === '—' || !item.enteredGold)) return false;
     return true;
   });
 
