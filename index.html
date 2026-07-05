@@ -679,34 +679,6 @@
               </div>
             </div>
             
-            <div class="sec-lbl" style="margin-top:10px;">Historical Standings Overrides</div>
-            <div style="display:grid; grid-template-columns:1fr 1fr 1fr 1fr 1fr; gap:6px;">
-              <div class="fl">
-                <label class="fl-lbl" for="sm-override-jun24">Jun 24</label>
-                <input type="number" id="sm-override-jun24" style="width:100%;" placeholder="Auto">
-              </div>
-              <div class="fl">
-                <label class="fl-lbl" for="sm-override-dec24">Dec 24</label>
-                <input type="number" id="sm-override-dec24" style="width:100%;" placeholder="Auto">
-              </div>
-              <div class="fl">
-                <label class="fl-lbl" for="sm-override-jun25">Jun 25</label>
-                <input type="number" id="sm-override-jun25" style="width:100%;" placeholder="Auto">
-              </div>
-              <div class="fl">
-                <label class="fl-lbl" for="sm-override-dec25">Dec 25</label>
-                <input type="number" id="sm-override-dec25" style="width:100%;" placeholder="Auto">
-              </div>
-              <div class="fl">
-                <label class="fl-lbl" for="sm-override-jun26">Jun 26</label>
-                <input type="number" id="sm-override-jun26" style="width:100%;" placeholder="Auto">
-              </div>
-            </div>
-            
-            <div class="sec-lbl" style="margin-top:10px;">Regatta Rankings</div>
-            <div id="sm-scores-container" style="max-height:180px; overflow-y:auto; display:flex; flex-direction:column; gap:8px; padding-right:4px;">
-              <!-- Regatta rankings inputs will be generated here -->
-            </div>
           </div>
           <div style="display:flex; justify-content:flex-end; gap:8px;">
             <button class="back-to-rankings-btn" style="padding:7px 14px; background:var(--bg2); border:1px solid var(--border); border-radius:var(--r); font-size:11px; cursor:pointer; font-family:var(--mono);">Cancel</button>
@@ -737,12 +709,15 @@
               </div>
             </div>
             <div style="background:var(--bg2); padding:12px; border-radius:var(--r); border:1px solid var(--border); font-size:11px;">
-              <div style="font-weight:600; font-family:var(--mono); margin-bottom:8px; color:var(--text2);">SQUAD STATUS</div>
-              <div id="sm-squad-status-container" class="sm-grid-4"></div>
+              <div style="font-weight:600; font-family:var(--mono); margin-bottom:8px; color:var(--text2);">STANDINGS &amp; SQUAD HISTORY</div>
+              <div style="display:grid; grid-template-columns:86px 1fr 1fr; gap:8px; font-family:var(--mono); font-size:9px; letter-spacing:.08em; text-transform:uppercase; color:var(--text3); margin-bottom:4px;">
+                <span>As of</span><span>Rank</span><span>Squad</span>
+              </div>
+              <div id="sm-hist-squad-container" style="display:flex; flex-direction:column; gap:6px;"></div>
             </div>
             <div style="background:var(--bg2); padding:12px; border-radius:var(--r); border:1px solid var(--border); font-size:11px; flex:1; display:flex; flex-direction:column; min-height:0;">
-              <div style="font-weight:600; font-family:var(--mono); margin-bottom:6px; color:var(--text2);">CHRONOLOGICAL RESULTS</div>
-              <div id="sm-stat-history" style="max-height:340px; overflow-y:auto; font-family:var(--mono); line-height:1.6; font-size:10.5px;"></div>
+              <div style="font-weight:600; font-family:var(--mono); margin-bottom:6px; color:var(--text2);">REGATTA RESULTS</div>
+              <div id="sm-results-container" style="max-height:340px; overflow-y:auto; font-family:var(--mono); line-height:1.6; font-size:10.5px; display:flex; flex-direction:column; gap:4px; padding-right:4px;"></div>
             </div>
           </div>
         </div>
