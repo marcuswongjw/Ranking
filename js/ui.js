@@ -47,7 +47,9 @@ function switchView(viewId, navBtn, skipHash) {
 function openSailorModal(sailorName, skipHash) {
   const allSystem = getAllSailorsInSystem();
   let sailor = allSystem.find(s => isSameSailor(s.name, sailorName));
-  const meta = SAILOR_METADATA[sailorName] || {};
+  // Look up metadata by the resolved canonical name — sailorName may be a
+  // case/format variant when arriving via a #sailor/ URL.
+  const meta = SAILOR_METADATA[sailor ? sailor.name : sailorName] || SAILOR_METADATA[sailorName] || {};
 
   if (!sailor) {
     sailor = {
