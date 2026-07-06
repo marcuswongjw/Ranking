@@ -1,0 +1,727 @@
+diff --git a/css/styles.css b/css/styles.css
+index 0edc62e..2678e0e 100644
+--- a/css/styles.css
++++ b/css/styles.css
+@@ -95,6 +95,7 @@ td{padding:8px 10px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+ .two-col{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:18px}
+ .sailor-analysis-grid{display:grid;grid-template-columns:1.2fr 1fr;gap:24px}
+ .sailor-analysis-side{display:flex;flex-direction:column;border-left:1px solid var(--border);padding-left:24px}
++.sm-grid-4{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+ .card{background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:18px;box-shadow:var(--sh)}
+ .card-title{font-family:var(--mono);font-size:12px;font-weight:600;margin-bottom:4px}
+ .card-desc{font-size:11px;color:var(--text2);margin-bottom:14px;line-height:1.55}
+@@ -282,6 +283,9 @@ td{padding:8px 10px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+   .sailor-analysis-info-grid {
+     grid-template-columns: 1fr !important;
+   }
++  .sm-grid-4 {
++    grid-template-columns: 1fr 1fr;
++  }
+   .charts-grid {
+     grid-template-columns: 1fr;
+   }
+diff --git a/index.html b/index.html
+index a7c982d..79c6ca6 100644
+--- a/index.html
++++ b/index.html
+@@ -679,34 +679,6 @@
+               </div>
+             </div>
+             
+-            <div class="sec-lbl" style="margin-top:10px;">Historical Standings Overrides</div>
+-            <div style="display:grid; grid-template-columns:1fr 1fr 1fr 1fr 1fr; gap:6px;">
+-              <div class="fl">
+-                <label class="fl-lbl" for="sm-override-jun24">Jun 24</label>
+-                <input type="number" id="sm-override-jun24" style="width:100%;" placeholder="Auto">
+-              </div>
+-              <div class="fl">
+-                <label class="fl-lbl" for="sm-override-dec24">Dec 24</label>
+-                <input type="number" id="sm-override-dec24" style="width:100%;" placeholder="Auto">
+-              </div>
+-              <div class="fl">
+-                <label class="fl-lbl" for="sm-override-jun25">Jun 25</label>
+-                <input type="number" id="sm-override-jun25" style="width:100%;" placeholder="Auto">
+-              </div>
+-              <div class="fl">
+-                <label class="fl-lbl" for="sm-override-dec25">Dec 25</label>
+-                <input type="number" id="sm-override-dec25" style="width:100%;" placeholder="Auto">
+-              </div>
+-              <div class="fl">
+-                <label class="fl-lbl" for="sm-override-jun26">Jun 26</label>
+-                <input type="number" id="sm-override-jun26" style="width:100%;" placeholder="Auto">
+-              </div>
+-            </div>
+-            
+-            <div class="sec-lbl" style="margin-top:10px;">Regatta Rankings</div>
+-            <div id="sm-scores-container" style="max-height:180px; overflow-y:auto; display:flex; flex-direction:column; gap:8px; padding-right:4px;">
+-              <!-- Regatta rankings inputs will be generated here -->
+-            </div>
+           </div>
+           <div style="display:flex; justify-content:flex-end; gap:8px;">
+             <button class="back-to-rankings-btn" style="padding:7px 14px; background:var(--bg2); border:1px solid var(--border); border-radius:var(--r); font-size:11px; cursor:pointer; font-family:var(--mono);">Cancel</button>
+@@ -718,10 +690,7 @@
+           <div class="card-title" style="font-size:16px; margin-bottom:16px; font-family:var(--mono);">Performance Analysis</div>
+           <div id="sm-gold-fleet-notice" style="display:none; font-size:10.5px; color:var(--text3); background:var(--bg2); border:1px solid var(--border); border-radius:var(--r); padding:6px 10px; margin-bottom:12px;"></div>
+           <div style="flex:1; display:flex; flex-direction:column; gap:16px;">
+-            <div class="chart-container" style="position:relative; height:180px;">
+-              <canvas id="sailorPerformanceChart"></canvas>
+-            </div>
+-            <div class="tgt-sum" style="grid-template-columns:1fr 1fr; margin-bottom:0;">
++            <div class="tgt-sum sm-grid-4" style="margin-bottom:0;">
+               <div class="tgt-stat" style="padding:10px; background:var(--bg2);">
+                 <div class="tgt-stat-lbl">Best Finish</div>
+                 <div class="tgt-stat-val" id="sm-stat-best">—</div>
+@@ -730,20 +699,25 @@
+                 <div class="tgt-stat-lbl">Avg Finish</div>
+                 <div class="tgt-stat-val" id="sm-stat-avg">—</div>
+               </div>
+-            </div>
+-            <div class="sailor-analysis-info-grid" style="display:grid; grid-template-columns:1fr 1fr; gap:10px; font-size:11px;">
+-              <div style="background:var(--bg2); padding:10px; border-radius:var(--r); border:1px solid var(--border);">
+-                <div style="font-weight:600; font-family:var(--mono); margin-bottom:6px; color:var(--text2); text-transform:uppercase">Gold Fleet Status</div>
+-                <div id="sm-stat-progress" style="font-family:var(--mono); line-height:1.6; font-size:10.5px;"></div>
++              <div class="tgt-stat" style="padding:10px; background:var(--bg2);">
++                <div class="tgt-stat-lbl">Regattas</div>
++                <div class="tgt-stat-val" id="sm-stat-events">—</div>
+               </div>
+-              <div style="background:var(--bg2); padding:10px; border-radius:var(--r); border:1px solid var(--border);">
+-                <div style="font-weight:600; font-family:var(--mono); margin-bottom:6px; color:var(--text2); text-transform:uppercase">Venue Profile</div>
+-                <div id="sm-stat-profile" style="font-family:var(--mono); line-height:1.6; font-size:10.5px;"></div>
++              <div class="tgt-stat" style="padding:10px; background:var(--bg2);">
++                <div class="tgt-stat-lbl">Best Venue</div>
++                <div class="tgt-stat-val" id="sm-stat-venue" style="font-size:13px;">—</div>
+               </div>
+             </div>
+-            <div style="background:var(--bg2); padding:10px; border-radius:var(--r); border:1px solid var(--border); font-size:11px;">
+-              <div style="font-weight:600; font-family:var(--mono); margin-bottom:6px; color:var(--text2);">CHRONOLOGICAL RESULTS</div>
+-              <div id="sm-stat-history" style="max-height:140px; overflow-y:auto; font-family:var(--mono); line-height:1.6; font-size:10.5px;"></div>
++            <div style="background:var(--bg2); padding:12px; border-radius:var(--r); border:1px solid var(--border); font-size:11px;">
++              <div style="font-weight:600; font-family:var(--mono); margin-bottom:8px; color:var(--text2);">STANDINGS &amp; SQUAD HISTORY</div>
++              <div style="display:grid; grid-template-columns:86px 1fr 1fr; gap:8px; font-family:var(--mono); font-size:9px; letter-spacing:.08em; text-transform:uppercase; color:var(--text3); margin-bottom:4px;">
++                <span>As of</span><span>Rank</span><span>Squad</span>
++              </div>
++              <div id="sm-hist-squad-container" style="display:flex; flex-direction:column; gap:6px;"></div>
++            </div>
++            <div style="background:var(--bg2); padding:12px; border-radius:var(--r); border:1px solid var(--border); font-size:11px; flex:1; display:flex; flex-direction:column; min-height:0;">
++              <div style="font-weight:600; font-family:var(--mono); margin-bottom:6px; color:var(--text2);">REGATTA RESULTS</div>
++              <div id="sm-results-container" style="max-height:340px; overflow-y:auto; font-family:var(--mono); line-height:1.6; font-size:10.5px; display:flex; flex-direction:column; gap:4px; padding-right:4px;"></div>
+             </div>
+           </div>
+         </div>
+@@ -757,17 +731,6 @@
+         <div class="chart-card"><h3>Rank vs score</h3><div class="chart-container"><canvas id="scatterChart"></canvas></div></div>
+         <div class="chart-card"><h3>Club distribution</h3><div class="chart-container"><canvas id="clubChart"></canvas></div></div>
+         <div class="chart-card"><h3>Birth year distribution</h3><div class="chart-container"><canvas id="yearChart"></canvas></div></div>
+-        <div class="chart-card">
+-          <h3>Club Dominance (Squad Allocations)</h3>
+-          <div id="dominance-filters" style="display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap">
+-            <button class="pill active dominance-filter-btn" data-squad="all" style="font-size:10px;padding:3px 9px">All</button>
+-            <button class="pill dominance-filter-btn" data-squad="Nat A" style="font-size:10px;padding:3px 9px">Nat A</button>
+-            <button class="pill dominance-filter-btn" data-squad="Nat B" style="font-size:10px;padding:3px 9px">Nat B</button>
+-            <button class="pill dominance-filter-btn" data-squad="DS" style="font-size:10px;padding:3px 9px">DS</button>
+-            <button class="pill dominance-filter-btn" data-squad="None" style="font-size:10px;padding:3px 9px">None</button>
+-          </div>
+-          <div class="chart-container"><canvas id="dominanceChart"></canvas></div>
+-        </div>
+       </div>
+     </div>
+   </div>
+diff --git a/js/charts.js b/js/charts.js
+index ce06243..5819d1d 100644
+--- a/js/charts.js
++++ b/js/charts.js
+@@ -4,7 +4,7 @@
+ function renderCharts() {
+   try {
+     if (typeof Chart === 'undefined') {
+-      const containerIds = ['distChart', 'scatterChart', 'clubChart', 'yearChart', 'dominanceChart'];
++      const containerIds = ['distChart', 'scatterChart', 'clubChart', 'yearChart'];
+       containerIds.forEach(id => {
+         const el = document.getElementById(id);
+         if (el && el.parentElement) {
+@@ -174,16 +174,58 @@ function renderCharts() {
+       }
+     });
+ 
+-    // 5. Club Dominance - delegated to separate function for filtering
+-    renderDominanceChart();
+   } catch (err) {
+     console.error("Error rendering charts:", err);
+   }
+ }
+ 
+-function filterDominanceChart(squad, btn) {
+-  dominanceFilter = squad;
+-  document.querySelectorAll('.dominance-filter-btn').forEach(b => b.classList.remove('active'));
+-  if (btn) btn.classList.add('active');
+-  renderDominanceChart();
++// Show the sailors behind a clicked chart bar in the chartSailorsModal.
++function handleChartClick(chartId, clickedLabel, datasetLabel) {
++  const modal = document.getElementById('chartSailorsModal');
++  const titleEl = document.getElementById('chart-sailors-title');
++  const descEl = document.getElementById('chart-sailors-desc');
++  const body = document.getElementById('chart-sailors-body');
++  if (!modal || !body) return;
++
++  const sq = computeSquads(SAILORS);
++  let matched = [];
++  let title = 'Sailors';
++
++  if (chartId === 'yearChart') {
++    const born = parseInt(clickedLabel);
++    const gender = datasetLabel.includes('(F)') ? 'F' : 'M';
++    matched = SAILORS.filter(s => s.born === born && s.g === gender);
++    title = `${gender === 'F' ? 'Girls' : 'Boys'} born ${born}`;
++  } else if (chartId === 'distChart') {
++    matched = SAILORS.filter(s => {
++      const squad = EXCLUDED.has(s.name) ? 'None' : (sq.get(s.name) || 'None');
++      return squad === clickedLabel;
++    });
++    title = `${clickedLabel} squad`;
++  }
++
++  matched.sort((a, b) => a.cur - b.cur);
++
++  body.innerHTML = matched.map(s => {
++    const safeName = escapeHtml(s.name);
++    const squad = EXCLUDED.has(s.name) ? null : (sq.get(s.name) || null);
++    return `<tr>
++      <td style="font-family:var(--mono); font-size:11px;">#${s.cur}</td>
++      <td class="name-c" data-sailor="${safeName}" style="cursor:pointer; color:var(--accent); font-weight:600; text-decoration:underline;">${safeName}</td>
++      <td style="font-size:11px;">${escapeHtml(s.g || '—')}</td>
++      <td style="font-size:11px;">${escapeHtml(String(s.born || '—'))}</td>
++      <td style="font-size:11px;">${escapeHtml(s.club || '—')}</td>
++      <td>${EXCLUDED.has(s.name) ? '<span class="badge b-n">Excl.</span>' : squadBadge(squad)}</td>
++      <td style="text-align:right; font-family:var(--mono); font-size:11px;">${Math.floor(s.score)}</td>
++    </tr>`;
++  }).join('') || '<tr><td colspan="7" style="text-align:center; color:var(--text3); padding:20px;">No sailors match.</td></tr>';
++
++  if (titleEl) titleEl.textContent = title;
++  if (descEl) descEl.textContent = `${matched.length} sailor${matched.length === 1 ? '' : 's'} — click a name to open their profile.`;
++  modal.style.display = 'flex';
++}
++
++function closeChartSailorsModal() {
++  const modal = document.getElementById('chartSailorsModal');
++  if (modal) modal.style.display = 'none';
+ }
+diff --git a/js/main.js b/js/main.js
+index e567d30..9bd21f6 100644
+--- a/js/main.js
++++ b/js/main.js
+@@ -1047,15 +1047,26 @@ function bindStaticEventListeners() {
+ 
+   // Handle browser back/forward navigation via popstate
+   window.addEventListener('popstate', e => {
+-    const viewId = (e.state && e.state.viewId) || viewIdFromHash(window.location.hash) || 'rankings';
++    const hash = window.location.hash || '';
++    if (hash.startsWith('#sailor/')) {
++      openSailorModal(decodeURIComponent(hash.slice('#sailor/'.length)), /*skipHash=*/true);
++      return;
++    }
++    const viewId = (e.state && e.state.viewId) || viewIdFromHash(hash) || 'rankings';
+     switchView(viewId, null, /*skipHash=*/true);
+   });
+ 
+-  // On first load, navigate to the tab indicated by the URL hash (if any)
+-  const initialView = viewIdFromHash(window.location.hash);
+-  if (initialView && initialView !== 'rankings') {
+-    // Defer until after data has loaded so renders work correctly
+-    dataLoadedPromise.then(() => switchView(initialView, null, /*skipHash=*/true));
++  // On first load, navigate to the tab or sailor profile in the URL hash (if any)
++  const initialHash = window.location.hash || '';
++  if (initialHash.startsWith('#sailor/')) {
++    const sailorName = decodeURIComponent(initialHash.slice('#sailor/'.length));
++    // Defer until after data has loaded so the profile has results to show
++    dataLoadedPromise.then(() => openSailorModal(sailorName, /*skipHash=*/true));
++  } else {
++    const initialView = viewIdFromHash(initialHash);
++    if (initialView && initialView !== 'rankings') {
++      dataLoadedPromise.then(() => switchView(initialView, null, /*skipHash=*/true));
++    }
+   }
+ 
+   // Sidebar Logo view trigger
+@@ -1165,13 +1176,14 @@ function bindStaticEventListeners() {
+   document.getElementById('mc-only-participants')?.addEventListener('change', () => renderMajorCompsPanel());
+   document.getElementById('mc-search')?.addEventListener('input', () => renderMajorCompsPanel());
+ 
+-  // Dominance chart filters click delegator
+-  document.getElementById('dominance-filters')?.addEventListener('click', e => {
+-    const btn = e.target.closest('.dominance-filter-btn');
+-    if (btn) {
+-      const squad = btn.getAttribute('data-squad');
+-      filterDominanceChart(squad, btn);
+-    }
++  // Chart sailors list modal (opened by clicking a bar in the Analysis charts)
++  document.getElementById('chart-modal-close-btn')?.addEventListener('click', () => closeChartSailorsModal());
++  document.getElementById('chartSailorsModal')?.addEventListener('click', e => {
++    if (e.target === e.currentTarget) closeChartSailorsModal();
++  });
++  document.getElementById('chart-sailors-body')?.addEventListener('click', e => {
++    // The global .name-c delegation opens the profile; also dismiss the modal
++    if (e.target.closest('.name-c')) closeChartSailorsModal();
+   });
+ 
+   // Historical gold panel elements
+@@ -1296,6 +1308,27 @@ function bindStaticEventListeners() {
+       updateRegattaSailorPoints(pointsInput.getAttribute('data-reg'), pointsInput.getAttribute('data-sailor'), e.target.value);
+       return;
+     }
++
++    // Squad status lock selects on the rankings table
++    const squadSel = e.target.closest('.squad-lock-select');
++    if (squadSel) {
++      if (!requireEditor()) {
++        renderRankings();
++        return;
++      }
++      const name = squadSel.getAttribute('data-sailor');
++      const field = squadSel.getAttribute('data-field');
++      const val = squadSel.value;
++      if (!SAILOR_METADATA[name]) SAILOR_METADATA[name] = {};
++      if (val) {
++        SAILOR_METADATA[name][field] = val;
++      } else {
++        delete SAILOR_METADATA[name][field];
++      }
++      saveData();
++      renderRankings();
++      return;
++    }
+   });
+ 
+   // Regatta results select change listener
+diff --git a/js/ui.js b/js/ui.js
+index 293c4c6..149fc81 100644
+--- a/js/ui.js
++++ b/js/ui.js
+@@ -44,11 +44,13 @@ function switchView(viewId, navBtn, skipHash) {
+   }
+ }
+ 
+-function openSailorModal(sailorName) {
++function openSailorModal(sailorName, skipHash) {
+   const allSystem = getAllSailorsInSystem();
+   let sailor = allSystem.find(s => isSameSailor(s.name, sailorName));
+-  const meta = SAILOR_METADATA[sailorName] || {};
+-  
++  // Look up metadata by the resolved canonical name — sailorName may be a
++  // case/format variant when arriving via a #sailor/ URL.
++  const meta = SAILOR_METADATA[sailor ? sailor.name : sailorName] || SAILOR_METADATA[sailorName] || {};
++
+   if (!sailor) {
+     sailor = {
+       name: sailorName,
+@@ -58,21 +60,16 @@ function openSailorModal(sailorName) {
+       school: meta.school || ''
+     };
+   }
+-  
++
+   document.getElementById('sm-orig-name').value = sailor.name;
+   document.getElementById('sm-name').value = sailor.name;
+   document.getElementById('sm-gender').value = sailor.g || meta.g || 'M';
+   document.getElementById('sm-born').value = sailor.born || meta.born || '';
+   document.getElementById('sm-club').value = sailor.club || meta.club || '';
+   document.getElementById('sm-school').value = sailor.school || meta.school || '';
+-  
++
+   document.getElementById('sm-entered-gold').value = meta.enteredGold || '—';
+-  document.getElementById('sm-override-jun24').value = meta.histJun24 !== undefined && meta.histJun24 !== null ? meta.histJun24 : '';
+-  document.getElementById('sm-override-dec24').value = meta.histDec24 !== undefined && meta.histDec24 !== null ? meta.histDec24 : '';
+-  document.getElementById('sm-override-jun25').value = meta.histJun25 !== undefined && meta.histJun25 !== null ? meta.histJun25 : '';
+-  document.getElementById('sm-override-dec25').value = meta.histDec25 !== undefined && meta.histDec25 !== null ? meta.histDec25 : '';
+-  document.getElementById('sm-override-jun26').value = meta.histJun26 !== undefined && meta.histJun26 !== null ? meta.histJun26 : '';
+-  
++
+   const major = meta.majorComps || {};
+   const worlds = major.worlds || [];
+   const euros = major.euros || [];
+@@ -83,27 +80,49 @@ function openSailorModal(sailorName) {
+   document.querySelectorAll('.mc-euros').forEach(cb => cb.checked = euros.includes(parseInt(cb.value)));
+   document.querySelectorAll('.mc-asians').forEach(cb => cb.checked = asians.includes(parseInt(cb.value)));
+   document.querySelectorAll('.mc-seagames').forEach(cb => cb.checked = seagames.includes(parseInt(cb.value)));
+-  
+-  const container = document.getElementById('sm-scores-container');
+-  if (!container) return;
+-  
+-  const scoreRows = REGATTAS.map((reg, regIdx) => {
+-    const sInReg = reg.sailors.find(x => isSameSailor(x.name, sailor.name));
+-    const val = sInReg ? (sInReg.rank !== undefined && sInReg.rank !== null ? sInReg.rank : sInReg.nett) : '';
+-    const safeRegName = escapeHtml(reg.name);
+-    return `<div class="wi-row" style="padding:6px 10px; margin-bottom:4px;">
+-      <div class="wi-name" style="font-size:11px; font-family:var(--mono);">${safeRegName}</div>
+-      <input type="number" class="sm-reg-score" data-reg-idx="${regIdx}" value="${val !== null && val !== undefined ? val : ''}" style="width:65px; height:26px; font-size:10px; text-align:center;" placeholder="DNS">
+-    </div>`;
+-  }).join('');
+-  
+-  container.innerHTML = scoreRows;
+-  
++
++  // Combined Standings & Squad History: one row per half-year snapshot, with
++  // the rank override input (auto rank as placeholder) and the squad status
++  // select for the squad period that snapshot determines. Squad keys are
++  // shared with the rankings-table lock dropdowns.
++  const histSquadContainer = document.getElementById('sm-hist-squad-container');
++  if (histSquadContainer) {
++    const periods = [
++      { snap: 'Jun 24', date: '2024-06-30', histId: 'sm-override-jun24', metaKey: 'histJun24', squadKey: 'squadJul24', squadLbl: 'Jul 24' },
++      { snap: 'Dec 24', date: '2024-12-31', histId: 'sm-override-dec24', metaKey: 'histDec24', squadKey: 'squadJan25', squadLbl: 'Jan 25' },
++      { snap: 'Jun 25', date: '2025-06-30', histId: 'sm-override-jun25', metaKey: 'histJun25', squadKey: 'squadJul25', squadLbl: 'Jul 25' },
++      { snap: 'Dec 25', date: '2025-12-31', histId: 'sm-override-dec25', metaKey: 'histDec25', squadKey: 'squadJan26', squadLbl: 'Jan 26' },
++      { snap: 'Jun 26', date: '2026-06-30', histId: 'sm-override-jun26', metaKey: 'histJun26', squadKey: 'squadJul26', squadLbl: 'Jul 26' }
++    ];
++    histSquadContainer.innerHTML = periods.map(p => {
++      const rankVal = meta[p.metaKey] !== undefined && meta[p.metaKey] !== null ? meta[p.metaKey] : '';
++      const autoRank = getHistoricalRank(sailor.name, p.date);
++      const curSquad = meta[p.squadKey] || '';
++      return `<div style="display:grid; grid-template-columns:86px 1fr 1fr; gap:8px; align-items:center;">
++        <span style="font-family:var(--mono); font-size:10.5px; color:var(--text2);">${p.snap}</span>
++        <input type="number" id="${p.histId}" value="${rankVal}" placeholder="${autoRank !== '—' ? autoRank : 'Auto'}"
++               style="width:100%; height:28px; font-size:11px;" title="Standing as of ${p.snap} (blank = auto)">
++        <select class="sm-squad-select" data-field="${p.squadKey}" style="width:100%; height:28px; font-size:11px;" title="Squad for ${p.squadLbl}">
++          <option value="">— ${p.squadLbl} —</option>
++          ${['Nat A', 'Nat B', 'DS'].map(o => `<option value="${o}" ${curSquad === o ? 'selected' : ''}>${o} (${p.squadLbl})</option>`).join('')}
++        </select>
++      </div>`;
++    }).join('');
++  }
++
+   // Show modal view
+   document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+   document.getElementById('panel-sailor-analysis').classList.add('active');
+-  
+-  renderSailorPerformanceChart(sailor);
++
++  renderSailorPerformanceSummary(sailor);
++
++  // Give each sailor profile its own URL (skip on back/forward navigation)
++  if (!skipHash) {
++    const newHash = '#sailor/' + encodeURIComponent(sailor.name);
++    if (window.location.hash !== newHash) {
++      history.pushState({ sailor: sailor.name }, '', newHash);
++    }
++  }
+ }
+ 
+ function closeSailorModal() {
+@@ -162,6 +181,7 @@ function saveSailorProfile() {
+     }
+   });
+   
++  const prevMeta = SAILOR_METADATA[origName] || {};
+   if (origName !== newName) {
+     if (EXCLUDED.has(origName)) {
+       const reason = EXCLUDED.get(origName);
+@@ -176,7 +196,10 @@ function saveSailorProfile() {
+   const mcAsians = Array.from(document.querySelectorAll('.mc-asians:checked')).map(cb => parseInt(cb.value));
+   const mcSeagames = Array.from(document.querySelectorAll('.mc-seagames:checked')).map(cb => parseInt(cb.value));
+ 
++  // Spread prevMeta first so fields not managed by this form (e.g. the
++  // squadJan/squadJul lock keys) survive a profile save or rename.
+   SAILOR_METADATA[newName] = {
++    ...prevMeta,
+     enteredGold,
+     histJun24,
+     histDec24,
+@@ -195,6 +218,17 @@ function saveSailorProfile() {
+     }
+   };
+ 
++  // Squad status per period (shared keys with the rankings lock dropdowns)
++  document.querySelectorAll('.sm-squad-select').forEach(sel => {
++    const field = sel.getAttribute('data-field');
++    if (!field) return;
++    if (sel.value) {
++      SAILOR_METADATA[newName][field] = sel.value;
++    } else {
++      delete SAILOR_METADATA[newName][field];
++    }
++  });
++
+   recomputeSailors();
+   saveData();
+   closeSailorModal();
+@@ -419,7 +453,7 @@ function populateRegattaCheckboxList() {
+ }
+ 
+ function destroyCharts() {
+-  ['sailorPerformance', 'comparison', 'dist', 'scatter', 'club', 'year', 'dominance'].forEach(key => {
++  ['comparison', 'dist', 'scatter', 'club', 'year'].forEach(key => {
+     if (chartObjs[key]) {
+       chartObjs[key].destroy();
+       chartObjs[key] = null;
+@@ -427,46 +461,28 @@ function destroyCharts() {
+   });
+ }
+ 
+-function renderSailorPerformanceChart(sailor) {
+-  const chartEl = document.getElementById('sailorPerformanceChart');
+-  if (!chartEl) return;
+-
++function renderSailorPerformanceSummary(sailor) {
+   const meta = SAILOR_METADATA[sailor.name] || {};
+   const enteredGold = meta.enteredGold || '—';
+   const goldEntryDate = parseGoldEntryDate(enteredGold);
+-
+-  const sortedRegs = [...REGATTAS]
+-    .filter(reg => !goldEntryDate || !reg.date || new Date(reg.date) >= goldEntryDate)
+-    .sort((a, b) => {
+-      const dA = a.date ? new Date(a.date) : new Date(0);
+-      const dB = b.date ? new Date(b.date) : new Date(0);
+-      return dA - dB;
+-    });
+-
+-  const labels = [];
+-  const ranksData = [];
++  const isPreGold = reg => goldEntryDate && reg.date && new Date(reg.date) < goldEntryDate;
+ 
+   let best = Infinity;
+   let sum = 0;
+   let count = 0;
+-
+-  const chronoResults = [];
+   const venueScores = {};
+ 
+-  sortedRegs.forEach(reg => {
++  // Stats only count results from gold fleet entry onward
++  REGATTAS.forEach(reg => {
++    if (isPreGold(reg)) return;
+     const sInReg = reg.sailors.find(x => isSameSailor(x.name, sailor.name));
+     const val = sInReg ? (sInReg.rank !== undefined && sInReg.rank !== null ? sInReg.rank : sInReg.nett) : null;
+ 
+     if (val !== null && val !== undefined) {
+-      labels.push(reg.name);
+-      ranksData.push(val);
+       if (val < best) best = val;
+       sum += val;
+       count++;
+ 
+-      chronoResults.push({ name: reg.name, date: reg.date, rank: val });
+-
+-      // Accumulate venue averages
+       const venue = reg.name.split(' ')[0] || 'Unknown';
+       if (!venueScores[venue]) venueScores[venue] = [];
+       venueScores[venue].push(val);
+@@ -478,11 +494,14 @@ function renderSailorPerformanceChart(sailor) {
+   document.getElementById('sm-stat-best').textContent = best === Infinity ? '—' : 'P' + best;
+   document.getElementById('sm-stat-avg').textContent = count > 0 ? 'P' + avg : '—';
+ 
++  const eventsEl = document.getElementById('sm-stat-events');
++  if (eventsEl) eventsEl.textContent = count;
++
+   const noticeEl = document.getElementById('sm-gold-fleet-notice');
+   if (noticeEl) {
+     if (goldEntryDate) {
+       noticeEl.style.display = 'block';
+-      noticeEl.textContent = `Showing results from Gold Fleet entry onward (${escapeHtml(enteredGold)}). Earlier results are excluded.`;
++      noticeEl.textContent = `Stats count results from Gold Fleet entry onward (${enteredGold}). Earlier results are dimmed.`;
+     } else {
+       noticeEl.style.display = 'none';
+     }
+@@ -498,81 +517,49 @@ function renderSailorPerformanceChart(sailor) {
+       bestVenue = venue;
+     }
+   });
++  const venueEl = document.getElementById('sm-stat-venue');
++  if (venueEl) venueEl.textContent = bestVenue;
+ 
+-  document.getElementById('sm-stat-progress').innerHTML = `
+-    <div style="font-size:14px; font-weight:600; color:var(--text2);">${escapeHtml(enteredGold)}</div>
+-    <div style="font-size:10px; color:var(--text3); text-transform:uppercase; margin-top:2px;">Entered Gold Fleet</div>
+-    <div style="margin-top:6px; font-size:11px; color:var(--text3);">${count} gold fleet event${count === 1 ? '' : 's'} recorded</div>
+-  `;
+-
+-  document.getElementById('sm-stat-profile').innerHTML = `
+-    <div style="font-size:14px; font-weight:600; color:var(--text2);">${escapeHtml(sailor.club || 'No Club')}</div>
+-    <div style="font-size:10px; color:var(--text3); text-transform:uppercase; margin-top:2px;">Club</div>
+-    <div style="margin-top:6px; font-size:11px; color:var(--text3);">Born: ${escapeHtml(String(sailor.born || '—'))} · Gender: ${escapeHtml(sailor.g || '—')}</div>
+-    <div style="margin-top:4px; font-size:11px; color:var(--text3);">Best venue: ${escapeHtml(bestVenue)}</div>
+-  `;
+-
+-  // Render actual chronological per-regatta results (most recent first)
+-  const historyRows = chronoResults.slice().reverse().map(r => `
+-    <div style="display:flex; justify-content:space-between; align-items:center; padding:6px 0; border-bottom:1px solid var(--border); gap:8px;">
+-      <span style="font-size:11px; color:var(--text2); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${escapeHtml(r.name)}</span>
+-      <span style="font-size:11px; font-weight:600; font-family:var(--mono); color:var(--accent); flex-shrink:0;">P${r.rank}</span>
+-    </div>
+-  `);
+-
+-  document.getElementById('sm-stat-history').innerHTML = historyRows.join('') || '<div style="padding:6px 0; color:var(--text3);">No results recorded yet.</div>';
++  // Combined regatta results: one row per regatta (most recent first), with an
++  // editable rank input (data-reg-idx keyed to REGATTAS order, read by
++  // saveSailorProfile) and the percentile badge for entered results.
++  const resultsContainer = document.getElementById('sm-results-container');
++  if (!resultsContainer) return;
+ 
+-  if (chartObjs.sailorPerformance) {
+-    chartObjs.sailorPerformance.destroy();
+-  }
++  const rows = REGATTAS.map((reg, regIdx) => {
++    const sInReg = reg.sailors.find(x => isSameSailor(x.name, sailor.name));
++    const val = sInReg ? (sInReg.rank !== undefined && sInReg.rank !== null ? sInReg.rank : sInReg.nett) : null;
++    const hasResult = val !== null && val !== undefined;
+ 
+-  chartObjs.sailorPerformance = new Chart(chartEl, {
+-    type: 'line',
+-    data: {
+-      labels: labels,
+-      datasets: [
+-        {
+-          label: 'Rank',
+-          data: ranksData,
+-          borderColor: '#1a472a',
+-          backgroundColor: 'rgba(26, 71, 42, 0.08)',
+-          borderWidth: 2,
+-          tension: 0.12,
+-          pointRadius: 4,
+-          pointBackgroundColor: '#1a472a'
+-        }
+-      ]
+-    },
+-    options: {
+-      responsive: true,
+-      maintainAspectRatio: false,
+-      plugins: {
+-        legend: { display: false },
+-        tooltip: {
+-          callbacks: {
+-            label: function(context) {
+-              const r = context.parsed.y;
+-              const regName = context.label;
+-              const reg = REGATTAS.find(x => x.name === regName);
+-              const base = reg ? getRegattaPercentileBase(reg) : 0;
+-              const pct = base > 0 ? Math.round((r / base) * 100) : 100;
+-              return `Rank: P${r} (Top ${pct}%)`;
+-            }
+-          }
+-        }
+-      },
+-      scales: {
+-        y: {
+-          reversed: true,
+-          min: 1,
+-          ticks: {
+-            stepSize: 1,
+-            precision: 0
+-          }
+-        }
+-      }
++    let pctBadge = '<span style="width:64px;"></span>';
++    if (hasResult) {
++      const base = getRegattaPercentileBase(reg);
++      const pct = base > 0 ? (val / base) * 100 : 100;
++      const pctRounded = Math.min(100, Math.max(1, Math.round(pct)));
++      let pctColor, pctBg;
++      if (pct <= 25) { pctColor = 'var(--accent)'; pctBg = 'var(--accent-l)'; }
++      else if (pct <= 50) { pctColor = 'var(--accent2)'; pctBg = 'var(--accent2-l)'; }
++      else if (pct <= 75) { pctColor = 'var(--accent3)'; pctBg = 'var(--accent3-l)'; }
++      else { pctColor = 'var(--red)'; pctBg = 'var(--red-l)'; }
++      pctBadge = `<span style="width:64px; text-align:center; font-size:9.5px; font-weight:600; font-family:var(--mono); color:${pctColor}; background:${pctBg}; padding:2px 0; border-radius:3px;">Top ${pctRounded}%</span>`;
+     }
++
++    const preGold = isPreGold(reg);
++    return { regIdx, preGold, date: reg.date, html: `
++      <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; padding:3px 0; border-bottom:1px solid var(--border); ${preGold ? 'opacity:.45;' : ''}"
++           ${preGold ? 'title="Before Gold Fleet entry — not counted in stats"' : ''}>
++        <span style="font-size:11px; color:var(--text2); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${escapeHtml(reg.name)}</span>
++        <span style="display:inline-flex; align-items:center; gap:6px; flex-shrink:0;">
++          ${pctBadge}
++          <input type="number" class="sm-reg-score" data-reg-idx="${regIdx}" value="${hasResult ? val : ''}"
++                 style="width:60px; height:24px; font-size:10px; text-align:center;" placeholder="DNS">
++        </span>
++      </div>` };
+   });
++
++  // Most recent regatta first (REGATTAS is kept chronologically ascending)
++  resultsContainer.innerHTML = rows.slice().reverse().map(r => r.html).join('')
++    || '<div style="padding:6px 0; color:var(--text3);">No regattas loaded yet.</div>';
+ }
+ 
+ function renderComparisonChart() {
+@@ -684,8 +671,12 @@ function renderRankingsPanel() {
+ 
+   const latestRegs = getActiveRegattas();
+   const regHeaders = latestRegs.map((reg, idx) => {
+-    const safeTitle = escapeHtml(reg.name);
+-    return `<th style="width:65px;text-align:center;cursor:pointer;user-select:none" class="hide-mobile sort-header" data-sort="reg_${idx}">${safeTitle}${getSortIndicator('reg_' + idx)}</th>`;
++    // Break "SAFYC (Mar 26)" into two lines: name on top, "(Mar 26)" below
++    const m = String(reg.name).match(/^(.*?)\s*(\([^)]*\))\s*$/);
++    const title = m
++      ? `${escapeHtml(m[1])}<br><span style="font-weight:400;color:var(--text3)">${escapeHtml(m[2])}</span>`
++      : escapeHtml(reg.name);
++    return `<th style="width:65px;text-align:center;cursor:pointer;user-select:none;white-space:normal;line-height:1.35" class="hide-mobile sort-header" data-sort="reg_${idx}">${title}${getSortIndicator('reg_' + idx)}</th>`;
+   }).join('');
+ 
+   container.innerHTML = `
+@@ -750,7 +741,6 @@ function renderRankingsPanel() {
+           <th style="width:180px;cursor:pointer;user-select:none" class="sort-header" data-sort="name">Sailor${getSortIndicator('name')}</th>
+           <th style="width:32px;cursor:pointer;user-select:none" class="sort-header" data-sort="gender">G${getSortIndicator('gender')}</th>
+           <th style="width:46px;cursor:pointer;user-select:none" class="sort-header" data-sort="born">Born${getSortIndicator('born')}</th>
+-          <th style="width:110px;cursor:pointer;user-select:none" class="sort-header" data-sort="club">Club${getSortIndicator('club')}</th>
+           <th style="width:105px;cursor:pointer;user-select:none" class="sort-header" data-sort="squad">${escapeHtml('Squad (Jul ' + String(COMP_YEAR).slice(-2) + ')')}${getSortIndicator('squad')}</th>
+           <th style="width:105px;cursor:pointer;user-select:none" class="sort-header" data-sort="squadNext">${escapeHtml('Squad (Jan ' + String(COMP_YEAR + 1).slice(-2) + ')')}${getSortIndicator('squadNext')}</th>
+           <th style="width:80px;text-align:center;cursor:pointer;user-select:none" class="sort-header" data-sort="score">Best 3 of ${latestRegs.length}${getSortIndicator('score')}</th>
+@@ -773,6 +763,12 @@ function renderRankings() {
+   const sq = computeSquads(SAILORS);
+   const sqNext = computeSquads(SAILORS, COMP_YEAR + 1);
+ 
++  // Manually locked squad statuses, stored per sailor in SAILOR_METADATA
++  // under year-suffixed keys (e.g. squadJul26 for COMP_YEAR 2026).
++  const yy = String(COMP_YEAR).slice(-2);
++  const squadJulKey = 'squadJul' + yy;
++  const squadLock = (name, key) => (SAILOR_METADATA[name] || {})[key] || null;
++
+   const latestRegs = getActiveRegattas();
+ 
+   // Count squad distributions
+@@ -817,12 +813,9 @@ function renderRankings() {
+     } else if (sortKey === 'born') {
+       valA = a.born;
+       valB = b.born;
+-    } else if (sortKey === 'club') {
+-      valA = a.club;
+-      valB = b.club;
+     } else if (sortKey === 'squad') {
+-      valA = squadNameOrder(sq.get(a.name));
+-      valB = squadNameOrder(sq.get(b.name));
++      valA = squadNameOrder(squadLock(a.name, squadJulKey) || sq.get(a.name));
++      valB = squadNameOrder(squadLock(b.name, squadJulKey) || sq.get(b.name));
+     } else if (sortKey === 'squadNext') {
+       valA = squadNameOrder(sqNext.get(a.name));
+       valB = squadNameOrder(sqNext.get(b.name));
+@@ -873,20 +866,29 @@ function renderRankings() {
+     const safeName = escapeHtml(s.name);
+     const safeGender = escapeHtml(s.g);
+     const safeBorn = escapeHtml(s.born);
+-    const safeClub = escapeHtml(s.club);
++
++    const lockJul = squadLock(s.name, squadJulKey);
++    const squadLockCell = (field, locked, autoLabel) => {
++      if (!isEditor()) return locked ? squadBadge(locked) : (autoLabel !== null ? squadBadge(autoLabel) : '<span class="badge b-n">—</span>');
++      const autoText = autoLabel !== null ? `— auto (${autoLabel || '—'}) —` : '—';
++      return `<select class="squad-lock-select" data-sailor="${safeName}" data-field="${field}"
++        style="height:22px;font-size:10px;padding:1px 2px;max-width:100px;${locked ? 'border-color:var(--accent);font-weight:600;' : ''}">
++        <option value="">${autoText}</option>
++        ${['Nat A', 'Nat B', 'DS'].map(o => `<option value="${o}" ${locked === o ? 'selected' : ''}>${o} 🔒</option>`).join('')}
++      </select>`;
++    };
+ 
+     return `<tr style="${rowSt}">
+       <td class="rank-c">${s.cur}</td>
+       <td class="name-c" data-sailor="${safeName}" style="cursor:pointer; color:var(--accent); font-weight:600; text-decoration:underline;">${safeName}${exclTag}</td>
+       <td class="sub-c">${safeGender}</td>
+       <td class="sub-c">${safeBorn}</td>
+-      <td class="sub-c" style="font-size:10px">${safeClub}</td>
+-      <td>${isExcl ? '<span class="badge b-n">Excl.</span>' : squadBadge(squad)}</td>
++      <td>${isExcl && !lockJul && !isEditor() ? '<span class="badge b-n">Excl.</span>' : squadLockCell(squadJulKey, lockJul, isExcl ? null : squad)}</td>
+       <td>${isExcl ? '<span class="badge b-n">Excl.</span>' : isRetiringNext ? '<span class="badge b-n" style="background:var(--red-l);color:var(--red)" title="Turns 16 by then — ages out of the Gold Fleet">Retiring</span>' : squadBadge(squadNext)}</td>
+       <td class="score-c" style="text-align:center">${s.score}</td>
+       ${cells}
+     </tr>`;
+-  }).join('') || '<tr><td colspan="8" style="text-align:center;color:var(--text3);padding:24px">No sailors match criteria.</td></tr>';
++  }).join('') || '<tr><td colspan="7" style="text-align:center;color:var(--text3);padding:24px">No sailors match criteria.</td></tr>';
+ 
+   renderComparisonChart();
+ }
