@@ -1136,6 +1136,8 @@ function renderHistGoldPanel() {
         </select>
         <select id="hg-bulk-value" style="height:30px; font-size:12px; background:var(--bg2); border:1px solid var(--border); border-radius:var(--r); color:var(--text); padding:0 8px; cursor:pointer;">
           <option value="—">— none / unknown —</option>
+          <option value="Jan 2022">Jan 2022</option>
+          <option value="Jul 2022">Jul 2022</option>
           <option value="Jan 2023">Jan 2023</option>
           <option value="Jul 2023">Jul 2023</option>
           <option value="Jan 2024">Jan 2024</option>
