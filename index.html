@@ -150,8 +150,19 @@
             <button class="editor-only" id="bulk-edit-toggle-btn" style="background:var(--bg3); color:var(--text); border:1px solid var(--border); border-radius:3px; padding:6px 12px; font-size:11px; font-family:var(--mono); cursor:pointer; font-weight:600; transition:all .15s;">✎ Bulk Edit</button>
             <button id="bulk-edit-save-btn" style="display:none; background:var(--accent); color:#fff; border:none; border-radius:3px; padding:6px 12px; font-size:11px; font-family:var(--mono); cursor:pointer; font-weight:600; transition:all .15s;">💾 Save All Changes</button>
             <button id="bulk-edit-cancel-btn" style="display:none; background:var(--bg2); color:var(--text); border:1px solid var(--border); border-radius:3px; padding:6px 12px; font-size:11px; font-family:var(--mono); cursor:pointer; font-weight:600; transition:all .15s;">✕ Cancel</button>
-            <button class="editor-only regatta-delete-btn-detail" style="background:var(--red-l); color:var(--red); border:1px solid rgba(138,28,28,.15); border-radius:3px; padding:6px 12px; font-size:11px; font-family:var(--mono); cursor:pointer; font-weight:600; transition:all .15s;">✕ Delete Regatta</button>
-          </div>
+        </div>
+        <!-- Regatta Bulk Actions Bar -->
+        <div id="regatta-bulk-actions-bar" class="card" style="display:none; margin:10px 18px 18px 18px; padding:10px 14px; align-items:center; gap:12px; flex-wrap:wrap; border-radius:6px;">
+          <span style="font-size:12px; font-weight:600; font-family:var(--mono); color:var(--text2);">Bulk Action:</span>
+          <select id="regatta-bulk-field" style="height:30px; font-size:12px; background:var(--bg2); border:1px solid var(--border); border-radius:var(--r); color:var(--text); padding:0 8px; cursor:pointer;">
+            <option value="dns">Set Selected to DNS (Clear Rank & Points)</option>
+            <option value="club">Set Club for Selected</option>
+            <option value="school">Set School for Selected</option>
+            <option value="delete">Remove Selected from Regatta</option>
+          </select>
+          <input type="text" id="regatta-bulk-value" placeholder="Enter value..." style="display:none; height:30px; font-size:12px; border:1px solid var(--border); border-radius:var(--r); background:var(--card); color:var(--text); padding:0 8px; width:150px;">
+          <button id="regatta-bulk-apply" style="padding:5px 14px; background:var(--accent); color:#fff; border:none; border-radius:var(--r); font-size:11px; font-weight:600; cursor:pointer; font-family:var(--mono); transition:all .15s;">Apply</button>
+          <span id="regatta-bulk-count" style="font-size:11px; color:var(--text3); font-family:var(--mono);">0 selected</span>
         </div>
         <table>
           <thead>
@@ -306,6 +317,8 @@
             <select id="mc-gold-filter" style="width:100%; height:32px; background:var(--bg2); border:1px solid var(--border); border-radius:var(--r); color:var(--text); padding:0 8px; cursor:pointer;">
               <option value="all">All</option>
               <option value="—">— (Not Entered)</option>
+              <option value="Jan 2022">Jan 2022</option>
+              <option value="Jul 2022">Jul 2022</option>
               <option value="Jan 2023">Jan 2023</option>
               <option value="Jul 2023">Jul 2023</option>
               <option value="Jan 2024">Jan 2024</option>
@@ -474,9 +487,9 @@
         <div class="card-title" style="font-size:16px; margin-bottom:4px; font-family:var(--mono);">Add Sailor Result</div>
         <p class="card-desc" id="asr-regatta-name" style="font-size:11px; margin-bottom:16px;"></p>
         <div style="display:flex; flex-direction:column; gap:12px; margin-bottom:20px;">
-          <div style="display:flex; gap:6px;">
-            <button type="button" class="pill active asr-mode-btn" data-mode="existing" style="flex:1;">Existing Sailor</button>
-            <button type="button" class="pill asr-mode-btn" data-mode="new" style="flex:1;">New Sailor</button>
+          <div class="pill-group" style="display:flex; margin-bottom:4px;">
+            <button type="button" class="pill active asr-mode-btn" data-mode="existing" style="flex:1; text-align:center;">Existing Sailor</button>
+            <button type="button" class="pill asr-mode-btn" data-mode="new" style="flex:1; text-align:center;">New Sailor</button>
           </div>
 
           <div class="fl" id="asr-existing-wrap">

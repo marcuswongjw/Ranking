@@ -388,6 +388,27 @@ function renderSpecificRegattaResults(regName) {
       return valA - valB;
     });
 
+    const thead = document.querySelector('#specific-regatta-results-wrap table thead');
+    if (thead) {
+      const cbHeader = (isEditor() && BULK_EDIT_MODE) 
+        ? `<th style="width:40px; text-align:center;"><input type="checkbox" id="reg-select-all" style="width:15px; height:15px; cursor:pointer;"></th>` 
+        : '';
+      thead.innerHTML = `
+        <tr>
+          ${cbHeader}
+          <th style="width:60px">Rank</th>
+          <th>Sailor</th>
+          <th style="width:50px">Gender</th>
+          <th style="width:60px">Born</th>
+          <th>Club</th>
+          <th style="width:120px; text-align:center">Rank in Reg.</th>
+          <th style="width:120px; text-align:center">Points</th>
+          <th style="width:90px; text-align:center">Percentile</th>
+          <th class="table-editor-only" style="width:70px; text-align:center">Action</th>
+        </tr>
+      `;
+    }
+
     body.innerHTML = sortedSailors.map((s, idx) => {
       const safeName = escapeHtml(s.name || 'Unknown');
       const rankVal = s.rank !== undefined && s.rank !== null ? s.rank : '';
@@ -402,7 +423,12 @@ function renderSpecificRegattaResults(regName) {
       else if (pct <= 75) { pctLabel = 'Top 75%'; pctColor = 'var(--accent3)'; pctBg = 'var(--accent3-l)'; }
       else { pctLabel = 'Bottom 25%'; pctColor = 'var(--red)'; pctBg = 'var(--red-l)'; }
       
+      const cbCol = (isEditor() && BULK_EDIT_MODE)
+        ? `<td style="text-align:center;"><input type="checkbox" class="reg-row-cb" data-sailor="${safeName}" style="width:15px; height:15px; cursor:pointer;"></td>`
+        : '';
+
       return `<tr>
+        ${cbCol}
         <td class="rank-c">${idx + 1}</td>
         <td class="name-c" data-sailor="${safeName}" style="cursor:pointer; color:var(--accent); font-weight:600; text-decoration:underline;">${safeName}</td>
         <td class="sub-c">${escapeHtml(s.g || '—')}</td>
@@ -422,11 +448,41 @@ function renderSpecificRegattaResults(regName) {
                   style="background:none; border:none; color:var(--red); cursor:pointer; font-weight:bold; font-size:14px;" title="Remove Sailor" ${BULK_EDIT_MODE ? 'disabled' : ''}>✕</button>
         </td>
       </tr>`;
-    }).join('') || '<tr><td colspan="9" style="text-align:center;color:var(--text3);padding:24px">No results entered yet.</td></tr>';
+    }).join('');
+
+    const colSpan = (isEditor() && BULK_EDIT_MODE) ? 10 : 9;
+    if (body.innerHTML === '') {
+      body.innerHTML = `<tr><td colspan="${colSpan}" style="text-align:center;color:var(--text3);padding:24px">No results entered yet.</td></tr>`;
+    }
+
+    // Wire up select-all and individual checkbox listeners
+    const selectAll = document.getElementById('reg-select-all');
+    if (selectAll) {
+      selectAll.addEventListener('change', () => {
+        document.querySelectorAll('.reg-row-cb').forEach(cb => { cb.checked = selectAll.checked; });
+        updateRegattaBulkCount();
+      });
+    }
+    document.querySelectorAll('.reg-row-cb').forEach(cb => {
+      cb.addEventListener('change', updateRegattaBulkCount);
+    });
 
     if (typeof updateBulkEditUI === 'function') updateBulkEditUI();
   } catch (err) {
     console.error("Error in renderSpecificRegattaResults:", err);
+  }
+}
+
+function updateRegattaBulkCount() {
+  const countEl = document.getElementById('regatta-bulk-count');
+  if (!countEl) return;
+  const n = document.querySelectorAll('.reg-row-cb:checked').length;
+  countEl.textContent = `${n} selected`;
+  const selectAll = document.getElementById('reg-select-all');
+  if (selectAll) {
+    const total = document.querySelectorAll('.reg-row-cb').length;
+    selectAll.indeterminate = n > 0 && n < total;
+    selectAll.checked = n > 0 && n === total;
   }
 }
 
@@ -1138,6 +1194,8 @@ function renderHistGoldPanel() {
         </select>
         <select id="hg-bulk-value" style="height:30px; font-size:12px; background:var(--bg2); border:1px solid var(--border); border-radius:var(--r); color:var(--text); padding:0 8px; cursor:pointer;">
           <option value="—">— none / unknown —</option>
+          <option value="Jan 2022">Jan 2022</option>
+          <option value="Jul 2022">Jul 2022</option>
           <option value="Jan 2023">Jan 2023</option>
           <option value="Jul 2023">Jul 2023</option>
           <option value="Jan 2024">Jan 2024</option>

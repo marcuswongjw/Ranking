@@ -762,6 +762,31 @@ function getAllSailorsInSystem() {
       }
     });
   });
+
+  // Layer in sailors from SAILOR_METADATA to include newly added/promoted sailors who have no results yet
+  Object.keys(SAILOR_METADATA).forEach(name => {
+    const norm = normalizeName(name);
+    let matchedKey = normalizedToOriginal.get(norm);
+    const meta = SAILOR_METADATA[name] || {};
+    if (!matchedKey) {
+      matchedKey = name;
+      normalizedToOriginal.set(norm, matchedKey);
+      allNames.set(matchedKey, {
+        name: name,
+        g: meta.g || 'M',
+        born: meta.born || 0,
+        club: meta.club || '',
+        school: meta.school || ''
+      });
+    } else {
+      const obj = allNames.get(matchedKey);
+      if (meta.g && !obj.g) obj.g = meta.g;
+      if (meta.born && !obj.born) obj.born = meta.born;
+      if (meta.club && !obj.club) obj.club = meta.club;
+      if (meta.school && !obj.school) obj.school = meta.school;
+    }
+  });
+
   return Array.from(allNames.values());
 }
 
@@ -1348,6 +1373,17 @@ function bindStaticEventListeners() {
     }
   });
 
+  // Regatta bulk actions bar listeners
+  document.getElementById('regatta-bulk-field')?.addEventListener('change', e => {
+    const valInput = document.getElementById('regatta-bulk-value');
+    if (valInput) {
+      const showVal = ['club', 'school'].includes(e.target.value);
+      valInput.style.display = showVal ? 'inline-block' : 'none';
+      if (!showVal) valInput.value = '';
+    }
+  });
+  document.getElementById('regatta-bulk-apply')?.addEventListener('click', () => applyRegattaBulkAction());
+
   // Regatta details view delegation
   const regResultsWrap = document.getElementById('specific-regatta-results-wrap');
   if (regResultsWrap) {
@@ -1576,6 +1612,9 @@ function submitAddSailorResult() {
 // Bulk edit mode: defer recompute/save/re-render until the editor explicitly
 // saves, so editing many rank/points fields in sequence doesn't re-sort the
 // table or round-trip to Firestore on every keystroke.
+// Bulk edit mode: defer recompute/save/re-render until the editor explicitly
+// saves, so editing many rank/points fields in sequence doesn't re-sort the
+// table or round-trip to Firestore on every keystroke.
 function enableBulkEdit() {
   if (!requireEditor()) return;
   if (!CURRENT_SELECTED_REGATTA) return;
@@ -1584,6 +1623,7 @@ function enableBulkEdit() {
   BULK_EDIT_MODE = true;
   BULK_EDIT_SNAPSHOT = JSON.parse(JSON.stringify(reg.sailors));
   updateBulkEditUI();
+  renderSpecificRegattaResults();
 }
 
 function saveBulkEditChanges() {
@@ -1625,6 +1665,86 @@ function updateBulkEditUI() {
   const cancelBtn = document.getElementById('bulk-edit-cancel-btn');
   if (saveBtn) saveBtn.style.display = BULK_EDIT_MODE ? 'inline-flex' : 'none';
   if (cancelBtn) cancelBtn.style.display = BULK_EDIT_MODE ? 'inline-flex' : 'none';
+
+  const bulkBar = document.getElementById('regatta-bulk-actions-bar');
+  if (bulkBar) {
+    bulkBar.style.display = (isEditor() && BULK_EDIT_MODE) ? 'flex' : 'none';
+  }
+
+  if (!BULK_EDIT_MODE) {
+    const selectAll = document.getElementById('reg-select-all');
+    if (selectAll) selectAll.checked = false;
+    document.querySelectorAll('.reg-row-cb').forEach(cb => { cb.checked = false; });
+    const countEl = document.getElementById('regatta-bulk-count');
+    if (countEl) countEl.textContent = '0 selected';
+    const valInput = document.getElementById('regatta-bulk-value');
+    if (valInput) {
+      valInput.value = '';
+      valInput.style.display = 'none';
+    }
+    const fieldSelect = document.getElementById('regatta-bulk-field');
+    if (fieldSelect) fieldSelect.value = 'dns';
+  }
+}
+
+function applyRegattaBulkAction() {
+  if (!requireEditor()) return;
+  if (!CURRENT_SELECTED_REGATTA) return;
+  const reg = REGATTAS.find(r => r.name === CURRENT_SELECTED_REGATTA);
+  if (!reg) return;
+
+  const checked = document.querySelectorAll('.reg-row-cb:checked');
+  if (checked.length === 0) {
+    alert("No sailors selected.");
+    return;
+  }
+
+  const field = document.getElementById('regatta-bulk-field')?.value;
+  const val = document.getElementById('regatta-bulk-value')?.value.trim();
+
+  if (['club', 'school'].includes(field) && !val) {
+    alert("Please enter a value.");
+    return;
+  }
+
+  const selectedNames = Array.from(checked).map(cb => cb.getAttribute('data-sailor'));
+
+  if (field === 'delete') {
+    if (confirm(`Remove the ${selectedNames.length} selected sailors from this regatta?`)) {
+      reg.sailors = reg.sailors.filter(s => !selectedNames.some(name => isSameSailor(s.name, name)));
+    } else {
+      return;
+    }
+  } else if (field === 'dns') {
+    selectedNames.forEach(name => {
+      const s = reg.sailors.find(x => isSameSailor(x.name, name));
+      if (s) {
+        s.rank = null;
+        s.nett = null;
+      }
+    });
+  } else if (field === 'club') {
+    selectedNames.forEach(name => {
+      const s = reg.sailors.find(x => isSameSailor(x.name, name));
+      if (s) s.club = val;
+    });
+  } else if (field === 'school') {
+    selectedNames.forEach(name => {
+      const s = reg.sailors.find(x => isSameSailor(x.name, name));
+      if (s) s.school = val;
+    });
+  }
+
+  // If in bulk edit mode, just re-render the list without saving/recomputing in Firestore yet.
+  if (BULK_EDIT_MODE) {
+    renderSpecificRegattaResults();
+    updateRegattaBulkCount();
+  } else {
+    recomputeSailors();
+    saveData();
+    renderAll();
+    renderSpecificRegattaResults();
+  }
 }
 
 function updateRegattaSailorRank(regName, sailorName, val) {
