@@ -1,0 +1,24 @@
+Firebase Storage Security Rules for OP Ranking
+==============================================
+
+Paste this into: Firebase console -> Storage -> Rules tab -> Publish.
+
+These make uploaded regatta documents PUBLICLY READABLE (so anyone viewing the
+rankings can download them) but WRITABLE ONLY by the signed-in admin account
+(marcuswongjw@gmail.com).
+
+----------------------------------------------------------------------
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    match /regattas/{allPaths=**} {
+      // Allow anyone to read/download regatta documents
+      allow read: if true;
+      
+      // Allow writes only if authenticated as the admin email
+      allow write: if request.auth != null 
+                   && request.auth.token.email == 'marcuswongjw@gmail.com';
+    }
+  }
+}
+----------------------------------------------------------------------
