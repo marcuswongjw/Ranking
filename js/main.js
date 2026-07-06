@@ -1789,3 +1789,6 @@ function handleRegattaDocUpload(inputEl, regName) {
   if (!file) return;
   uploadRegattaDocument(regName, file);
 }
+
+// Redeploy trigger to resolve transient Pages deployment artifact collision
+
