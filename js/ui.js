@@ -270,6 +270,38 @@ function populateSimDropdown(selId) {
   if (cur) sel.value = cur;
 }
 
+function addSailorInput() {
+  const container = document.getElementById('sailor-inputs');
+  if (!container) return;
+  if (container.children.length >= 10) return;
+  
+  const id = ++simCount;
+  const opts = SAILORS.map(s => {
+    const sn = escapeHtml(s.name);
+    return `<option value="${sn}">${s.cur}. ${sn} (${s.g}, ${s.born})</option>`;
+  }).join('');
+  
+  const div = document.createElement('div');
+  div.className = 'sailor-row';
+  div.id = 'sr-' + id;
+  div.innerHTML = `
+    <div class="fl">
+      <label class="fl-lbl">Sailor</label>
+      <select id="ss-${id}" class="sim-sel" style="width:100%">
+        <option value="">— select —</option>
+        ${opts}
+      </select>
+    </div>
+    <div class="fl">
+      <label class="fl-lbl">Finish</label>
+      <input type="number" id="sp-${id}" min="1" max="200" value="10">
+    </div>
+    <button class="rm-btn">✕</button>
+  `;
+  container.appendChild(div);
+}
+
+
 function populateExclDropdown() {
   const sel = document.getElementById('exclSelect');
   if (!sel) return;
@@ -1021,6 +1053,8 @@ function renderMajorCompsPanel() {
   
   const onlyParticipants = document.getElementById('mc-only-participants')?.checked ?? true;
   const searchVal = (document.getElementById('mc-search')?.value || '').toLowerCase();
+  const genderFilterVal = document.getElementById('mc-gender-filter')?.value || 'all';
+  const goldFilterVal = document.getElementById('mc-gold-filter')?.value || 'all';
   
   const allSystem = getAllSailorsInSystem();
   const allSystemMap = new Map();
@@ -1083,6 +1117,8 @@ function renderMajorCompsPanel() {
   list = list.filter(item => {
     if (searchVal && !item.name.toLowerCase().includes(searchVal)) return false;
     if (onlyParticipants && item.totalRepresentations === 0) return false;
+    if (genderFilterVal !== 'all' && item.gender !== genderFilterVal) return false;
+    if (goldFilterVal !== 'all' && item.enteredGold !== goldFilterVal) return false;
     return true;
   });
 

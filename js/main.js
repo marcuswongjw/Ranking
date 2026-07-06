@@ -33,7 +33,7 @@ function subscribeRealtime() {
 // Authentication
 function initAuth() {
   auth.onAuthStateChanged(async user => {
-    CURRENT_USER = (user && user.email === ADMIN_EMAIL) ? user : null;
+    CURRENT_USER = (user && user.email && user.email.toLowerCase() === ADMIN_EMAIL.toLowerCase()) ? user : null;
     applyEditorUI();
     if (CURRENT_USER) {
       if (dataLoadedPromise) await dataLoadedPromise;
@@ -75,7 +75,7 @@ function applyEditorUI() {
   setSyncStatus(isEditor() ? (CLOUD_HAS_DATA ? 'saved' : 'unpublished') : 'view');
   
   if (!isEditor()) {
-    const editorOnlyViews = ['simulator', 'target', 'exclusions', 'charts', 'major-comps', 'hist-gold', 'fleet'];
+    const editorOnlyViews = ['exclusions', 'fleet'];
     if (editorOnlyViews.includes(lastMainView)) {
       switchView('rankings');
     }
@@ -1200,6 +1200,8 @@ function bindStaticEventListeners() {
   // Major Competitions Panel elements
   document.getElementById('mc-only-participants')?.addEventListener('change', () => renderMajorCompsPanel());
   document.getElementById('mc-search')?.addEventListener('input', () => renderMajorCompsPanel());
+  document.getElementById('mc-gender-filter')?.addEventListener('change', () => renderMajorCompsPanel());
+  document.getElementById('mc-gold-filter')?.addEventListener('change', () => renderMajorCompsPanel());
 
   // Chart sailors list modal (opened by clicking a bar in the Analysis charts)
   document.getElementById('chart-modal-close-btn')?.addEventListener('click', () => closeChartSailorsModal());
