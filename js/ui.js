@@ -1134,22 +1134,12 @@ function renderHistGoldPanel() {
         <select id="hg-bulk-field" style="height:30px; font-size:12px; background:var(--bg2); border:1px solid var(--border); border-radius:var(--r); color:var(--text); padding:0 8px; cursor:pointer;">
           <option value="enteredGold">Entered Gold</option>
         </select>
-        <select id="hg-bulk-value" style="height:30px; font-size:12px; background:var(--bg2); border:1px solid var(--border); border-radius:var(--r); color:var(--text); padding:0 8px; cursor:pointer;">
-          <option value="—">— none / unknown —</option>
-          <option value="Jan 2022">Jan 2022</option>
-          <option value="Jul 2022">Jul 2022</option>
-          <option value="Jan 2023">Jan 2023</option>
-          <option value="Jul 2023">Jul 2023</option>
-          <option value="Jan 2024">Jan 2024</option>
-          <option value="Jul 2024">Jul 2024</option>
-          <option value="Jan 2025">Jan 2025</option>
-          <option value="Jul 2025">Jul 2025</option>
-          <option value="Jan 2026">Jan 2026</option>
-          <option value="Jul 2026">Jul 2026</option>
-        </select>
+        <select id="hg-bulk-value" style="height:30px; font-size:12px; background:var(--bg2); border:1px solid var(--border); border-radius:var(--r); color:var(--text); padding:0 8px; cursor:pointer;"></select>
         <button id="hg-bulk-apply" style="padding:5px 14px; background:var(--accent); color:#fff; border:none; border-radius:var(--r); font-size:11px; font-weight:600; cursor:pointer; font-family:var(--mono); transition:all .15s;">Apply to selected</button>
         <span id="hg-bulk-count" style="font-size:11px; color:var(--text3); font-family:var(--mono);">0 selected</span>
       `;
+      const hgBulkValueSelect = document.getElementById('hg-bulk-value');
+      if (hgBulkValueSelect) populateGoldEntrySelect(hgBulkValueSelect);
       filterCard.insertAdjacentElement('afterend', bulkBar);
 
       document.getElementById('hg-bulk-apply')?.addEventListener('click', () => {
