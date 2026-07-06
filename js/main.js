@@ -1576,10 +1576,16 @@ function submitAddSailorResult() {
     return;
   }
 
-  const rank = parseInt(document.getElementById('asr-rank').value);
-  if (isNaN(rank) || rank < 1) {
-    alert("Please enter a valid Rank (positive integer).");
-    return;
+  // BUG 3 FIX: Rank is optional — a blank rank is treated as DNS (not entered yet).
+  // A positive integer is required if a value is provided.
+  const rankRaw = document.getElementById('asr-rank').value.trim();
+  let rank = null;
+  if (rankRaw !== '') {
+    rank = parseInt(rankRaw);
+    if (isNaN(rank) || rank < 1) {
+      alert("Rank must be a positive integer, or leave blank for DNS.");
+      return;
+    }
   }
 
   const pointsRaw = document.getElementById('asr-points').value.trim();
@@ -1710,11 +1716,13 @@ function applyRegattaBulkAction() {
   const selectedNames = Array.from(checked).map(cb => cb.getAttribute('data-sailor'));
 
   if (field === 'delete') {
-    if (confirm(`Remove the ${selectedNames.length} selected sailors from this regatta?`)) {
-      reg.sailors = reg.sailors.filter(s => !selectedNames.some(name => isSameSailor(s.name, name)));
-    } else {
-      return;
+    // BUG 4 FIX: In bulk edit mode, deletions must also be deferred so that
+    // Cancel correctly restores the full original sailors list via the snapshot.
+    // The snapshot was taken from reg.sailors before any edits began.
+    if (!BULK_EDIT_MODE) {
+      if (!confirm(`Remove the ${selectedNames.length} selected sailors from this regatta?`)) return;
     }
+    reg.sailors = reg.sailors.filter(s => !selectedNames.some(name => isSameSailor(s.name, name)));
   } else if (field === 'dns') {
     selectedNames.forEach(name => {
       const s = reg.sailors.find(x => isSameSailor(x.name, name));

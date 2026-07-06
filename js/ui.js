@@ -157,17 +157,15 @@ function saveSailorProfile() {
     const scoreVal = scoreInput && scoreInput.value !== '' ? parseFloat(scoreInput.value) : null;
     
     if (sIdx !== -1) {
-      if (scoreVal === null) {
-        reg.sailors.splice(sIdx, 1);
-      } else {
-        reg.sailors[sIdx].name = newName;
-        reg.sailors[sIdx].g = gender;
-        reg.sailors[sIdx].born = born;
-        reg.sailors[sIdx].club = club;
-        reg.sailors[sIdx].school = school;
-        reg.sailors[sIdx].nett = scoreVal;
-        reg.sailors[sIdx].rank = scoreVal;
-      }
+      // BUG 1 FIX: A blank score means DNS (null), not "remove sailor".
+      // Only remove if explicitly deleting via the regatta bulk/individual delete buttons.
+      reg.sailors[sIdx].name = newName;
+      reg.sailors[sIdx].g = gender;
+      reg.sailors[sIdx].born = born;
+      reg.sailors[sIdx].club = club;
+      reg.sailors[sIdx].school = school;
+      reg.sailors[sIdx].nett = scoreVal;
+      reg.sailors[sIdx].rank = scoreVal;
     } else if (scoreVal !== null) {
       reg.sailors.push({
         name: newName,
@@ -187,6 +185,12 @@ function saveSailorProfile() {
       const reason = EXCLUDED.get(origName);
       EXCLUDED.delete(origName);
       EXCLUDED.set(newName, reason);
+    }
+    // BUG 2 FIX: Migrate dropped status to the new name so the rename doesn't
+    // orphan the drop entry or lose the dropped state.
+    if (DROPPED_SAILORS.has(origName)) {
+      DROPPED_SAILORS.delete(origName);
+      DROPPED_SAILORS.add(newName);
     }
     delete SAILOR_METADATA[origName];
   }
