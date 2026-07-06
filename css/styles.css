@@ -23,6 +23,7 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);font-size:13
 .nav-item{display:flex;align-items:center;gap:9px;padding:8px 10px;border-radius:4px;cursor:pointer;color:rgba(255,255,255,.55);font-size:12px;transition:all .12s;border:none;background:none;width:100%;text-align:left;font-family:var(--sans)}
 .nav-item:hover{background:rgba(255,255,255,.07);color:#fff}
 .nav-item.active{background:rgba(255,255,255,.12);color:#fff;font-weight:500}
+body:not(.is-editor) .nav-item.editor-only{display:none !important}
 .nav-dot{width:5px;height:5px;border-radius:50%;flex-shrink:0}
 .dot-a{background:#4fd1a5}.dot-b{background:#a394f0}.dot-ds{background:#f0b07a}.dot-n{background:rgba(255,255,255,.22)}.dot-r{background:#e05c7a}
 .excl-ct{display:inline-flex;align-items:center;justify-content:center;background:var(--red);color:#fff;font-family:var(--mono);font-size:8px;font-weight:600;border-radius:10px;min-width:15px;height:15px;padding:0 4px;margin-left:4px}
@@ -44,7 +45,15 @@ select:focus,input:focus{border-color:var(--accent)}
 .content{padding:22px 28px}
 .editor-only{display:none !important}
 body.is-editor .editor-only{display:inline-flex !important}
+body.is-editor button.editor-only{display:inline-flex !important}
 body.is-editor .editor-only.bulk-edit-hidden{display:none !important}
+body.is-editor #panel-simulator,
+body.is-editor #panel-target,
+body.is-editor #panel-exclusions,
+body.is-editor #panel-charts,
+body.is-editor #panel-major-comps,
+body.is-editor #panel-hist-gold,
+body.is-editor #panel-fleet{display:block}
 .table-editor-only{display:none !important}
 body.is-editor .table-editor-only{display:table-cell !important}
 /* In view-only mode, neutralise the edit forms so they can't be typed into. */
@@ -59,6 +68,13 @@ body:not(.is-editor) #regatta-checkboxes-list input{
   pointer-events:none;opacity:.6;background:var(--bg2);cursor:not-allowed;
 }
 .panel{display:none}.panel.active{display:block}
+body:not(.is-editor) #panel-simulator,
+body:not(.is-editor) #panel-target,
+body:not(.is-editor) #panel-exclusions,
+body:not(.is-editor) #panel-charts,
+body:not(.is-editor) #panel-major-comps,
+body:not(.is-editor) #panel-hist-gold,
+body:not(.is-editor) #panel-fleet{display:none !important}
 .welcome{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:65vh;text-align:center;gap:20px}
 .drop-zone{width:460px;max-width:100%;border:2px dashed var(--border2);border-radius:12px;padding:52px 40px;cursor:pointer;transition:all .2s;background:var(--card)}
 .drop-zone:hover,.drop-zone.over{border-color:var(--accent);background:var(--accent-l)}

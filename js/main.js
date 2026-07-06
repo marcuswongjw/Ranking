@@ -75,7 +75,7 @@ function applyEditorUI() {
   setSyncStatus(isEditor() ? (CLOUD_HAS_DATA ? 'saved' : 'unpublished') : 'view');
   
   if (!isEditor()) {
-    const editorOnlyViews = ['exclusions', 'fleet'];
+    const editorOnlyViews = ['exclusions', 'fleet', 'simulator', 'target', 'charts', 'major-comps', 'hist-gold'];
     if (editorOnlyViews.includes(lastMainView)) {
       switchView('rankings');
     }
@@ -1054,9 +1054,15 @@ function resetRegattasToDefault(event) {
 }
 
 // Resolve a view ID from the current URL hash; returns null if not a known tab.
+const PUBLIC_VIEWS = ['rankings', 'regattas'];
 const VALID_VIEWS = ['rankings', 'regattas', 'simulator', 'target', 'exclusions', 'charts', 'major-comps', 'hist-gold', 'fleet'];
+
 function viewIdFromHash(hash) {
   const id = (hash || '').replace(/^#/, '');
+  // If not logged in, only allow public views
+  if (!isEditor() && !PUBLIC_VIEWS.includes(id)) {
+    return null;
+  }
   return VALID_VIEWS.includes(id) ? id : null;
 }
 
@@ -1066,7 +1072,11 @@ function bindStaticEventListeners() {
   document.querySelectorAll('.nav-item').forEach(btn => {
     btn.addEventListener('click', () => {
       const viewId = btn.getAttribute('data-view');
-      if (viewId) switchView(viewId, btn);
+      if (viewId && !btn.classList.contains('editor-only')) {
+        switchView(viewId, btn);
+      } else if (viewId && btn.classList.contains('editor-only') && !isEditor()) {
+        requireEditor();
+      }
     });
   });
 
