@@ -7,6 +7,7 @@ document.addEventListener('DOMContentLoaded', () => {
   dataLoadedPromise = loadData();
   setupDropZone();
   bindStaticEventListeners();
+  populateGoldEntrySelect(document.getElementById('sm-entered-gold'));
 });
 
 // Real-time viewer synchronization
