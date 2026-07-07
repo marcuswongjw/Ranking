@@ -243,57 +243,65 @@ function populateTargetDropdown() {
   const sel = document.getElementById('targetSailor');
   if (!sel) return;
   const cur = sel.value;
-  
-  const options = SAILORS.map(s => {
-    const safeName = escapeHtml(s.name);
+  sel.replaceChildren(createSelectOption('', '— choose sailor —'));
+
+  SAILORS.forEach(s => {
     const genderText = s.g === 'M' ? 'Boy' : 'Girl';
-    return `<option value="${safeName}">${s.cur}. ${safeName} (${genderText}, ${s.born})</option>`;
-  }).join('');
-  
-  sel.innerHTML = '<option value="">— choose sailor —</option>' + options;
-  if (cur) sel.value = cur;
+    const option = createSelectOption(s.name, `${s.cur}. ${s.name} (${genderText}, ${s.born})`);
+    sel.appendChild(option);
+  });
+
+  if (cur && Array.from(sel.options).some(o => o.value === cur)) {
+    sel.value = cur;
+  }
 }
 
 function populateSimDropdown(selId) {
   const sel = document.getElementById(selId);
   if (!sel) return;
   const cur = sel.value;
-  
-  const options = SAILORS.map(s => {
-    const safeName = escapeHtml(s.name);
-    return `<option value="${safeName}">${s.cur}. ${safeName} (${s.g}, ${s.born})</option>`;
-  }).join('');
-  
-  sel.innerHTML = '<option value="">— select —</option>' + options;
-  if (cur) sel.value = cur;
+  sel.replaceChildren(createSelectOption('', '— select —'));
+
+  SAILORS.forEach(s => {
+    const option = createSelectOption(s.name, `${s.cur}. ${s.name} (${s.g}, ${s.born})`);
+    sel.appendChild(option);
+  });
+
+  if (cur && Array.from(sel.options).some(o => o.value === cur)) {
+    sel.value = cur;
+  }
 }
 
 function populateExclDropdown() {
   const sel = document.getElementById('exclSelect');
   if (!sel) return;
   const cur = sel.value;
-  
-  const options = SAILORS.map(s => {
-    const sn = escapeHtml(s.name);
-    return `<option value="${sn}">${s.cur}. ${sn} (${s.g}, ${s.born})</option>`;
-  }).join('');
-  
-  sel.innerHTML = '<option value="">— choose sailor —</option>' + options;
-  if (cur) sel.value = cur;
+  sel.replaceChildren(createSelectOption('', '— choose sailor —'));
+
+  SAILORS.forEach(s => {
+    const option = createSelectOption(s.name, `${s.cur}. ${s.name} (${s.g}, ${s.born})`);
+    sel.appendChild(option);
+  });
+
+  if (cur && Array.from(sel.options).some(o => o.value === cur)) {
+    sel.value = cur;
+  }
 }
 
 function populateResultsDropdown() {
   const sel = document.getElementById('resultsRegattaSelect');
   if (!sel) return;
   const cur = sel.value;
-  
-  const options = REGATTAS.map(r => {
-    const safeName = escapeHtml(r.name);
-    return `<option value="${safeName}">${safeName}</option>`;
-  }).join('');
-  
-  sel.innerHTML = '<option value="">— select regatta —</option>' + options;
-  if (cur) sel.value = cur;
+  sel.replaceChildren(createSelectOption('', '— select regatta —'));
+
+  REGATTAS.forEach(r => {
+    const option = createSelectOption(r.name, r.name);
+    sel.appendChild(option);
+  });
+
+  if (cur && Array.from(sel.options).some(o => o.value === cur)) {
+    sel.value = cur;
+  }
 }
 
 let CURRENT_SELECTED_REGATTA = null;

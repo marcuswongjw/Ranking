@@ -1461,8 +1461,10 @@
 
     const select = document.getElementById('asr-existing-select');
     if (select) {
-      select.innerHTML = '<option value="">— choose sailor —</option>' +
-        candidates.map(s => `<option value="${escapeHtml(s.name)}">${escapeHtml(s.name)}</option>`).join('');
+      select.replaceChildren(createSelectOption('', '— choose sailor —'));
+      candidates.forEach(s => {
+        select.appendChild(createSelectOption(s.name, s.name));
+      });
     }
 
     document.getElementById('asr-new-name').value = '';

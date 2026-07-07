@@ -24,6 +24,13 @@ function parseBirthYearInput(value) {
   return parsed;
 }
 
+function createSelectOption(value, text) {
+  const option = document.createElement('option');
+  option.value = value;
+  option.textContent = text;
+  return option;
+}
+
 /**
  * Normalize sailor names for comparison (case-insensitive, punctuation-agnostic)
  * @param {string} name - Sailor name to normalize
