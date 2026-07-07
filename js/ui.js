@@ -1141,6 +1141,8 @@ function renderHistGoldPanel() {
       const hgBulkValueSelect = document.getElementById('hg-bulk-value');
       if (hgBulkValueSelect) populateGoldEntrySelect(hgBulkValueSelect);
       filterCard.insertAdjacentElement('afterend', bulkBar);
+      const hgBulkValueSelect = document.getElementById('hg-bulk-value');
+      if (hgBulkValueSelect) populateGoldEntrySelect(hgBulkValueSelect);
 
       document.getElementById('hg-bulk-apply')?.addEventListener('click', () => {
         if (!requireEditor()) return;
