@@ -133,7 +133,13 @@ function saveSailorProfile() {
   const origName = document.getElementById('sm-orig-name').value;
   const newName = document.getElementById('sm-name').value.trim();
   const gender = document.getElementById('sm-gender').value;
-  const born = parseInt(document.getElementById('sm-born').value) || 0;
+  const bornRaw = document.getElementById('sm-born').value;
+  const bornParsed = parseBirthYearInput(bornRaw);
+  if (bornRaw !== '' && (bornParsed === null || Number.isNaN(bornParsed))) {
+    alert(`Please enter a valid Birth Year (between ${COMP_YEAR - 20} and ${COMP_YEAR}).`);
+    return;
+  }
+  const born = bornParsed;
   const club = document.getElementById('sm-club').value.trim();
   const school = document.getElementById('sm-school').value.trim();
   
@@ -155,14 +161,12 @@ function saveSailorProfile() {
     const scoreVal = scoreInput && scoreInput.value !== '' ? parseFloat(scoreInput.value) : null;
     
     if (sIdx !== -1) {
-      if (scoreVal === null) {
-        reg.sailors.splice(sIdx, 1);
-      } else {
-        reg.sailors[sIdx].name = newName;
-        reg.sailors[sIdx].g = gender;
-        reg.sailors[sIdx].born = born;
-        reg.sailors[sIdx].club = club;
-        reg.sailors[sIdx].school = school;
+      reg.sailors[sIdx].name = newName;
+      reg.sailors[sIdx].g = gender;
+      reg.sailors[sIdx].born = born;
+      reg.sailors[sIdx].club = club;
+      reg.sailors[sIdx].school = school;
+      if (scoreVal !== null) {
         reg.sailors[sIdx].nett = scoreVal;
         reg.sailors[sIdx].rank = scoreVal;
       }

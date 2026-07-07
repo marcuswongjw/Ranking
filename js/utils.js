@@ -14,6 +14,16 @@ function escapeHtml(str) {
   return div.innerHTML.replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 }
 
+function parseBirthYearInput(value) {
+  if (value === null || value === undefined) return null;
+  const str = String(value).trim();
+  if (str === '') return null;
+  const parsed = parseInt(str, 10);
+  if (!Number.isInteger(parsed)) return NaN;
+  if (parsed < COMP_YEAR - 20 || parsed > COMP_YEAR) return NaN;
+  return parsed;
+}
+
 /**
  * Normalize sailor names for comparison (case-insensitive, punctuation-agnostic)
  * @param {string} name - Sailor name to normalize
