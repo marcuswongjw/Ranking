@@ -1252,27 +1252,107 @@ function renderHistGoldPanel() {
     };
   });
 
+  const allSquadSailors = list.map(item => {
+    const meta = SAILOR_METADATA[item.name] || {};
+    const squad = meta[squadPeriodKey] || '';
+    return { ...item, squad };
+  });
+
+  const squadPreview = allSquadSailors.filter(item => {
+    if (squadFilterValue) {
+      return item.squad === squadFilterValue;
+    }
+    return item.squad && item.squad !== '—';
+  }).sort((a, b) => a.name.localeCompare(b.name));
+
   list = list.filter(item => {
     if (searchVal && !item.name.toLowerCase().includes(searchVal)) return false;
     if (onlyActive && !item.isActive && (item.enteredGold === '—' || !item.enteredGold)) return false;
     return true;
   });
 
-  const squadPreview = list.filter(item => {
-    const meta = SAILOR_METADATA[item.name] || {};
-    const squad = meta[squadPeriodKey] || '';
-    return !squadFilterValue || squad === squadFilterValue;
-  }).sort((a, b) => a.name.localeCompare(b.name));
-
   if (squadPreviewEl) {
-    const previewContent = squadPreview.length
-      ? squadPreview.map(item => `<span style="display:inline-flex; align-items:center; gap:6px; padding:4px 8px; border:1px solid var(--border); border-radius:999px; background:var(--bg3); font-size:11px; color:var(--text);">${escapeHtml(item.name)}<span style="font-size:10px; color:var(--text3);">${(SAILOR_METADATA[item.name] || {})[squadPeriodKey] || '—'}</span></span>`).join('')
-      : '<span style="font-size:11px; color:var(--text3);">No sailors match this squad period.</span>';
-    squadPreviewEl.innerHTML = `
-      <div style="font-size:11px; font-weight:600; color:var(--text2); margin-bottom:8px;">${escapeHtml(squadFilterValue || 'All squads')} in ${squadPeriodLabel} (${squadPreview.length})</div>
-      <div style="display:flex; flex-wrap:wrap; gap:8px;">${previewContent}</div>
-    `;
+    if (squadPreview.length === 0) {
+      squadPreviewEl.innerHTML = `
+        <div style="font-size:11px; font-weight:600; color:var(--text2); margin-bottom:4px;">
+          ${escapeHtml(squadFilterValue || 'All squads')} in ${squadPeriodLabel} (0)
+        </div>
+        <div class="squad-preview-empty">No sailors match this squad period.</div>
+      `;
+    } else {
+      const renderItem = item => {
+        const sn = escapeHtml(item.name);
+        const meta = SAILOR_METADATA[item.name] || {};
+        const enteredGold = meta.enteredGold || '—';
+        return `
+          <div class="squad-preview-item name-c" data-sailor="${sn}" title="Click to view ${sn}'s profile">
+            <span style="font-weight: 500;">${sn}</span>
+            <span style="font-size: 9px; color: var(--text3); font-family: var(--mono);">${enteredGold}</span>
+          </div>
+        `;
+      };
+
+      if (squadFilterValue) {
+        const badgeCls = squadFilterValue === 'Nat A' ? 'nat-a' : squadFilterValue === 'Nat B' ? 'nat-b' : 'ds';
+        const displayBadgeCls = squadFilterValue === 'Nat A' ? 'b-a' : squadFilterValue === 'Nat B' ? 'b-b' : 'b-ds';
+        const content = squadPreview.map(renderItem).join('');
+        squadPreviewEl.innerHTML = `
+          <div style="font-size:11px; font-weight:600; color:var(--text2); margin-bottom:4px;">
+            ${squadFilterValue} Squad in ${squadPeriodLabel} (${squadPreview.length})
+          </div>
+          <div class="squad-preview-grid">
+            <div class="squad-preview-col" style="grid-column: 1 / -1; background: var(--bg2);">
+              <div class="squad-preview-hdr ${badgeCls}">
+                <span>${squadFilterValue} Squad Members</span>
+                <span class="badge ${displayBadgeCls}">${squadPreview.length}</span>
+              </div>
+              <div class="squad-preview-list" style="max-height: 350px; display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 8px;">
+                ${content}
+              </div>
+            </div>
+          </div>
+        `;
+      } else {
+        const natA = squadPreview.filter(s => s.squad === 'Nat A');
+        const natB = squadPreview.filter(s => s.squad === 'Nat B');
+        const ds = squadPreview.filter(s => s.squad === 'DS');
+
+        const natAContent = natA.length ? natA.map(renderItem).join('') : '<div class="squad-preview-empty">None</div>';
+        const natBContent = natB.length ? natB.map(renderItem).join('') : '<div class="squad-preview-empty">None</div>';
+        const dsContent = ds.length ? ds.map(renderItem).join('') : '<div class="squad-preview-empty">None</div>';
+
+        squadPreviewEl.innerHTML = `
+          <div style="font-size:11px; font-weight:600; color:var(--text2); margin-bottom:4px;">
+            Squad Cohorts in ${squadPeriodLabel} (${squadPreview.length})
+          </div>
+          <div class="squad-preview-grid">
+            <div class="squad-preview-col">
+              <div class="squad-preview-hdr nat-a">
+                <span>National A</span>
+                <span class="badge b-a">${natA.length}</span>
+              </div>
+              <div class="squad-preview-list">${natAContent}</div>
+            </div>
+            <div class="squad-preview-col">
+              <div class="squad-preview-hdr nat-b">
+                <span>National B</span>
+                <span class="badge b-b">${natB.length}</span>
+              </div>
+              <div class="squad-preview-list">${natBContent}</div>
+            </div>
+            <div class="squad-preview-col">
+              <div class="squad-preview-hdr ds">
+                <span>Development</span>
+                <span class="badge b-ds">${ds.length}</span>
+              </div>
+              <div class="squad-preview-list">${dsContent}</div>
+            </div>
+          </div>
+        `;
+      }
+    }
   }
+
 
   list.sort((a, b) => {
     let valA, valB;
