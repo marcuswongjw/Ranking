@@ -1138,8 +1138,6 @@ function renderHistGoldPanel() {
         <button id="hg-bulk-apply" style="padding:5px 14px; background:var(--accent); color:#fff; border:none; border-radius:var(--r); font-size:11px; font-weight:600; cursor:pointer; font-family:var(--mono); transition:all .15s;">Apply to selected</button>
         <span id="hg-bulk-count" style="font-size:11px; color:var(--text3); font-family:var(--mono);">0 selected</span>
       `;
-      const hgBulkValueSelect = document.getElementById('hg-bulk-value');
-      if (hgBulkValueSelect) populateGoldEntrySelect(hgBulkValueSelect);
       filterCard.insertAdjacentElement('afterend', bulkBar);
       const hgBulkValueSelect = document.getElementById('hg-bulk-value');
       if (hgBulkValueSelect) populateGoldEntrySelect(hgBulkValueSelect);
