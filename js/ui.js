@@ -555,13 +555,17 @@ function renderSailorPerformanceSummary(sailor) {
     }
 
     const preGold = isPreGold(reg);
+    const dnsPenalty = getRegattaDnsPenalty(reg);
+    const displayValue = hasResult ? val : '';
+    const dnsBadge = !hasResult ? `<span style="font-size:9px; font-family:var(--mono); color:var(--text3); background:var(--bg3); padding:2px 5px; border-radius:999px;">DNS ${dnsPenalty}</span>` : '';
     return { regIdx, preGold, date: reg.date, html: `
       <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; padding:3px 0; border-bottom:1px solid var(--border); ${preGold ? 'opacity:.45;' : ''}"
            ${preGold ? 'title="Before Gold Fleet entry — not counted in stats"' : ''}>
         <span style="font-size:11px; color:var(--text2); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${escapeHtml(reg.name)}</span>
         <span style="display:inline-flex; align-items:center; gap:6px; flex-shrink:0;">
           ${pctBadge}
-          <input type="number" class="sm-reg-score" data-reg-idx="${regIdx}" value="${hasResult ? val : ''}"
+          ${dnsBadge}
+          <input type="number" class="sm-reg-score" data-reg-idx="${regIdx}" value="${displayValue}"
                  style="width:60px; height:24px; font-size:10px; text-align:center;" placeholder="DNS">
         </span>
       </div>` };
@@ -1129,8 +1133,27 @@ function renderHistGoldPanel() {
   
   const searchVal = (document.getElementById('hg-search')?.value || '').toLowerCase();
   const onlyActive = document.getElementById('hg-only-active')?.checked ?? true;
+  const squadPeriodEl = document.getElementById('hg-squad-period');
+  const squadFilterEl = document.getElementById('hg-squad-filter');
+  const squadPreviewEl = document.getElementById('hg-squad-preview');
+  const squadPeriodKey = squadPeriodEl?.value || 'squadJan25';
+  const squadFilterValue = squadFilterEl?.value || '';
+  const squadPeriodLabel = {
+    squadJul24: 'Jul 24',
+    squadJan25: 'Jan 25',
+    squadJul25: 'Jul 25',
+    squadJan26: 'Jan 26',
+    squadJul26: 'Jul 26'
+  }[squadPeriodKey] || 'Period';
   
   const isEditable = isEditor();
+
+  if (squadPeriodEl && squadFilterEl && !squadPeriodEl.dataset.bound) {
+    squadPeriodEl.addEventListener('change', () => renderHistGoldPanel());
+    squadFilterEl.addEventListener('change', () => renderHistGoldPanel());
+    squadPeriodEl.dataset.bound = '1';
+    squadFilterEl.dataset.bound = '1';
+  }
   
   // Render the bulk-edit toolbar only once (avoid re-rendering if already present)
   let bulkBar = document.getElementById('hg-bulk-bar');
@@ -1234,6 +1257,22 @@ function renderHistGoldPanel() {
     if (onlyActive && !item.isActive && (item.enteredGold === '—' || !item.enteredGold)) return false;
     return true;
   });
+
+  const squadPreview = list.filter(item => {
+    const meta = SAILOR_METADATA[item.name] || {};
+    const squad = meta[squadPeriodKey] || '';
+    return !squadFilterValue || squad === squadFilterValue;
+  }).sort((a, b) => a.name.localeCompare(b.name));
+
+  if (squadPreviewEl) {
+    const previewContent = squadPreview.length
+      ? squadPreview.map(item => `<span style="display:inline-flex; align-items:center; gap:6px; padding:4px 8px; border:1px solid var(--border); border-radius:999px; background:var(--bg3); font-size:11px; color:var(--text);">${escapeHtml(item.name)}<span style="font-size:10px; color:var(--text3);">${(SAILOR_METADATA[item.name] || {})[squadPeriodKey] || '—'}</span></span>`).join('')
+      : '<span style="font-size:11px; color:var(--text3);">No sailors match this squad period.</span>';
+    squadPreviewEl.innerHTML = `
+      <div style="font-size:11px; font-weight:600; color:var(--text2); margin-bottom:8px;">${escapeHtml(squadFilterValue || 'All squads')} in ${squadPeriodLabel} (${squadPreview.length})</div>
+      <div style="display:flex; flex-wrap:wrap; gap:8px;">${previewContent}</div>
+    `;
+  }
 
   list.sort((a, b) => {
     let valA, valB;

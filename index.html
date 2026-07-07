@@ -347,6 +347,28 @@
             <label for="hg-only-active" style="font-size:12px; color:var(--text); cursor:pointer; font-weight:500;">Only show active gold sailors</label>
           </div>
         </div>
+        <div style="display:flex; flex-wrap:wrap; gap:12px; align-items:center; margin-top:12px;">
+          <div class="fl" style="min-width:180px;">
+            <label class="fl-lbl" for="hg-squad-period">Historical squad period</label>
+            <select id="hg-squad-period" style="width:100%; height:30px; font-size:12px; background:var(--bg2); border:1px solid var(--border); border-radius:var(--r); color:var(--text); padding:0 8px; cursor:pointer;">
+              <option value="squadJul24">Jul 24</option>
+              <option value="squadJan25" selected>Jan 25</option>
+              <option value="squadJul25">Jul 25</option>
+              <option value="squadJan26">Jan 26</option>
+              <option value="squadJul26">Jul 26</option>
+            </select>
+          </div>
+          <div class="fl" style="min-width:140px;">
+            <label class="fl-lbl" for="hg-squad-filter">Show squad</label>
+            <select id="hg-squad-filter" style="width:100%; height:30px; font-size:12px; background:var(--bg2); border:1px solid var(--border); border-radius:var(--r); color:var(--text); padding:0 8px; cursor:pointer;">
+              <option value="">All squads</option>
+              <option value="Nat A">Nat A</option>
+              <option value="Nat B">Nat B</option>
+              <option value="DS">DS</option>
+            </select>
+          </div>
+        </div>
+        <div id="hg-squad-preview" style="margin-top:12px; padding:10px 12px; border:1px solid var(--border); border-radius:var(--r); background:var(--bg2); min-height:42px;"></div>
       </div>
       
       <div class="tbl-wrap" id="hist-gold-table-container">
