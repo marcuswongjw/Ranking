@@ -204,6 +204,54 @@ function unmarkSailorDropped(name) {
   }
 }
 
+/**
+ * Whether this sailor is on the exclusions list (normalized name match).
+ */
+function isExcludedSailor(name) {
+  if (!name || !EXCLUDED || EXCLUDED.size === 0) return false;
+  const cleaned = cleanSailorName(name);
+  if (!cleaned) return false;
+  if (EXCLUDED.has(cleaned) || EXCLUDED.has(name)) return true;
+  for (const k of EXCLUDED.keys()) {
+    if (isSameSailor(k, cleaned)) return true;
+  }
+  return false;
+}
+
+function getExclusionReason(name) {
+  if (!name || !EXCLUDED) return undefined;
+  const cleaned = cleanSailorName(name);
+  if (EXCLUDED.has(cleaned)) return EXCLUDED.get(cleaned);
+  if (EXCLUDED.has(name)) return EXCLUDED.get(name);
+  for (const [k, reason] of EXCLUDED.entries()) {
+    if (isSameSailor(k, cleaned)) return reason;
+  }
+  return undefined;
+}
+
+/** Set exclusion for a sailor, collapsing any prior aliases of the same person. */
+function markSailorExcluded(name, reason) {
+  const cleaned = cleanSailorName(name);
+  if (!cleaned) return;
+  for (const k of Array.from(EXCLUDED.keys())) {
+    if (isSameSailor(k, cleaned)) EXCLUDED.delete(k);
+  }
+  EXCLUDED.set(cleaned, reason || 'Excluded');
+}
+
+function unmarkSailorExcluded(name) {
+  const cleaned = cleanSailorName(name);
+  if (!cleaned) return;
+  for (const k of Array.from(EXCLUDED.keys())) {
+    if (isSameSailor(k, cleaned)) EXCLUDED.delete(k);
+  }
+}
+
+/** Typical Optimist birth year default for missing data (age ~13). */
+function defaultBirthYear() {
+  return (typeof COMP_YEAR === 'number' ? COMP_YEAR : new Date().getFullYear()) - 13;
+}
+
 function getRegattaPercentileBase(reg) {
   if (reg && reg.dns !== undefined && reg.dns !== null && reg.dns > 0) {
     return reg.dns;
@@ -361,7 +409,7 @@ function getHistoricalRank(sailorName, dateStr) {
     });
     
     normalizedToOriginal.forEach((originalName, norm) => {
-      let g = "M", born = 2013;
+      let g = "M", born = defaultBirthYear();
       eligibleRegs.forEach(reg => {
         const found = reg.sailors.find(x => normalizeName(x.name) === norm);
         if (found) {
@@ -371,6 +419,7 @@ function getHistoricalRank(sailorName, dateStr) {
       });
       
       if (isDroppedSailor(originalName)) return;
+      if (isExcludedSailor(originalName)) return;
       if (isAgeDropped(born)) return;
       
       const scores = activeRegs.map(reg => {

@@ -821,16 +821,12 @@
       (reg.sailors || []).forEach(upsertSailor);
     });
 
-    // 2) Gold-fleet / profile sailors who may not have raced yet.
-    //    Previously only regatta participants entered rankings, so a sailor
-    //    promoted to Gold (Entered Gold set, or fleet profile in metadata)
-    //    but missing from July results was omitted entirely.
+    // 2) Gold fleet via Entered Gold only (no auto-DNS regatta rows).
+    //    First time Entered Gold is set, they join rankings with DNS for missed events.
     Object.keys(SAILOR_METADATA || {}).forEach(name => {
       const meta = SAILOR_METADATA[name] || {};
       const enteredGold = meta.enteredGold && meta.enteredGold !== '—';
-      const hasFleetProfile = !!(meta.g || meta.born || meta.club || meta.school);
-      const hasSquadLock = Object.keys(meta).some(k => k.startsWith('squad') && meta[k]);
-      if (!enteredGold && !hasFleetProfile && !hasSquadLock) return;
+      if (!enteredGold) return;
       upsertSailor({
         name,
         g: meta.g,

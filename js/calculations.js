@@ -42,7 +42,7 @@ function ageGroup(born, refYear = COMP_YEAR) {
 function computeSquads(sailorList, refYear = COMP_YEAR) {
   const res = new Map();
   ['M','F'].forEach(g => {
-    const pool = sailorList.filter(s => s.g === g && !EXCLUDED.has(s.name) && s.born >= (refYear - 15))
+    const pool = sailorList.filter(s => s.g === g && !isExcludedSailor(s.name) && s.born >= (refYear - 15))
       .map(s => ({ ...s, _sc: s.simScore !== undefined ? s.simScore : s.score })).sort((a,b) => a._sc - b._sc);
     pool.slice(0,8).forEach(s => res.set(s.name, 'Nat A'));
     const rem = () => pool.filter(s => !res.has(s.name));
@@ -72,7 +72,7 @@ function computeSquads(sailorList, refYear = COMP_YEAR) {
     }
   });
 
-  const dsEl = g => sailorList.filter(s => s.g === g && !EXCLUDED.has(s.name) && s.born >= (refYear - 12) && !res.has(s.name))
+  const dsEl = g => sailorList.filter(s => s.g === g && !isExcludedSailor(s.name) && s.born >= (refYear - 12) && !res.has(s.name))
     .map(s => ({ ...s, _sc: s.simScore !== undefined ? s.simScore : s.score })).sort((a,b) => a._sc - b._sc);
 
   const dsF = { M: 0, F: 0 };
@@ -428,7 +428,7 @@ function runTarget(){
   const gpc=goal==='Nat A'?'gt-a':goal==='Nat B'?'gt-b':'gt-ds';
   const agN=ageGroup(sailor.born),agL=agN>=13?'13yo':agN===12?'12yo':agN===11?'11&U':'10&U';
   const gL=sailor.g==='M'?'boys':'girls',sqOrd={'Nat A':1,'Nat B':2,'DS':3};
-  const baseSq=computeSquads(SAILORS),curSq=EXCLUDED.has(sailor.name)?null:(baseSq.get(sailor.name)||null);
+  const baseSq=computeSquads(SAILORS),curSq=isExcludedSailor(sailor.name)?null:(baseSq.get(sailor.name)||null);
   const already=(sqOrd[curSq]||99)<=(sqOrd[goal]||99);
   const latestRegs = getActiveRegattas();
 
@@ -595,7 +595,7 @@ function renderTargetSimulation(simulatedPos) {
 function buildCtxTable(ctx,sailor,baseSq,simSqM,posNeeded){
   const latestRegs = getActiveRegattas();
   const rows=ctx.map((s,i)=>{
-    const isSelf=s.name===sailor.name,isExcl=EXCLUDED.has(s.name);
+    const isSelf=s.name===sailor.name,isExcl=isExcludedSailor(s.name);
     const curSq=isExcl?null:(baseSq.get(s.name)||null);
     const simSq=simSqM?(simSqM.get(s.name)||null):null;
     const changed=simSq&&simSq!==curSq;
@@ -606,7 +606,7 @@ function buildCtxTable(ctx,sailor,baseSq,simSqM,posNeeded){
       ns = calcSimScore(s, [{ name: s.name, nett: posNeeded, rank: posNeeded }], true);
     }
     const scoreD=ns!=null?`<span style="color:var(--text3);text-decoration:line-through;font-size:10px">${Math.floor(s.score)}</span> <strong style="color:var(--accent)">${escapeHtml(String(ns))}</strong>`:(s.score<900?Math.floor(s.score):'—');
-    const exclTag=isExcl?`<span class="excl-tag">${escapeHtml(EXCLUDED.get(s.name))}</span>`:'';
+    const exclTag=isExcl?`<span class="excl-tag">${escapeHtml(getExclusionReason(s.name))}</span>`:'';
     const sqCell=isExcl?'<span class="badge b-n">Excl.</span>':changed?`${squadBadge(curSq)}<span style="color:var(--accent);font-family:var(--mono);font-size:9px"> →${escapeHtml(simSq)}</span>`:squadBadge(curSq);
     
     const ev = latestRegs.map(reg => {

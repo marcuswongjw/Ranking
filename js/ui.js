@@ -219,10 +219,10 @@ function saveSailorProfile() {
   
   const prevMeta = SAILOR_METADATA[origName] || {};
   if (origName !== newName) {
-    if (EXCLUDED.has(origName)) {
-      const reason = EXCLUDED.get(origName);
-      EXCLUDED.delete(origName);
-      EXCLUDED.set(newName, reason);
+    if (isExcludedSailor(origName)) {
+      const reason = getExclusionReason(origName);
+      unmarkSailorExcluded(origName);
+      markSailorExcluded(newName, reason);
     }
     // Keep dropped status attached to the sailor across renames
     if (isDroppedSailor(origName)) {
@@ -270,14 +270,51 @@ function saveSailorProfile() {
     }
   });
 
+  const prevEntered = (prevMeta.enteredGold && prevMeta.enteredGold !== '—') ? prevMeta.enteredGold : null;
+  const newlyEnteredGold = enteredGold && enteredGold !== '—' && !prevEntered;
+
   recomputeSailors();
   saveData();
   closeSailorModal();
   renderAll();
-  toastSuccess('Sailor profile saved.');
+  if (newlyEnteredGold) {
+    toastSuccess(`${newName} entered Gold Fleet — now included in rankings (DNS for missed events).`);
+  } else {
+    toastSuccess('Sailor profile saved.');
+  }
 }
 
+function addExcl() {
+  if (!requireEditor()) return;
+  const sel = document.getElementById('exclSailor');
+  const name = sel?.value || '';
+  if (!name) {
+    toastWarn('Choose a sailor to exclude.');
+    return;
+  }
+  if (isExcludedSailor(name)) {
+    toastInfo(`${name} is already excluded.`);
+    return;
+  }
+  markSailorExcluded(name, selectedReason || 'Excluded');
+  recomputeSailors();
+  saveData();
+  renderAll();
+  renderExclusions();
+  toastSuccess(`Excluded ${name} (${selectedReason || 'Excluded'}).`);
+}
 
+function removeExcl(name) {
+  if (!requireEditor()) return;
+  const cleaned = typeof sailorNameFromDataAttr === 'function' ? sailorNameFromDataAttr(name) : cleanSailorName(name);
+  if (!cleaned) return;
+  unmarkSailorExcluded(cleaned);
+  recomputeSailors();
+  saveData();
+  renderAll();
+  renderExclusions();
+  toastSuccess(`Removed exclusion for ${cleaned}.`);
+}
 
 function populateTargetDropdown() {
   const sel = document.getElementById('targetSailor');
@@ -638,7 +675,7 @@ function renderComparisonChart() {
   const squadMap = computeSquads(SAILORS);
   let dataset = SAILORS.filter(s => {
     if (genderFilter !== 'all' && s.g !== genderFilter) return false;
-    const squad = EXCLUDED.has(s.name) ? null : squadMap.get(s.name);
+    const squad = isExcludedSailor(s.name) ? null : squadMap.get(s.name);
     if (squadFilterVal && squad !== squadFilterVal) return false;
     if (nameSearchVal && !s.name.toLowerCase().includes(nameSearchVal)) return false;
     return true;
@@ -803,7 +840,7 @@ function renderRankings() {
 
   const data = SAILORS.filter(s => {
     if (genderFilter !== 'all' && s.g !== genderFilter) return false;
-    const squad = EXCLUDED.has(s.name) ? null : (sq.get(s.name) || null);
+    const squad = isExcludedSailor(s.name) ? null : (sq.get(s.name) || null);
     if (sqF && squad !== sqF) return false;
     if (nm && !s.name.toLowerCase().includes(nm)) return false;
     if (t50 && s.cur > 50) return false;
@@ -862,12 +899,12 @@ function renderRankings() {
   });
 
   body.innerHTML = data.map(s => {
-    const isExcl = EXCLUDED.has(s.name);
+    const isExcl = isExcludedSailor(s.name);
     const squad = isExcl ? null : (sq.get(s.name) || null);
     const isRetiringNext = isAgeDropped(s.born, COMP_YEAR + 1);
     const squadNext = isExcl ? null : (sqNext.get(s.name) || null);
     const rowSt = isExcl ? 'opacity:.42;' : '';
-    const exclTag = isExcl ? `<span class="excl-tag">${escapeHtml(EXCLUDED.get(s.name))}</span>` : '';
+    const exclTag = isExcl ? `<span class="excl-tag">${escapeHtml(getExclusionReason(s.name))}</span>` : '';
 
     const validRanks = s.ranks.map((v, regIdx) =>
       (v === null || v === undefined) ? getRegattaDnsPenalty(latestRegs[regIdx]) : v
@@ -993,7 +1030,7 @@ function renderExclusions() {
         <div class="excl-name">${safeName}</div>
         <div class="excl-reason">${safeReason}</div>
       </div>
-      <button class="excl-rm editor-only excl-remove-btn" data-name="${safeName}">✕ Remove</button>
+      <button class="excl-rm editor-only excl-remove-btn" data-name="${encodeURIComponent(cleanSailorName(name))}">✕ Remove</button>
     </div>`;
   }).join('');
   

@@ -22,7 +22,7 @@ function renderCharts() {
     // 1. Avg, Min, Max score by squad
     const squadScores = { 'Nat A': [], 'Nat B': [], 'DS': [], 'None': [] };
     SAILORS.forEach(s => {
-      const squad = EXCLUDED.has(s.name) ? 'None' : (sq.get(s.name) || 'None');
+      const squad = isExcludedSailor(s.name) ? 'None' : (sq.get(s.name) || 'None');
       squadScores[squad].push(s.score);
     });
     const distData = Object.keys(squadScores).map(k => {
@@ -198,7 +198,7 @@ function handleChartClick(chartId, clickedLabel, datasetLabel) {
     title = `${gender === 'F' ? 'Girls' : 'Boys'} born ${born}`;
   } else if (chartId === 'distChart') {
     matched = SAILORS.filter(s => {
-      const squad = EXCLUDED.has(s.name) ? 'None' : (sq.get(s.name) || 'None');
+      const squad = isExcludedSailor(s.name) ? 'None' : (sq.get(s.name) || 'None');
       return squad === clickedLabel;
     });
     title = `${clickedLabel} squad`;
@@ -208,14 +208,14 @@ function handleChartClick(chartId, clickedLabel, datasetLabel) {
 
   body.innerHTML = matched.map(s => {
     const safeName = escapeHtml(s.name);
-    const squad = EXCLUDED.has(s.name) ? null : (sq.get(s.name) || null);
+    const squad = isExcludedSailor(s.name) ? null : (sq.get(s.name) || null);
     return `<tr>
       <td style="font-family:var(--mono); font-size:11px;">#${s.cur}</td>
       <td class="name-c" data-sailor="${safeName}" style="cursor:pointer; color:var(--accent); font-weight:600; text-decoration:underline;">${safeName}</td>
       <td style="font-size:11px;">${escapeHtml(s.g || '—')}</td>
       <td style="font-size:11px;">${escapeHtml(String(s.born || '—'))}</td>
       <td style="font-size:11px;">${escapeHtml(s.club || '—')}</td>
-      <td>${EXCLUDED.has(s.name) ? '<span class="badge b-n">Excl.</span>' : squadBadge(squad)}</td>
+      <td>${isExcludedSailor(s.name) ? '<span class="badge b-n">Excl.</span>' : squadBadge(squad)}</td>
       <td style="text-align:right; font-family:var(--mono); font-size:11px;">${Math.floor(s.score)}</td>
     </tr>`;
   }).join('') || '<tr><td colspan="7" style="text-align:center; color:var(--text3); padding:20px;">No sailors match.</td></tr>';
