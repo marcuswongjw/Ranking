@@ -671,12 +671,18 @@ function renderComparisonChart() {
   // Top 20 overall by rank (best-3 score); filters optional if controls exist
   const squadFilterVal = document.getElementById('squadFilter')?.value || '';
   const nameSearchVal = (document.getElementById('nameSearch')?.value || '').toLowerCase();
-  
-  const squadMap = computeSquads(SAILORS);
+  // Match rankings quick filters: locked roster for current 6-month period
+  const rosterPeriod = typeof getCurrentSquadPeriod === 'function'
+    ? getCurrentSquadPeriod()
+    : { periodKey: squadPeriodKey('jul', COMP_YEAR) };
+  const rosterKey = rosterPeriod.periodKey;
+
   let dataset = SAILORS.filter(s => {
     if (genderFilter !== 'all' && s.g !== genderFilter) return false;
-    const squad = isExcludedSailor(s.name) ? null : squadMap.get(s.name);
-    if (squadFilterVal && squad !== squadFilterVal) return false;
+    if (squadFilterVal) {
+      const locked = isExcludedSailor(s.name) ? null : getLockedSquad(s.name, rosterKey);
+      if (locked !== squadFilterVal) return false;
+    }
     if (nameSearchVal && !s.name.toLowerCase().includes(nameSearchVal)) return false;
     return true;
   });
@@ -697,6 +703,9 @@ function renderComparisonChart() {
 
   const labels = dataset.map(s => s.name);
   const scoresData = dataset.map(s => s.score);
+  const autoSq = computeSquads(SAILORS);
+  const chartSquad = (name) => getLockedSquad(name, rosterKey)
+    || (typeof getEffectiveSquad === 'function' ? getEffectiveSquad(name, rosterKey, autoSq).value : null);
 
   chartObjs.comparison = new Chart(chartEl, {
     type: 'bar',
@@ -707,14 +716,14 @@ function renderComparisonChart() {
           label: 'Best 3 Score (Lower is Better)',
           data: scoresData,
           backgroundColor: dataset.map(s => {
-            const squad = squadMap.get(s.name);
+            const squad = chartSquad(s.name);
             return squad === 'Nat A' ? 'rgba(26, 71, 42, 0.7)' :
                    squad === 'Nat B' ? 'rgba(45, 74, 138, 0.7)' :
                    squad === 'DS' ? 'rgba(122, 53, 0, 0.7)' :
                    'rgba(154, 149, 140, 0.6)';
           }),
           borderColor: dataset.map(s => {
-            const squad = squadMap.get(s.name);
+            const squad = chartSquad(s.name);
             return squad === 'Nat A' ? '#1a472a' :
                    squad === 'Nat B' ? '#2d4a8a' :
                    squad === 'DS' ? '#7a3500' :
@@ -833,13 +842,21 @@ function renderRankings() {
   // Squad locks: shared SAILOR_METADATA keys (squadJul26 / squadJan27) with Historical & Gold
   const squadJulKey = squadPeriodKey('jul', COMP_YEAR);
   const squadJanNextKey = squadPeriodKey('jan', COMP_YEAR + 1);
+  // Quick filters / dropdown use locked roster for the current half-year only
+  // (Jan–Jun → squadJanYY, Jul–Dec → squadJulYY) — not live auto rankings.
+  const currentSquadPeriod = typeof getCurrentSquadPeriod === 'function'
+    ? getCurrentSquadPeriod()
+    : { periodKey: squadJulKey, label: 'Jul ' + String(COMP_YEAR).slice(-2) };
+  const rosterFilterKey = currentSquadPeriod.periodKey;
 
   const latestRegs = getActiveRegattas();
 
   const data = SAILORS.filter(s => {
     if (genderFilter !== 'all' && s.g !== genderFilter) return false;
-    const eff = isExcludedSailor(s.name) ? { value: null } : getEffectiveSquad(s.name, squadJulKey, sq);
-    if (sqF && eff.value !== sqF) return false;
+    if (sqF) {
+      const locked = isExcludedSailor(s.name) ? null : getLockedSquad(s.name, rosterFilterKey);
+      if (locked !== sqF) return false;
+    }
     if (nm && !s.name.toLowerCase().includes(nm)) return false;
     if (t50 && s.cur > 50) return false;
     return true;
@@ -956,7 +973,7 @@ function renderRankings() {
       ${cells}
     </tr>`;
   }).join('') || `<tr><td colspan="${(isEditor() ? 7 : 6) + latestRegs.length}" style="text-align:center;color:var(--text3);padding:24px">
-      <div style="margin-bottom:10px">No sailors match the current filters.</div>
+      <div style="margin-bottom:10px">No sailors match the current filters${sqF ? ` (locked ${escapeHtml(currentSquadPeriod.label || '')} roster)` : ''}.</div>
       <button type="button" id="clear-rankings-filters" class="btn-secondary" style="display:inline-flex;">Clear filters</button>
     </td></tr>`;
 
@@ -1994,6 +2011,19 @@ function quickFilter(sq) {
 
 function updateDatabaseSourceTags() {
   const isSeed = !CLOUD_HAS_DATA || !REGATTAS.length;
+
+  // Sidebar quick filters label: current locked half-year roster
+  const qfSec = document.getElementById('quick-filter-sec');
+  if (qfSec && typeof getCurrentSquadPeriod === 'function') {
+    const p = getCurrentSquadPeriod();
+    qfSec.textContent = 'Quick filters · ' + p.label;
+    qfSec.title = 'Locked squad roster for ' + p.rangeLabel + ' (does not change with live rankings)';
+  }
+  const squadFilterEl = document.getElementById('squadFilter');
+  if (squadFilterEl && typeof getCurrentSquadPeriod === 'function') {
+    const p = getCurrentSquadPeriod();
+    squadFilterEl.title = 'Locked ' + p.label + ' roster (' + p.rangeLabel + ') — not live auto rankings';
+  }
   
   const sbTag = document.getElementById('sb-tag');
   if (sbTag) {

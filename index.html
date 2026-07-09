@@ -8,15 +8,15 @@
   
   <!-- Local libraries for offline support and CDNs for Firebase -->
   <!-- ?v= busts CDN/browser cache after deploys -->
-  <script src="js/libs/chart.umd.js?v=20260709m"></script>
-  <script src="js/libs/xlsx.full.min.js?v=20260709m"></script>
+  <script src="js/libs/chart.umd.js?v=20260709n"></script>
+  <script src="js/libs/xlsx.full.min.js?v=20260709n"></script>
   <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-storage-compat.js"></script>
 
   <!-- External Stylesheet -->
-  <link rel="stylesheet" href="css/styles.css?v=20260709m">
+  <link rel="stylesheet" href="css/styles.css?v=20260709n">
 </head>
 <body>
 <div id="dropOverlay" class="drop-overlay">
@@ -66,10 +66,10 @@
     <button class="nav-item editor-only" data-view="major-comps"><span class="nav-dot dot-n"></span>Major Competitions</button>
     <button class="nav-item editor-only" data-view="exclusions" id="nav-excl"><span class="nav-dot dot-r"></span>Exclusions<span class="excl-ct" id="excl-badge" style="display:none">0</span></button>
     
-    <div class="nav-sec">Quick filters</div>
-    <button class="nav-item quick-filter-btn" data-squad="Nat A"><span class="nav-dot dot-a"></span>National A</button>
-    <button class="nav-item quick-filter-btn" data-squad="Nat B"><span class="nav-dot dot-b"></span>National B</button>
-    <button class="nav-item quick-filter-btn" data-squad="DS"><span class="nav-dot dot-ds"></span>Development</button>
+    <div class="nav-sec" id="quick-filter-sec" title="Filters by locked squad roster for the current 6-month period">Quick filters</div>
+    <button class="nav-item quick-filter-btn" data-squad="Nat A" title="Locked National A roster (current half-year)"><span class="nav-dot dot-a"></span>National A</button>
+    <button class="nav-item quick-filter-btn" data-squad="Nat B" title="Locked National B roster (current half-year)"><span class="nav-dot dot-b"></span>National B</button>
+    <button class="nav-item quick-filter-btn" data-squad="DS" title="Locked Development Squad roster (current half-year)"><span class="nav-dot dot-ds"></span>Development</button>
   </nav>
   <div class="sb-footer" id="sb-footer">Ranking Database</div>
 </aside>
@@ -83,7 +83,7 @@
         <button class="pill" data-gender="M">Boys</button>
         <button class="pill" data-gender="F">Girls</button>
       </div>
-      <select id="squadFilter">
+      <select id="squadFilter" title="Filter by locked squad roster for the current 6-month period (not live auto rankings)">
         <option value="">All squads</option>
         <option value="Nat A">Nat A</option>
         <option value="Nat B">Nat B</option>
@@ -818,13 +818,13 @@
 </div>
 
 <!-- Load Application Modules (?v= forces browsers to fetch after deploy) -->
-<script src="js/config.js?v=20260709m"></script>
-<script src="js/seed.js?v=20260709m"></script>
-<script src="js/utils.js?v=20260709m"></script>
-<script src="js/state.js?v=20260709m"></script>
-<script src="js/calculations.js?v=20260709m"></script>
-<script src="js/ui.js?v=20260709m"></script>
-<script src="js/main.js?v=20260709m"></script>
-<script src="js/charts.js?v=20260709m"></script>
+<script src="js/config.js?v=20260709n"></script>
+<script src="js/seed.js?v=20260709n"></script>
+<script src="js/utils.js?v=20260709n"></script>
+<script src="js/state.js?v=20260709n"></script>
+<script src="js/calculations.js?v=20260709n"></script>
+<script src="js/ui.js?v=20260709n"></script>
+<script src="js/main.js?v=20260709n"></script>
+<script src="js/charts.js?v=20260709n"></script>
 </body>
 </html>

@@ -17,12 +17,16 @@ function renderCharts() {
       return;
     }
     if (!SAILORS.length) return;
-    const sq = computeSquads(SAILORS);
+    // Group by locked roster for the current half-year (stable for 6 months)
+    const rosterPeriod = typeof getCurrentSquadPeriod === 'function'
+      ? getCurrentSquadPeriod()
+      : { periodKey: squadPeriodKey('jul', COMP_YEAR) };
+    const rosterKey = rosterPeriod.periodKey;
 
     // 1. Avg, Min, Max score by squad
     const squadScores = { 'Nat A': [], 'Nat B': [], 'DS': [], 'None': [] };
     SAILORS.forEach(s => {
-      const squad = isExcludedSailor(s.name) ? 'None' : (sq.get(s.name) || 'None');
+      const squad = isExcludedSailor(s.name) ? 'None' : (getLockedSquad(s.name, rosterKey) || 'None');
       squadScores[squad].push(s.score);
     });
     const distData = Object.keys(squadScores).map(k => {
@@ -187,7 +191,10 @@ function handleChartClick(chartId, clickedLabel, datasetLabel) {
   const body = document.getElementById('chart-sailors-body');
   if (!modal || !body) return;
 
-  const sq = computeSquads(SAILORS);
+  const rosterPeriod = typeof getCurrentSquadPeriod === 'function'
+    ? getCurrentSquadPeriod()
+    : { periodKey: squadPeriodKey('jul', COMP_YEAR), label: 'Jul ' + String(COMP_YEAR).slice(-2) };
+  const rosterKey = rosterPeriod.periodKey;
   let matched = [];
   let title = 'Sailors';
 
@@ -198,17 +205,17 @@ function handleChartClick(chartId, clickedLabel, datasetLabel) {
     title = `${gender === 'F' ? 'Girls' : 'Boys'} born ${born}`;
   } else if (chartId === 'distChart') {
     matched = SAILORS.filter(s => {
-      const squad = isExcludedSailor(s.name) ? 'None' : (sq.get(s.name) || 'None');
+      const squad = isExcludedSailor(s.name) ? 'None' : (getLockedSquad(s.name, rosterKey) || 'None');
       return squad === clickedLabel;
     });
-    title = `${clickedLabel} squad`;
+    title = `${clickedLabel} squad (${rosterPeriod.label || 'locked'})`;
   }
 
   matched.sort((a, b) => a.cur - b.cur);
 
   body.innerHTML = matched.map(s => {
     const safeName = escapeHtml(s.name);
-    const squad = isExcludedSailor(s.name) ? null : (sq.get(s.name) || null);
+    const squad = isExcludedSailor(s.name) ? null : getLockedSquad(s.name, rosterKey);
     return `<tr>
       <td style="font-family:var(--mono); font-size:11px;">#${s.cur}</td>
       <td class="name-c" data-sailor="${safeName}" style="cursor:pointer; color:var(--accent); font-weight:600; text-decoration:underline;">${safeName}</td>

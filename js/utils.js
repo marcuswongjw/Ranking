@@ -260,6 +260,47 @@ function squadPeriodKey(kind, year) {
 }
 
 /**
+ * Current 6-month squad roster period (stable membership once locked).
+ * Jan–Jun → squadJanYY · Jul–Dec → squadJulYY
+ * @returns {{ kind: 'jan'|'jul', year: number, periodKey: string, label: string, rangeLabel: string }}
+ */
+function getCurrentSquadPeriod(refDate) {
+  const d = refDate instanceof Date ? refDate : new Date();
+  const year = d.getFullYear();
+  const month = d.getMonth(); // 0–11
+  if (month < 6) {
+    return {
+      kind: 'jan',
+      year,
+      periodKey: squadPeriodKey('jan', year),
+      label: 'Jan ' + String(year).slice(-2),
+      rangeLabel: 'Jan–Jun ' + year
+    };
+  }
+  return {
+    kind: 'jul',
+    year,
+    periodKey: squadPeriodKey('jul', year),
+    label: 'Jul ' + String(year).slice(-2),
+    rangeLabel: 'Jul–Dec ' + year
+  };
+}
+
+/**
+ * Locked squad only for a period key — no auto ranking fallback.
+ * Used by quick filters so roster membership stays fixed for the half-year.
+ * @returns {string|null} 'Nat A' | 'Nat B' | 'DS' | null
+ */
+function getLockedSquad(sailorName, periodKey) {
+  if (!periodKey || !sailorName) return null;
+  const metaKey = (typeof resolveSailorMetadataKey === 'function')
+    ? resolveSailorMetadataKey(sailorName)
+    : sailorName;
+  const meta = (SAILOR_METADATA && (SAILOR_METADATA[metaKey] || SAILOR_METADATA[sailorName])) || {};
+  return meta[periodKey] || null;
+}
+
+/**
  * Single source of truth for squad status: metadata lock wins, else auto map.
  * @returns {{ value: string|null, locked: boolean, periodKey: string }}
  */
