@@ -207,6 +207,11 @@ function saveSailorProfile() {
       EXCLUDED.delete(origName);
       EXCLUDED.set(newName, reason);
     }
+    // Keep dropped status attached to the sailor across renames
+    if (DROPPED_SAILORS.has(origName)) {
+      DROPPED_SAILORS.delete(origName);
+      DROPPED_SAILORS.add(newName);
+    }
     delete SAILOR_METADATA[origName];
   }
   

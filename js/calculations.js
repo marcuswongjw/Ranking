@@ -370,6 +370,7 @@ function runTarget(){
   const gL=sailor.g==='M'?'boys':'girls',sqOrd={'Nat A':1,'Nat B':2,'DS':3};
   const baseSq=computeSquads(SAILORS),curSq=EXCLUDED.has(sailor.name)?null:(baseSq.get(sailor.name)||null);
   const already=(sqOrd[curSq]||99)<=(sqOrd[goal]||99);
+  const latestRegs = getActiveRegattas();
 
   function testQualify(pos) {
     const simSailors = [{ name: sailor.name, nett: pos, rank: pos }];
@@ -448,6 +449,13 @@ function updateTargetSliderVal(val) {
 function renderTargetSimulation(simulatedPos) {
   if (!targetCachedData) return;
   const { sailor, goal, gl, gpc, agL, gL, sqOrd, baseSq, curSq, already, posNeeded, ctx, out, pool } = targetCachedData;
+  const latestRegs = getActiveRegattas();
+  const safeSailorName = escapeHtml(sailor.name);
+  const safeGl = escapeHtml(gl);
+  const safeAgL = escapeHtml(agL);
+  const safeGL = escapeHtml(gL);
+  const safeCurSq = escapeHtml(curSq || 'None');
+  const poolLabel = escapeHtml(goal === 'Nat A' ? gL.toUpperCase() : (agL + ' ' + gL).toUpperCase());
 
   const simSailors = [{ name: sailor.name, nett: simulatedPos, rank: simulatedPos }];
   const projScore = calcSimScore(sailor, simSailors, true);
@@ -488,27 +496,27 @@ function renderTargetSimulation(simulatedPos) {
   
   let html = '';
   if (already) {
-    html = `<div class="tgt-res"><div class="tgt-res-hdr"><h3>${sailor.name}</h3><span class="goal-tag ${gpc}">${gl}</span><span style="font-family:var(--mono);font-size:9px;color:var(--text3)">${agL} · ${gL}</span></div>
-      <div class="tgt-body"><div style="padding:12px 14px;background:var(--accent-l);border:1px solid rgba(26,71,42,.2);border-radius:var(--r);color:var(--accent);font-size:12px;font-weight:600;margin-bottom:14px">✓ Already allocated to <strong>${curSq}</strong> — meets or exceeds ${gl}.</div>
-      <div class="sec-lbl" style="margin-top:0">Pool context — ${goal === 'Nat A' ? gL.toUpperCase() : (agL + ' ' + gL).toUpperCase()}</div>${ctxT}${wiS}</div></div>`;
+    html = `<div class="tgt-res"><div class="tgt-res-hdr"><h3>${safeSailorName}</h3><span class="goal-tag ${gpc}">${safeGl}</span><span style="font-family:var(--mono);font-size:9px;color:var(--text3)">${safeAgL} · ${safeGL}</span></div>
+      <div class="tgt-body"><div style="padding:12px 14px;background:var(--accent-l);border:1px solid rgba(26,71,42,.2);border-radius:var(--r);color:var(--accent);font-size:12px;font-weight:600;margin-bottom:14px">✓ Already allocated to <strong>${escapeHtml(curSq)}</strong> — meets or exceeds ${safeGl}.</div>
+      <div class="sec-lbl" style="margin-top:0">Pool context — ${poolLabel}</div>${ctxT}${wiS}</div></div>`;
   } else if (!posNeeded) {
-    html = `<div class="tgt-res"><div class="tgt-res-hdr"><h3>${sailor.name}</h3><span class="goal-tag ${gpc}">${gl}</span></div>
-      <div class="tgt-body"><div class="impossible">Even P1 at the next regatta cannot reach <strong>${gl}</strong> based on current standings.</div>
-      <div class="sec-lbl">Pool context — ${goal === 'Nat A' ? gL.toUpperCase() : (agL + ' ' + gL).toUpperCase()}</div>${ctxT}${wiS}</div></div>`;
+    html = `<div class="tgt-res"><div class="tgt-res-hdr"><h3>${safeSailorName}</h3><span class="goal-tag ${gpc}">${safeGl}</span></div>
+      <div class="tgt-body"><div class="impossible">Even P1 at the next regatta cannot reach <strong>${safeGl}</strong> based on current standings.</div>
+      <div class="sec-lbl">Pool context — ${poolLabel}</div>${ctxT}${wiS}</div></div>`;
   } else {
     const isCustom = simulatedPos !== posNeeded;
     const alertBg = isCustom ? 'var(--bg2)' : 'var(--accent-l)';
     const alertBorder = isCustom ? 'var(--border)' : 'rgba(26,71,42,.15)';
     const alertText = isCustom 
-      ? `Simulated Scenario: finish of <strong>P${simulatedPos}</strong> yields score <strong>${projScore}</strong>` 
-      : `Finish <strong>P${posNeeded} or better</strong> at the next regatta. Score: ${Math.floor(sailor.score)} → <strong>${projScore}</strong>`;
+      ? `Simulated Scenario: finish of <strong>P${escapeHtml(String(simulatedPos))}</strong> yields score <strong>${escapeHtml(String(projScore))}</strong>` 
+      : `Finish <strong>P${escapeHtml(String(posNeeded))} or better</strong> at the next regatta. Score: ${Math.floor(sailor.score)} → <strong>${escapeHtml(String(projScore))}</strong>`;
 
-    html = `<div class="tgt-res"><div class="tgt-res-hdr"><h3>${sailor.name}</h3><span class="goal-tag ${gpc}">${gl}</span><span style="font-family:var(--mono);font-size:9px;color:var(--text3)">${agL} · ${gL}</span></div>
+    html = `<div class="tgt-res"><div class="tgt-res-hdr"><h3>${safeSailorName}</h3><span class="goal-tag ${gpc}">${safeGl}</span><span style="font-family:var(--mono);font-size:9px;color:var(--text3)">${safeAgL} · ${safeGL}</span></div>
       <div class="tgt-body">
         <div class="tgt-sum">
-          <div class="tgt-stat"><div class="tgt-stat-lbl">Current squad</div><div class="tgt-stat-val" style="font-size:14px">${curSq || 'None'}</div><div class="tgt-stat-sub">score: ${Math.floor(sailor.score)}</div></div>
-          <div class="tgt-stat"><div class="tgt-stat-lbl">Target Minimum</div><div class="tgt-stat-val">P${posNeeded}</div><div class="tgt-stat-sub">score needed → ${projScore}</div></div>
-          <div class="tgt-stat"><div class="tgt-stat-lbl">Age group</div><div class="tgt-stat-val" style="font-size:14px">${agL}</div><div class="tgt-stat-sub">${gL} pool</div></div>
+          <div class="tgt-stat"><div class="tgt-stat-lbl">Current squad</div><div class="tgt-stat-val" style="font-size:14px">${safeCurSq}</div><div class="tgt-stat-sub">score: ${Math.floor(sailor.score)}</div></div>
+          <div class="tgt-stat"><div class="tgt-stat-lbl">Target Minimum</div><div class="tgt-stat-val">P${escapeHtml(String(posNeeded))}</div><div class="tgt-stat-sub">score needed → ${escapeHtml(String(projScore))}</div></div>
+          <div class="tgt-stat"><div class="tgt-stat-lbl">Age group</div><div class="tgt-stat-val" style="font-size:14px">${safeAgL}</div><div class="tgt-stat-sub">${safeGL} pool</div></div>
         </div>
         <div class="sc-item" style="border-color:${alertBorder};background:${alertBg}">
           <div class="sc-icon">${isCustom ? '⚙' : '◎'}</div><div><div class="sc-title">${isCustom ? 'Simulated scenario' : 'Performance needed'}</div>
@@ -516,15 +524,16 @@ function renderTargetSimulation(simulatedPos) {
         </div>
         ${blocking.length ? `<div class="sc-item" style="border-color:rgba(122,53,0,.15);background:var(--accent3-l)">
           <div class="sc-icon">⚡</div><div><div class="sc-title">Sailors displaced (${blocking.length})</div>
-          <div class="sc-desc">${blocking.map(b => `<strong>${b.name}</strong> (score ${Math.floor(b.score)}, ${baseSq.get(b.name) || '—'})`).join('<br>')}
-          <br><span style="color:var(--text3);font-size:10px">Each must finish worse than P${simulatedPos} or not compete to be displaced.</span></div></div>` : ''}
-        <div class="sec-lbl">Pool context — ${goal === 'Nat A' ? gL.toUpperCase() : (agL + ' ' + gL).toUpperCase()}</div>${ctxT}${wiS}
+          <div class="sc-desc">${blocking.map(b => `<strong>${escapeHtml(b.name)}</strong> (score ${Math.floor(b.score)}, ${escapeHtml(baseSq.get(b.name) || '—')})`).join('<br>')}
+          <br><span style="color:var(--text3);font-size:10px">Each must finish worse than P${escapeHtml(String(simulatedPos))} or not compete to be displaced.</span></div></div>` : ''}
+        <div class="sec-lbl">Pool context — ${poolLabel}</div>${ctxT}${wiS}
       </div></div>`;
   }
   out.innerHTML = html;
 }
 
 function buildCtxTable(ctx,sailor,baseSq,simSqM,posNeeded){
+  const latestRegs = getActiveRegattas();
   const rows=ctx.map((s,i)=>{
     const isSelf=s.name===sailor.name,isExcl=EXCLUDED.has(s.name);
     const curSq=isExcl?null:(baseSq.get(s.name)||null);
@@ -536,23 +545,22 @@ function buildCtxTable(ctx,sailor,baseSq,simSqM,posNeeded){
     if (isSelf && posNeeded) {
       ns = calcSimScore(s, [{ name: s.name, nett: posNeeded, rank: posNeeded }], true);
     }
-    const scoreD=ns!=null?`<span style="color:var(--text3);text-decoration:line-through;font-size:10px">${Math.floor(s.score)}</span> <strong style="color:var(--accent)">${ns}</strong>`:(s.score<900?Math.floor(s.score):'—');
-    const exclTag=isExcl?`<span class="excl-tag">${EXCLUDED.get(s.name)}</span>`:'';
-    const sqCell=isExcl?'<span class="badge b-n">Excl.</span>':changed?`${squadBadge(curSq)}<span style="color:var(--accent);font-family:var(--mono);font-size:9px"> →${simSq}</span>`:squadBadge(curSq);
+    const scoreD=ns!=null?`<span style="color:var(--text3);text-decoration:line-through;font-size:10px">${Math.floor(s.score)}</span> <strong style="color:var(--accent)">${escapeHtml(String(ns))}</strong>`:(s.score<900?Math.floor(s.score):'—');
+    const exclTag=isExcl?`<span class="excl-tag">${escapeHtml(EXCLUDED.get(s.name))}</span>`:'';
+    const sqCell=isExcl?'<span class="badge b-n">Excl.</span>':changed?`${squadBadge(curSq)}<span style="color:var(--accent);font-family:var(--mono);font-size:9px"> →${escapeHtml(simSq)}</span>`:squadBadge(curSq);
     
-    const latestRegs = getActiveRegattas();
     const ev = latestRegs.map(reg => {
-      const sInReg = reg.sailors.find(x => x.name === s.name);
+      const sInReg = reg.sailors.find(x => isSameSailor(x.name, s.name));
       const val = sInReg ? (sInReg.rank !== undefined && sInReg.rank !== null ? sInReg.rank : sInReg.nett) : null;
-      return sInReg ? `${reg.name.substring(0, 5)} ${val}` : null;
+      return sInReg ? `${escapeHtml(String(reg.name).substring(0, 5))} ${escapeHtml(String(val))}` : null;
     }).filter(Boolean).join(' · ');
 
     return`<tr ${bg} style="${rowSt}">
       <td class="sub-c">#${i+1}</td>
-      <td style="font-weight:${isSelf?700:500};color:${isSelf?'var(--accent)':'inherit'}">${s.name}${exclTag}</td>
-      <td class="sub-c">${s.g}</td>
-      <td class="sub-c">${s.born}</td>
-      <td class="sub-c" style="font-size:10px">${s.club}</td>
+      <td style="font-weight:${isSelf?700:500};color:${isSelf?'var(--accent)':'inherit'}">${escapeHtml(s.name)}${exclTag}</td>
+      <td class="sub-c">${escapeHtml(s.g)}</td>
+      <td class="sub-c">${escapeHtml(String(s.born ?? ''))}</td>
+      <td class="sub-c" style="font-size:10px">${escapeHtml(s.club || '')}</td>
       <td>${sqCell}</td>
       <td style="text-align:center">${scoreD}</td>
       <td style="font-size:9px;color:var(--text3)">${ev}</td>
