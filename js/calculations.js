@@ -5,6 +5,31 @@ function getRegattaDnsPenalty(reg) {
   return total + 1;
 }
 
+/**
+ * Date used for synthetic "next" regatta in simulations.
+ * Prefer the day after the latest active regatta so it sorts after real results;
+ * fall back to COMP_YEAR-12-31 when no dated events exist.
+ */
+function getSimulatedRegattaDate() {
+  const fallback = `${COMP_YEAR}-12-31`;
+  const regs = (typeof getActiveRegattas === 'function' ? getActiveRegattas() : [])
+    .filter(r => r && r.date);
+  if (!regs.length) return fallback;
+
+  let maxDate = regs[0].date;
+  for (let i = 1; i < regs.length; i++) {
+    if (regs[i].date > maxDate) maxDate = regs[i].date;
+  }
+
+  const d = new Date(String(maxDate).slice(0, 10) + 'T00:00:00');
+  if (Number.isNaN(d.getTime())) return fallback;
+  d.setDate(d.getDate() + 1);
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
 function ageGroup(born, refYear = COMP_YEAR) {
   const a = refYear - born;
   return a >= 13 ? 13 : a === 12 ? 12 : a === 11 ? 11 : 10;
@@ -240,7 +265,7 @@ function calcSimScore(sailor, simSailors, rankingMode = false) {
     ...activeRegs,
     {
       name: "Simulated Regatta",
-      date: "2026-12-31",
+      date: getSimulatedRegattaDate(),
       sailors: [],
       dns: DNS - 1
     }
@@ -293,7 +318,7 @@ function runSimulation() {
   const backupRegattas = JSON.parse(JSON.stringify(REGATTAS));
   REGATTAS.push({
     name: "Simulated Regatta",
-    date: "2026-12-31",
+    date: getSimulatedRegattaDate(),
     sailors: simSailors.map(ss => ({ ...ss, g: ss.g, born: ss.born, club: ss.club })),
     dns: DNS - 1
   });
@@ -594,7 +619,7 @@ function buildWhatIf(sailor, goal, ctx) {
     const backupRegattas = JSON.parse(JSON.stringify(REGATTAS));
     REGATTAS.push({
       name: "Simulated Regatta",
-      date: "2026-12-31",
+      date: getSimulatedRegattaDate(),
       sailors: [{ name: sailor.name, g: sailor.g, born: sailor.born, club: sailor.club, nett: pos, rank: pos }],
       dns: DNS - 1
     });

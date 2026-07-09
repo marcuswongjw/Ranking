@@ -77,30 +77,44 @@ function getRegattaPercentileBase(reg) {
 }
 
 const GOLD_ENTRY_MONTHS = { Jan: 0, Feb: 1, Mar: 2, Apr: 3, May: 4, Jun: 5, Jul: 6, Aug: 7, Sep: 8, Oct: 9, Nov: 10, Dec: 11 };
-const GOLD_ENTRY_OPTIONS = Object.freeze([
-  { value: '—', label: '— none / unknown —' },
-  { value: 'Jan 2022', label: 'Jan 2022' },
-  { value: 'Jul 2022', label: 'Jul 2022' },
-  { value: 'Jan 2023', label: 'Jan 2023' },
-  { value: 'Jul 2023', label: 'Jul 2023' },
-  { value: 'Jan 2024', label: 'Jan 2024' },
-  { value: 'Jul 2024', label: 'Jul 2024' },
-  { value: 'Jan 2025', label: 'Jan 2025' },
-  { value: 'Jul 2025', label: 'Jul 2025' },
-  { value: 'Jan 2026', label: 'Jan 2026' },
-  { value: 'Jul 2026', label: 'Jul 2026' }
-]);
+const GOLD_ENTRY_START_YEAR = 2022;
 
+/**
+ * Build Jan/Jul gold-entry options from GOLD_ENTRY_START_YEAR through COMP_YEAR + 1
+ * so the list stays current without annual hardcoding.
+ */
 function getGoldEntryOptions() {
-  return GOLD_ENTRY_OPTIONS;
+  const options = [{ value: '—', label: '— none / unknown —' }];
+  const endYear = COMP_YEAR + 1;
+  for (let y = GOLD_ENTRY_START_YEAR; y <= endYear; y++) {
+    for (const mon of ['Jan', 'Jul']) {
+      const v = `${mon} ${y}`;
+      options.push({ value: v, label: v });
+    }
+  }
+  return options;
+}
+
+/**
+ * Parse an optional positive whole-number rank.
+ * Empty → null; invalid/non-integer or less than 1 → NaN (caller should reject).
+ */
+function parseOptionalPositiveInt(value) {
+  if (value === null || value === undefined) return null;
+  const str = String(value).trim();
+  if (str === '') return null;
+  const n = Number(str);
+  if (!Number.isInteger(n) || n < 1) return NaN;
+  return n;
 }
 
 function populateGoldEntrySelect(selectEl, { selectedValue = '', includeNone = true } = {}) {
   if (!selectEl) return;
 
+  const allOptions = getGoldEntryOptions();
   const options = includeNone
-    ? GOLD_ENTRY_OPTIONS
-    : GOLD_ENTRY_OPTIONS.filter(option => option.value !== '—');
+    ? allOptions
+    : allOptions.filter(option => option.value !== '—');
 
   selectEl.innerHTML = '';
 

@@ -1650,8 +1650,8 @@
     if (!reg) return;
     const s = reg.sailors.find(x => isSameSailor(x.name, sailorName));
     if (s) {
-      const parsed = val.trim() !== '' ? parseInt(val.trim()) : null;
-      if (parsed !== null && (isNaN(parsed) || parsed < 1)) {
+      const parsed = parseOptionalPositiveInt(val);
+      if (Number.isNaN(parsed)) {
         alert("Rank must be a positive integer.");
         renderSpecificRegattaResults();
         return;
