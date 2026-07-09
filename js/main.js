@@ -1162,11 +1162,32 @@
     // Fleet list active/dropped delegation
     document.getElementById('fleet-active-list')?.addEventListener('click', e => {
       const btn = e.target.closest('.fleet-drop-btn');
-      if (btn) dropSailor(sailorNameFromDataAttr(btn.getAttribute('data-sailor')));
+      if (btn) {
+        e.preventDefault();
+        e.stopPropagation();
+        dropSailor(sailorNameFromDataAttr(btn.getAttribute('data-sailor')));
+      }
     });
     document.getElementById('fleet-dropped-list')?.addEventListener('click', e => {
       const btn = e.target.closest('.fleet-promote-btn');
-      if (btn) promoteSailor(sailorNameFromDataAttr(btn.getAttribute('data-sailor')));
+      if (btn) {
+        e.preventDefault();
+        e.stopPropagation();
+        promoteSailor(sailorNameFromDataAttr(btn.getAttribute('data-sailor')));
+      }
+    });
+
+    // Sailor profile: drop / re-promote
+    document.getElementById('sm-drop-btn')?.addEventListener('click', () => {
+      const name = cleanSailorName(document.getElementById('sm-orig-name')?.value || '');
+      if (!name) return;
+      if (!confirm(`Drop "${name}" from the active fleet? They will be hidden from rankings (history kept).`)) return;
+      dropSailor(name);
+    });
+    document.getElementById('sm-promote-btn')?.addEventListener('click', () => {
+      const name = cleanSailorName(document.getElementById('sm-orig-name')?.value || '');
+      if (!name) return;
+      promoteSailor(name);
     });
 
     // Manage Fleet panel inputs/buttons

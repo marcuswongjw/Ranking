@@ -113,6 +113,7 @@ function openSailorModal(sailorName, skipHash) {
   document.getElementById('panel-sailor-analysis').classList.add('active');
 
   renderSailorPerformanceSummary(sailor);
+  updateSailorProfileFleetControls();
 
   // Give each sailor profile its own URL (skip on back/forward navigation)
   if (!skipHash) {
@@ -1583,9 +1584,7 @@ function renderFleetPanel() {
     const sailorRank = SAILORS.find(sr => isSameSailor(sr.name, s.name));
     const rankStr = sailorRank ? `#${sailorRank.cur}` : '—';
     const safeName = escapeHtml(s.name);
-    // encodeURIComponent keeps the raw name intact through data-attributes
-    // (escapeHtml was wrong here — e.g. O'Brien became a different string).
-    const dataName = encodeURIComponent(s.name);
+    const dataName = encodeURIComponent(cleanSailorName(s.name));
     const safeGender = escapeHtml(s.g);
     const safeBorn = escapeHtml(s.born);
     const safeClub = escapeHtml(s.club || 'No Club');
@@ -1610,19 +1609,28 @@ function renderFleetPanel() {
   
   droppedList.innerHTML = droppedSailors.map(s => {
     const isAutoDrop = isAgeDropped(s.born);
+    const isManual = isDroppedSailor(s.name);
     const safeName = escapeHtml(s.name);
-    const dataName = encodeURIComponent(s.name);
+    const dataName = encodeURIComponent(cleanSailorName(s.name));
     const safeGender = escapeHtml(s.g);
     const safeBorn = escapeHtml(s.born);
     const safeClub = escapeHtml(s.club || 'No Club');
-    const actionButton = isAutoDrop
+    let reason = '';
+    if (isAutoDrop && isManual) reason = 'Age limit + manually dropped';
+    else if (isAutoDrop) reason = 'Age limit (cannot re-promote)';
+    else reason = 'Manually dropped';
+
+    // Age-limited sailors stay out of rankings; only manual drops get Re-promote.
+    const actionButton = isAutoDrop && !isManual
       ? `<span class="badge b-n" style="background:var(--red-l); color:var(--red); font-size:9px; padding:3px 6px;">Age Limit (>15)</span>`
-      : `<button class="excl-rm fleet-promote-btn" data-sailor="${dataName}" style="background:var(--accent-l); color:var(--accent); border:1px solid rgba(26,71,42,.15); min-width:90px; height:24px; padding:0 8px;">＋ Re-promote</button>`;
+      : isAutoDrop && isManual
+        ? `<button class="excl-rm fleet-promote-btn" data-sailor="${dataName}" title="Clears manual drop only; age limit still applies" style="background:var(--accent-l); color:var(--accent); border:1px solid rgba(26,71,42,.15); min-width:90px; height:24px; padding:0 8px;">Clear manual drop</button>`
+        : `<button class="excl-rm fleet-promote-btn" data-sailor="${dataName}" style="background:var(--accent-l); color:var(--accent); border:1px solid rgba(26,71,42,.15); min-width:90px; height:24px; padding:0 8px;">＋ Re-promote</button>`;
 
     return `<div class="excl-item" style="margin-bottom:4px; opacity:0.8;">
       <div>
         <div class="excl-name name-c" data-sailor="${dataName}" style="cursor:pointer; color:var(--accent); text-decoration:underline; font-weight:600;">${safeName}</div>
-        <div class="excl-reason">${safeGender} · ${safeBorn} · ${safeClub}</div>
+        <div class="excl-reason">${safeGender} · ${safeBorn} · ${safeClub} · <span style="color:var(--red)">${escapeHtml(reason)}</span></div>
       </div>
       ${actionButton}
     </div>`;
@@ -1631,20 +1639,76 @@ function renderFleetPanel() {
 
 function dropSailor(name) {
   if (!requireEditor()) return;
-  markSailorDropped(name);
+  const cleaned = cleanSailorName(name);
+  if (!cleaned) {
+    alert('Could not drop sailor — missing name.');
+    return;
+  }
+  markSailorDropped(cleaned);
+  sanitizeDroppedSailors();
   recomputeSailors();
   saveData();
   renderAll();
   renderFleetPanel();
+  updateSailorProfileFleetControls();
 }
 
 function promoteSailor(name) {
   if (!requireEditor()) return;
-  unmarkSailorDropped(name);
+  const cleaned = cleanSailorName(name);
+  if (!cleaned) {
+    alert('Could not re-promote sailor — missing name.');
+    return;
+  }
+  unmarkSailorDropped(cleaned);
+  sanitizeDroppedSailors();
+  // If they only appear dropped due to age limit, re-promote cannot override that
+  const sys = getAllSailorsInSystem().find(s => isSameSailor(s.name, cleaned));
+  if (sys && isAgeDropped(sys.born)) {
+    alert(`"${cleaned}" is age-limited (born ${sys.born}) and stays out of active rankings. Only manually dropped sailors can be re-promoted.`);
+  }
   recomputeSailors();
   saveData();
   renderAll();
   renderFleetPanel();
+  updateSailorProfileFleetControls();
+}
+
+/** Sync Drop / Re-promote controls on the sailor profile panel. */
+function updateSailorProfileFleetControls() {
+  const dropBtn = document.getElementById('sm-drop-btn');
+  const promoteBtn = document.getElementById('sm-promote-btn');
+  const statusLbl = document.getElementById('sm-fleet-status-lbl');
+  if (!dropBtn || !promoteBtn || !statusLbl) return;
+
+  const name = cleanSailorName(document.getElementById('sm-orig-name')?.value || '');
+  if (!name) {
+    dropBtn.style.display = 'none';
+    promoteBtn.style.display = 'none';
+    statusLbl.textContent = '';
+    return;
+  }
+
+  const sys = getAllSailorsInSystem().find(s => isSameSailor(s.name, name));
+  const ageDrop = sys ? isAgeDropped(sys.born) : isAgeDropped(document.getElementById('sm-born')?.value);
+  const manualDrop = isDroppedSailor(name);
+
+  if (ageDrop) {
+    dropBtn.style.display = 'none';
+    promoteBtn.style.display = 'none';
+    statusLbl.textContent = `Age limit (born ${sys?.born || '—'}) — hidden from rankings`;
+    statusLbl.style.color = 'var(--red)';
+  } else if (manualDrop) {
+    dropBtn.style.display = 'none';
+    promoteBtn.style.display = '';
+    statusLbl.textContent = 'Dropped — hidden from rankings';
+    statusLbl.style.color = 'var(--red)';
+  } else {
+    dropBtn.style.display = '';
+    promoteBtn.style.display = 'none';
+    statusLbl.textContent = 'Active fleet';
+    statusLbl.style.color = 'var(--accent)';
+  }
 }
 
 function quickFilter(sq) {

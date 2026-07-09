@@ -43,6 +43,7 @@ function requireEditor() {
 
 // Serialise the app state to save to Cloud Firestore
 function serializeState() {
+  if (typeof sanitizeDroppedSailors === 'function') sanitizeDroppedSailors();
   return JSON.parse(JSON.stringify({
     regattas: REGATTAS,
     dropped: Array.from(DROPPED_SAILORS),
@@ -56,6 +57,12 @@ function serializeState() {
 function applyState(s) {
   REGATTAS = Array.isArray(s.regattas) ? s.regattas : [];
   DROPPED_SAILORS = new Set(Array.isArray(s.dropped) ? s.dropped : []);
+  // Clean HTML-entity / URI-mangled names so re-promote and rankings agree
+  if (typeof sanitizeDroppedSailors === 'function') {
+    applyState._droppedWasDirty = sanitizeDroppedSailors();
+  } else {
+    applyState._droppedWasDirty = false;
+  }
   if (s.excluded && typeof s.excluded === 'object' && !Array.isArray(s.excluded)) {
     EXCLUDED = new Map(Object.entries(s.excluded));
   } else {
@@ -138,6 +145,11 @@ async function loadData() {
   }
   recomputeSailors();
   applyEditorUI();
+  // Persist cleaned dropped names so re-promote works after entity/URI corruption
+  if (applyState._droppedWasDirty && isEditor()) {
+    applyState._droppedWasDirty = false;
+    await saveData();
+  }
 }
 
 async function maybeMigrate() {

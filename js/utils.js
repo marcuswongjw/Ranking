@@ -32,22 +32,58 @@ function createSelectOption(value, text) {
 }
 
 /**
+ * Strip URI encoding and HTML entities that can corrupt names stored in
+ * data-attributes or an older DROPPED_SAILORS cloud payload.
+ */
+function cleanSailorName(name) {
+  if (name === null || name === undefined) return '';
+  let s = String(name).trim();
+  if (!s) return '';
+  // Decode URI components (may be applied once or twice by older UI)
+  for (let i = 0; i < 2; i++) {
+    try {
+      const decoded = decodeURIComponent(s);
+      if (decoded === s) break;
+      s = decoded;
+    } catch (_) {
+      break;
+    }
+  }
+  if (typeof document !== 'undefined') {
+    const ta = document.createElement('textarea');
+    ta.innerHTML = s;
+    s = ta.value;
+  } else {
+    s = s
+      .replace(/&#(\d+);/g, (_, n) => String.fromCharCode(parseInt(n, 10)))
+      .replace(/&#x([0-9a-f]+);/gi, (_, n) => String.fromCharCode(parseInt(n, 16)))
+      .replace(/&quot;/g, '"')
+      .replace(/&#39;|&apos;/g, "'")
+      .replace(/&amp;/g, '&')
+      .replace(/&lt;/g, '<')
+      .replace(/&gt;/g, '>');
+  }
+  return s.trim();
+}
+
+/**
  * Normalize sailor names for comparison (case-insensitive, punctuation-agnostic)
  * @param {string} name - Sailor name to normalize
  * @returns {string} - Normalized name
  */
 function normalizeName(name) {
   if (!name) return "";
-  let cached = nameNormalizationCache.get(name);
+  const cleaned = cleanSailorName(name);
+  let cached = nameNormalizationCache.get(cleaned);
   if (cached !== undefined) return cached;
-  const normalized = String(name)
+  const normalized = cleaned
     .toLowerCase()
     .replace(/[,.-]/g, ' ')
     .split(/\s+/)
     .filter(Boolean)
     .sort()
     .join(' ');
-  nameNormalizationCache.set(name, normalized);
+  nameNormalizationCache.set(cleaned, normalized);
   return normalized;
 }
 
@@ -66,13 +102,7 @@ function isSameSailor(nameA, nameB) {
  * Fleet buttons use encodeURIComponent; other UI may store plain / HTML-decoded names.
  */
 function sailorNameFromDataAttr(raw) {
-  if (raw === null || raw === undefined) return '';
-  const s = String(raw);
-  try {
-    return decodeURIComponent(s);
-  } catch (_) {
-    return s;
-  }
+  return cleanSailorName(raw);
 }
 
 /**
@@ -81,27 +111,52 @@ function sailorNameFromDataAttr(raw) {
  */
 function isDroppedSailor(name) {
   if (!name) return false;
-  if (DROPPED_SAILORS.has(name)) return true;
+  const cleaned = cleanSailorName(name);
+  if (!cleaned) return false;
+  if (DROPPED_SAILORS.has(cleaned) || DROPPED_SAILORS.has(name)) return true;
   for (const d of DROPPED_SAILORS) {
-    if (isSameSailor(d, name)) return true;
+    if (isSameSailor(d, cleaned)) return true;
   }
   return false;
 }
 
+/**
+ * Collapse/clean the dropped set (call after load or before save).
+ * @returns {boolean} true if the set changed
+ */
+function sanitizeDroppedSailors() {
+  const before = Array.from(DROPPED_SAILORS).slice().sort().join('\0');
+  const next = new Set();
+  for (const d of Array.from(DROPPED_SAILORS)) {
+    const c = cleanSailorName(d);
+    if (!c) continue;
+    let dupe = false;
+    for (const x of next) {
+      if (isSameSailor(x, c)) { dupe = true; break; }
+    }
+    if (!dupe) next.add(c);
+  }
+  DROPPED_SAILORS = next;
+  const after = Array.from(DROPPED_SAILORS).slice().sort().join('\0');
+  return before !== after;
+}
+
 /** Add name to the dropped set, collapsing any prior aliases of the same person. */
 function markSailorDropped(name) {
-  if (!name) return;
+  const cleaned = cleanSailorName(name);
+  if (!cleaned) return;
   for (const d of Array.from(DROPPED_SAILORS)) {
-    if (isSameSailor(d, name)) DROPPED_SAILORS.delete(d);
+    if (isSameSailor(d, cleaned)) DROPPED_SAILORS.delete(d);
   }
-  DROPPED_SAILORS.add(name);
+  DROPPED_SAILORS.add(cleaned);
 }
 
 /** Remove this person (any name spelling) from the dropped set. */
 function unmarkSailorDropped(name) {
-  if (!name) return;
+  const cleaned = cleanSailorName(name);
+  if (!cleaned) return;
   for (const d of Array.from(DROPPED_SAILORS)) {
-    if (isSameSailor(d, name)) DROPPED_SAILORS.delete(d);
+    if (isSameSailor(d, cleaned)) DROPPED_SAILORS.delete(d);
   }
 }
 

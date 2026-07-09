@@ -139,12 +139,35 @@ function recomputeSailors() {
   const latestRegs = getActiveRegattas();
   const sailorMap = new Map();
   const normalizedToOriginal = new Map();
-  
+
+  // Resolve drop/age by identity (normalized name), not per-row spelling/born.
+  // Otherwise a dropped sailor can re-enter rankings from a regatta row that
+  // uses a slightly different name or birth year.
+  const droppedNorms = new Set();
+  const ageDroppedNorms = new Set();
+  const bornByNorm = new Map();
+  const profileByNorm = new Map();
+
+  for (const d of DROPPED_SAILORS) {
+    const n = normalizeName(d);
+    if (n) droppedNorms.add(n);
+  }
+
   const allSystemSailors = getAllSailorsInSystem();
   allSystemSailors.forEach(s => {
+    const norm = normalizeName(s.name);
+    if (!norm) return;
+    if (!profileByNorm.has(norm)) profileByNorm.set(norm, s);
+    if (s.born && !bornByNorm.has(norm)) bornByNorm.set(norm, s.born);
+    if (isDroppedSailor(s.name)) droppedNorms.add(norm);
+    if (isAgeDropped(s.born)) ageDroppedNorms.add(norm);
+  });
+
+  allSystemSailors.forEach(s => {
+    const norm = normalizeName(s.name);
+    if (droppedNorms.has(norm) || ageDroppedNorms.has(norm)) return;
     if (isDroppedSailor(s.name)) return;
     if (isAgeDropped(s.born)) return;
-    const norm = normalizeName(s.name);
     normalizedToOriginal.set(norm, s.name);
     sailorMap.set(s.name, {
       name: s.name,
@@ -159,34 +182,37 @@ function recomputeSailors() {
   
   latestRegs.forEach((reg, regIdx) => {
     reg.sailors.forEach(s => {
-      // Normalized drop check — exact Set.has() missed spelling/case variants
-      // and re-added the sailor from regatta rows into the rankings table.
-      if (isDroppedSailor(s.name)) return;
-      if (isAgeDropped(s.born)) return;
-      
       const norm = normalizeName(s.name);
+      if (!norm) return;
+      if (droppedNorms.has(norm) || isDroppedSailor(s.name)) return;
+
+      const profile = profileByNorm.get(norm);
+      const resolvedBorn = (profile && profile.born) || bornByNorm.get(norm) || s.born;
+      if (ageDroppedNorms.has(norm) || isAgeDropped(resolvedBorn) || isAgeDropped(s.born)) return;
+      
       let matchedKey = normalizedToOriginal.get(norm);
       if (!matchedKey) {
-        matchedKey = s.name;
+        matchedKey = (profile && profile.name) || s.name;
         normalizedToOriginal.set(norm, matchedKey);
         sailorMap.set(matchedKey, {
-          name: s.name,
-          g: s.g || s.gender,
-          born: s.born,
-          club: s.club,
-          school: s.school || '',
+          name: matchedKey,
+          g: (profile && profile.g) || s.g || s.gender,
+          born: resolvedBorn,
+          club: (profile && profile.club) || s.club,
+          school: (profile && profile.school) || s.school || '',
           scores: Array(latestRegs.length).fill(null),
           ranks: Array(latestRegs.length).fill(null)
         });
       }
       const sailorObj = sailorMap.get(matchedKey);
+      if (!sailorObj) return;
       const rankVal = (s.rank !== undefined && s.rank !== null) ? s.rank : s.nett;
       
       sailorObj.scores[regIdx] = rankVal;
       sailorObj.ranks[regIdx] = rankVal;
       
       if (s.g && !sailorObj.g) sailorObj.g = s.g;
-      if (s.born && !sailorObj.born) sailorObj.born = s.born;
+      if (resolvedBorn && !sailorObj.born) sailorObj.born = resolvedBorn;
       if (s.club && !sailorObj.club) sailorObj.club = s.club;
       if (s.school && !sailorObj.school) sailorObj.school = s.school;
     });

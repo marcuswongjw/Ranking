@@ -694,6 +694,14 @@
             </div>
             
           </div>
+          <div class="editor-only" id="sm-fleet-actions" style="display:flex; flex-wrap:wrap; align-items:center; gap:10px; margin-bottom:14px; padding:10px 12px; background:var(--bg2); border:1px solid var(--border); border-radius:var(--r);">
+            <span style="font-family:var(--mono); font-size:9px; letter-spacing:.08em; text-transform:uppercase; color:var(--text3);">Fleet</span>
+            <span id="sm-fleet-status-lbl" style="font-size:11px; font-weight:600; color:var(--accent);">Active fleet</span>
+            <div style="margin-left:auto; display:flex; gap:8px;">
+              <button type="button" id="sm-drop-btn" style="padding:6px 12px; background:var(--red-l); color:var(--red); border:1px solid rgba(138,28,28,.2); border-radius:var(--r); font-size:11px; font-weight:600; cursor:pointer; font-family:var(--mono);">✕ Drop from fleet</button>
+              <button type="button" id="sm-promote-btn" style="display:none; padding:6px 12px; background:var(--accent-l); color:var(--accent); border:1px solid rgba(26,71,42,.2); border-radius:var(--r); font-size:11px; font-weight:600; cursor:pointer; font-family:var(--mono);">＋ Re-promote</button>
+            </div>
+          </div>
           <div style="display:flex; justify-content:flex-end; gap:8px;">
             <button class="back-to-rankings-btn" style="padding:7px 14px; background:var(--bg2); border:1px solid var(--border); border-radius:var(--r); font-size:11px; cursor:pointer; font-family:var(--mono);">Cancel</button>
             <button class="editor-only" id="sm-save-btn" style="padding:7px 16px; background:var(--accent); color:#fff; border:none; border-radius:var(--r); font-size:11px; font-weight:600; cursor:pointer; font-family:var(--mono);">Save Changes</button>
