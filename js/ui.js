@@ -1202,6 +1202,82 @@ function renderMajorCompsPanel() {
   `;
 }
 
+const HG_SQUAD_PERIODS = [
+  { key: 'squadJul24', label: 'Squad Jul 24' },
+  { key: 'squadJan25', label: 'Squad Jan 25' },
+  { key: 'squadJul25', label: 'Squad Jul 25' },
+  { key: 'squadJan26', label: 'Squad Jan 26' },
+  { key: 'squadJul26', label: 'Squad Jul 26' }
+];
+
+const HG_COLUMN_DEFS = [
+  { id: 'rank', label: 'Rank', locked: false },
+  { id: 'name', label: 'Sailor', locked: true },
+  { id: 'gender', label: 'Gender', locked: false },
+  { id: 'enteredGold', label: 'Entered Gold', locked: false },
+  { id: 'valJun24', label: 'Jun 24 rank', locked: false },
+  { id: 'valDec24', label: 'Dec 24 rank', locked: false },
+  { id: 'valJun25', label: 'Jun 25 rank', locked: false },
+  { id: 'valDec25', label: 'Dec 25 rank', locked: false },
+  { id: 'valJun26', label: 'Jun 26 rank', locked: false },
+  ...HG_SQUAD_PERIODS.map(p => ({ id: p.key, label: p.label, locked: false, isSquad: true }))
+];
+
+function getHgColumnVisibility() {
+  if (!hgColumnVisibility) {
+    hgColumnVisibility = {};
+    HG_COLUMN_DEFS.forEach(c => {
+      // Default: core cols + historical ranks + current period squad (Jan 25)
+      if (c.id === 'name' || c.id === 'rank' || c.id === 'gender' || c.id === 'enteredGold') {
+        hgColumnVisibility[c.id] = true;
+      } else if (c.id.startsWith('val')) {
+        hgColumnVisibility[c.id] = true;
+      } else if (c.id === 'squadJan25') {
+        hgColumnVisibility[c.id] = true;
+      } else {
+        hgColumnVisibility[c.id] = false;
+      }
+    });
+  }
+  return hgColumnVisibility;
+}
+
+function isHgColVisible(id) {
+  const vis = getHgColumnVisibility();
+  if (id === 'name') return true;
+  return !!vis[id];
+}
+
+function resolveSailorMetadataKey(name) {
+  const cleaned = cleanSailorName(name);
+  if (!cleaned) return cleaned;
+  if (SAILOR_METADATA[cleaned]) return cleaned;
+  for (const k of Object.keys(SAILOR_METADATA)) {
+    if (isSameSailor(k, cleaned)) return k;
+  }
+  try {
+    const sys = getAllSailorsInSystem().find(s => isSameSailor(s.name, cleaned));
+    if (sys) return sys.name;
+  } catch (_) { /* getAllSailorsInSystem may be unavailable in isolation */ }
+  return cleaned;
+}
+
+function populateHgBulkValueSelect() {
+  const field = document.getElementById('hg-bulk-field')?.value || 'enteredGold';
+  const valueEl = document.getElementById('hg-bulk-value');
+  if (!valueEl) return;
+  if (field === 'enteredGold') {
+    populateGoldEntrySelect(valueEl);
+  } else if (field.startsWith('squad')) {
+    valueEl.innerHTML = `
+      <option value="">— clear / none —</option>
+      <option value="Nat A">Nat A</option>
+      <option value="Nat B">Nat B</option>
+      <option value="DS">DS</option>
+    `;
+  }
+}
+
 function renderHistGoldPanel() {
   const container = document.getElementById('hist-gold-table-container');
   if (!container) return;
@@ -1210,9 +1286,11 @@ function renderHistGoldPanel() {
   const onlyActive = document.getElementById('hg-only-active')?.checked ?? true;
   const squadPeriodEl = document.getElementById('hg-squad-period');
   const squadFilterEl = document.getElementById('hg-squad-filter');
+  const squadGenderEl = document.getElementById('hg-squad-gender');
   const squadPreviewEl = document.getElementById('hg-squad-preview');
   const squadPeriodKey = squadPeriodEl?.value || 'squadJan25';
   const squadFilterValue = squadFilterEl?.value || '';
+  const squadGenderValue = squadGenderEl?.value || '';
   const squadPeriodLabel = {
     squadJul24: 'Jul 24',
     squadJan25: 'Jan 25',
@@ -1222,51 +1300,115 @@ function renderHistGoldPanel() {
   }[squadPeriodKey] || 'Period';
   
   const isEditable = isEditor();
+  const colVis = getHgColumnVisibility();
+  // Always surface the selected squad period column
+  colVis[squadPeriodKey] = true;
 
-  if (squadPeriodEl && squadFilterEl && !squadPeriodEl.dataset.bound) {
+  if (squadPeriodEl && !squadPeriodEl.dataset.bound) {
     squadPeriodEl.addEventListener('change', () => renderHistGoldPanel());
-    squadFilterEl.addEventListener('change', () => renderHistGoldPanel());
     squadPeriodEl.dataset.bound = '1';
+  }
+  if (squadFilterEl && !squadFilterEl.dataset.bound) {
+    squadFilterEl.addEventListener('change', () => renderHistGoldPanel());
     squadFilterEl.dataset.bound = '1';
   }
+  if (squadGenderEl && !squadGenderEl.dataset.bound) {
+    squadGenderEl.addEventListener('change', () => renderHistGoldPanel());
+    squadGenderEl.dataset.bound = '1';
+  }
+
+  // Column visibility toggles
+  const colToggleHost = document.getElementById('hg-column-toggles');
+  if (colToggleHost && !colToggleHost.dataset.bound) {
+    colToggleHost.innerHTML = HG_COLUMN_DEFS.map(c => {
+      const checked = isHgColVisible(c.id) ? 'checked' : '';
+      const disabled = c.locked ? 'disabled' : '';
+      return `<label style="display:inline-flex; align-items:center; gap:5px; cursor:${c.locked ? 'default' : 'pointer'}; color:var(--text2);">
+        <input type="checkbox" class="hg-col-toggle" data-col="${c.id}" ${checked} ${disabled} style="width:14px; height:14px; cursor:pointer;">
+        ${escapeHtml(c.label)}
+      </label>`;
+    }).join('');
+    colToggleHost.addEventListener('change', e => {
+      const cb = e.target.closest('.hg-col-toggle');
+      if (!cb) return;
+      const id = cb.getAttribute('data-col');
+      if (!id || id === 'name') return;
+      getHgColumnVisibility()[id] = cb.checked;
+      renderHistGoldPanel();
+    });
+    colToggleHost.dataset.bound = '1';
+  } else if (colToggleHost) {
+    // Keep checkbox state in sync without rebuilding (preserves listeners)
+    colToggleHost.querySelectorAll('.hg-col-toggle').forEach(cb => {
+      const id = cb.getAttribute('data-col');
+      if (id) cb.checked = isHgColVisible(id);
+    });
+  }
+  if (!document.getElementById('hg-cols-all')?.dataset.bound) {
+    document.getElementById('hg-cols-all')?.addEventListener('click', () => {
+      HG_COLUMN_DEFS.forEach(c => { getHgColumnVisibility()[c.id] = true; });
+      renderHistGoldPanel();
+    });
+    document.getElementById('hg-cols-none')?.addEventListener('click', () => {
+      const period = document.getElementById('hg-squad-period')?.value || 'squadJan25';
+      HG_COLUMN_DEFS.forEach(c => {
+        getHgColumnVisibility()[c.id] = !!(c.locked || c.id === 'rank' || c.id === 'gender' || c.id === period);
+      });
+      renderHistGoldPanel();
+    });
+    if (document.getElementById('hg-cols-all')) document.getElementById('hg-cols-all').dataset.bound = '1';
+  }
   
-  // Render the bulk-edit toolbar only once (avoid re-rendering if already present)
+  // Bulk-edit toolbar (Entered Gold + Squad status periods)
   let bulkBar = document.getElementById('hg-bulk-bar');
   if (isEditable && !bulkBar) {
-    const filterCard = document.querySelector('#panel-hist-gold .card:nth-child(2)');
-    if (filterCard) {
+    const colsCard = document.querySelector('#panel-hist-gold .card:nth-child(3)')
+      || document.querySelector('#panel-hist-gold .card:nth-child(2)');
+    if (colsCard) {
       bulkBar = document.createElement('div');
       bulkBar.id = 'hg-bulk-bar';
       bulkBar.className = 'card';
       bulkBar.style.cssText = 'margin-bottom:18px; padding:12px 16px; display:flex; flex-wrap:wrap; align-items:center; gap:12px;';
+      const squadOpts = HG_SQUAD_PERIODS.map(p =>
+        `<option value="${p.key}">${escapeHtml(p.label)}</option>`
+      ).join('');
       bulkBar.innerHTML = `
         <span style="font-size:12px; font-weight:600; font-family:var(--mono); color:var(--text2);">Bulk Edit:</span>
         <select id="hg-bulk-field" style="height:30px; font-size:12px; background:var(--bg2); border:1px solid var(--border); border-radius:var(--r); color:var(--text); padding:0 8px; cursor:pointer;">
           <option value="enteredGold">Entered Gold</option>
+          ${squadOpts}
         </select>
         <select id="hg-bulk-value" style="height:30px; font-size:12px; background:var(--bg2); border:1px solid var(--border); border-radius:var(--r); color:var(--text); padding:0 8px; cursor:pointer;"></select>
         <button id="hg-bulk-apply" style="padding:5px 14px; background:var(--accent); color:#fff; border:none; border-radius:var(--r); font-size:11px; font-weight:600; cursor:pointer; font-family:var(--mono); transition:all .15s;">Apply to selected</button>
         <span id="hg-bulk-count" style="font-size:11px; color:var(--text3); font-family:var(--mono);">0 selected</span>
       `;
-      filterCard.insertAdjacentElement('afterend', bulkBar);
-      const hgBulkValueSelect = document.getElementById('hg-bulk-value');
-      if (hgBulkValueSelect) populateGoldEntrySelect(hgBulkValueSelect);
+      colsCard.insertAdjacentElement('afterend', bulkBar);
+      populateHgBulkValueSelect();
 
+      document.getElementById('hg-bulk-field')?.addEventListener('change', () => populateHgBulkValueSelect());
       document.getElementById('hg-bulk-apply')?.addEventListener('click', () => {
         if (!requireEditor()) return;
         const checked = document.querySelectorAll('.hg-row-cb:checked');
         if (checked.length === 0) { alert('No sailors selected.'); return; }
         const field = document.getElementById('hg-bulk-field')?.value;
         const val = document.getElementById('hg-bulk-value')?.value;
+        if (!field) return;
         checked.forEach(cb => {
-          const name = cb.getAttribute('data-sailor');
+          const name = sailorNameFromDataAttr(cb.getAttribute('data-sailor'));
           if (!name) return;
-          if (!SAILOR_METADATA[name]) SAILOR_METADATA[name] = {};
-          if (field === 'enteredGold') SAILOR_METADATA[name].enteredGold = val;
+          const key = resolveSailorMetadataKey(name);
+          if (!SAILOR_METADATA[key]) SAILOR_METADATA[key] = {};
+          if (field === 'enteredGold') {
+            SAILOR_METADATA[key].enteredGold = val;
+          } else if (field.startsWith('squad')) {
+            if (val) SAILOR_METADATA[key][field] = val;
+            else delete SAILOR_METADATA[key][field];
+          }
         });
         recomputeSailors();
         saveData();
         renderAll();
+        renderHistGoldPanel();
       });
     }
   } else if (!isEditable && bulkBar) {
@@ -1313,7 +1455,7 @@ function renderHistGoldPanel() {
     const valDec25 = meta.histDec25 !== undefined && meta.histDec25 !== null ? meta.histDec25 : '';
     const valJun26 = meta.histJun26 !== undefined && meta.histJun26 !== null ? meta.histJun26 : '';
 
-    return {
+    const row = {
       name,
       curRank,
       gender,
@@ -1325,19 +1467,25 @@ function renderHistGoldPanel() {
       valJun26,
       isActive: !!activeObj
     };
+    HG_SQUAD_PERIODS.forEach(p => {
+      row[p.key] = meta[p.key] || '';
+    });
+    return row;
   });
 
   const allSquadSailors = list.map(item => {
-    const meta = SAILOR_METADATA[item.name] || {};
-    const squad = meta[squadPeriodKey] || '';
+    const squad = item[squadPeriodKey] || '';
     return { ...item, squad };
   });
 
   const squadPreview = allSquadSailors.filter(item => {
     if (squadFilterValue) {
-      return item.squad === squadFilterValue;
+      if (item.squad !== squadFilterValue) return false;
+    } else if (!item.squad || item.squad === '—') {
+      return false;
     }
-    return item.squad && item.squad !== '—';
+    if (squadGenderValue && item.gender !== squadGenderValue) return false;
+    return true;
   }).sort((a, b) => a.name.localeCompare(b.name));
 
   list = list.filter(item => {
@@ -1346,23 +1494,26 @@ function renderHistGoldPanel() {
     return true;
   });
 
+  const genderPreviewLabel = squadGenderValue === 'M' ? 'Boys' : squadGenderValue === 'F' ? 'Girls' : 'All';
+
   if (squadPreviewEl) {
     if (squadPreview.length === 0) {
       squadPreviewEl.innerHTML = `
         <div style="font-size:11px; font-weight:600; color:var(--text2); margin-bottom:4px;">
-          ${escapeHtml(squadFilterValue || 'All squads')} in ${squadPeriodLabel} (0)
+          ${escapeHtml(squadFilterValue || 'All squads')} · ${genderPreviewLabel} · ${squadPeriodLabel} (0)
         </div>
-        <div class="squad-preview-empty">No sailors match this squad period.</div>
+        <div class="squad-preview-empty">No sailors match this squad period / gender filter.</div>
       `;
     } else {
       const renderItem = item => {
         const sn = escapeHtml(item.name);
-        const meta = SAILOR_METADATA[item.name] || {};
-        const enteredGold = meta.enteredGold || '—';
+        const dataName = encodeURIComponent(cleanSailorName(item.name));
+        const enteredGold = item.enteredGold || '—';
+        const gTag = item.gender === 'M' || item.gender === 'F' ? item.gender : '';
         return `
-          <div class="squad-preview-item name-c" data-sailor="${sn}" title="Click to view ${sn}'s profile">
-            <span style="font-weight: 500;">${sn}</span>
-            <span style="font-size: 9px; color: var(--text3); font-family: var(--mono);">${enteredGold}</span>
+          <div class="squad-preview-item name-c" data-sailor="${dataName}" title="Click to view ${sn}'s profile">
+            <span style="font-weight: 500;">${sn}${gTag ? ` <span style="color:var(--text3);font-size:9px;font-family:var(--mono)">${gTag}</span>` : ''}</span>
+            <span style="font-size: 9px; color: var(--text3); font-family: var(--mono);">${escapeHtml(enteredGold)}</span>
           </div>
         `;
       };
@@ -1373,12 +1524,12 @@ function renderHistGoldPanel() {
         const content = squadPreview.map(renderItem).join('');
         squadPreviewEl.innerHTML = `
           <div style="font-size:11px; font-weight:600; color:var(--text2); margin-bottom:4px;">
-            ${squadFilterValue} Squad in ${squadPeriodLabel} (${squadPreview.length})
+            ${escapeHtml(squadFilterValue)} · ${genderPreviewLabel} · ${squadPeriodLabel} (${squadPreview.length})
           </div>
           <div class="squad-preview-grid">
             <div class="squad-preview-col" style="grid-column: 1 / -1; background: var(--bg2);">
               <div class="squad-preview-hdr ${badgeCls}">
-                <span>${squadFilterValue} Squad Members</span>
+                <span>${escapeHtml(squadFilterValue)} Squad Members</span>
                 <span class="badge ${displayBadgeCls}">${squadPreview.length}</span>
               </div>
               <div class="squad-preview-list" style="max-height: 350px; display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 8px;">
@@ -1398,7 +1549,7 @@ function renderHistGoldPanel() {
 
         squadPreviewEl.innerHTML = `
           <div style="font-size:11px; font-weight:600; color:var(--text2); margin-bottom:4px;">
-            Squad Cohorts in ${squadPeriodLabel} (${squadPreview.length})
+            Squad Cohorts · ${genderPreviewLabel} · ${squadPeriodLabel} (${squadPreview.length})
           </div>
           <div class="squad-preview-grid">
             <div class="squad-preview-col">
@@ -1458,6 +1609,12 @@ function renderHistGoldPanel() {
     } else if (hgSortKey === 'valJun26') {
       valA = getHistoricalSortValue(a, 'valJun26', '2026-06-30');
       valB = getHistoricalSortValue(b, 'valJun26', '2026-06-30');
+    } else if (String(hgSortKey).startsWith('squad')) {
+      valA = squadNameOrder(a[hgSortKey] || null);
+      valB = squadNameOrder(b[hgSortKey] || null);
+    } else {
+      valA = a.curRank !== null ? a.curRank : 9999;
+      valB = b.curRank !== null ? b.curRank : 9999;
     }
 
     if (valA === valB) {
@@ -1477,64 +1634,102 @@ function renderHistGoldPanel() {
   });
 
   const rows = list.map(s => {
-    function renderCell(field, val, dateStr) {
+    function renderRankCell(field, val, dateStr) {
+      if (!isHgColVisible(field === 'histJun24' ? 'valJun24'
+        : field === 'histDec24' ? 'valDec24'
+        : field === 'histJun25' ? 'valJun25'
+        : field === 'histDec25' ? 'valDec25'
+        : field === 'histJun26' ? 'valJun26' : field)) {
+        return '';
+      }
+      const dataName = encodeURIComponent(cleanSailorName(s.name));
       if (isEditable) {
         return `<td style="text-align:center; padding:4px;">
           <input type="text" class="hist-direct-input" value="${val !== '' ? '#' + val : ''}" 
-            data-sailor="${escapeHtml(s.name)}" data-field="${field}"
+            data-sailor="${dataName}" data-field="${field}"
             placeholder="-">
         </td>`;
-      } else {
-        const displayVal = val !== '' ? `#${val}` : getHistoricalRank(s.name, dateStr);
-        return `<td style="text-align:center; font-family:var(--mono); font-size:10.5px">${escapeHtml(displayVal)}</td>`;
       }
+      const displayVal = val !== '' ? `#${val}` : getHistoricalRank(s.name, dateStr);
+      return `<td style="text-align:center; font-family:var(--mono); font-size:10.5px">${escapeHtml(displayVal)}</td>`;
+    }
+
+    function renderSquadCell(field) {
+      if (!isHgColVisible(field)) return '';
+      const cur = s[field] || '';
+      const dataName = encodeURIComponent(cleanSailorName(s.name));
+      if (isEditable) {
+        return `<td style="text-align:center; padding:4px;">
+          <select class="hg-squad-select" data-sailor="${dataName}" data-field="${field}"
+            style="height:26px; font-size:10px; max-width:92px; ${cur ? 'border-color:var(--accent); font-weight:600;' : ''}">
+            <option value="">—</option>
+            ${['Nat A', 'Nat B', 'DS'].map(o =>
+              `<option value="${o}" ${cur === o ? 'selected' : ''}>${o}</option>`
+            ).join('')}
+          </select>
+        </td>`;
+      }
+      return `<td style="text-align:center;">${cur ? squadBadge(cur) : '<span class="badge b-n">—</span>'}</td>`;
     }
 
     const rankStr = s.isActive ? s.curRank : '<span style="color:var(--text3)">—</span>';
     const safeName = escapeHtml(s.name);
+    const dataName = encodeURIComponent(cleanSailorName(s.name));
     const safeGender = escapeHtml(s.gender);
     const safeEntered = escapeHtml(s.enteredGold);
     const cbCol = isEditable
-      ? `<td style="text-align:center; padding:4px;"><input type="checkbox" class="hg-row-cb" data-sailor="${safeName}" style="width:15px; height:15px; cursor:pointer;"></td>`
+      ? `<td style="text-align:center; padding:4px;"><input type="checkbox" class="hg-row-cb" data-sailor="${dataName}" style="width:15px; height:15px; cursor:pointer;"></td>`
       : '';
 
     return `<tr style="${!s.isActive ? 'opacity:0.65; background:var(--bg2);' : ''}">
       ${cbCol}
-      <td class="rank-c" style="text-align:center;">${rankStr}</td>
-      <td class="name-c" data-sailor="${safeName}" style="cursor:pointer; color:var(--accent); font-weight:600; text-decoration:underline;">${safeName}</td>
-      <td class="sub-c" style="text-align:center;">${safeGender}</td>
-      <td style="font-family:var(--sans);font-size:11px;color:var(--text2)">${safeEntered}</td>
-      ${renderCell('histJun24', s.valJun24, '2024-06-30')}
-      ${renderCell('histDec24', s.valDec24, '2024-12-31')}
-      ${renderCell('histJun25', s.valJun25, '2025-06-30')}
-      ${renderCell('histDec25', s.valDec25, '2025-12-31')}
-      ${renderCell('histJun26', s.valJun26, '2026-06-30')}
+      ${isHgColVisible('rank') ? `<td class="rank-c" style="text-align:center;">${rankStr}</td>` : ''}
+      <td class="name-c" data-sailor="${dataName}" style="cursor:pointer; color:var(--accent); font-weight:600; text-decoration:underline;">${safeName}</td>
+      ${isHgColVisible('gender') ? `<td class="sub-c" style="text-align:center;">${safeGender}</td>` : ''}
+      ${isHgColVisible('enteredGold') ? `<td style="font-family:var(--sans);font-size:11px;color:var(--text2)">${safeEntered}</td>` : ''}
+      ${renderRankCell('histJun24', s.valJun24, '2024-06-30')}
+      ${renderRankCell('histDec24', s.valDec24, '2024-12-31')}
+      ${renderRankCell('histJun25', s.valJun25, '2025-06-30')}
+      ${renderRankCell('histDec25', s.valDec25, '2025-12-31')}
+      ${renderRankCell('histJun26', s.valJun26, '2026-06-30')}
+      ${HG_SQUAD_PERIODS.map(p => renderSquadCell(p.key)).join('')}
     </tr>`;
   }).join('');
 
   const selectAllTh = isEditable
     ? `<th style="width:36px; text-align:center;"><input type="checkbox" id="hg-select-all" title="Select all" style="width:15px;height:15px;cursor:pointer;"></th>`
     : '';
-  const colSpan = isEditable ? 10 : 9;
+
+  const th = (id, sortKey, label, style = '') =>
+    isHgColVisible(id)
+      ? `<th style="${style} cursor:pointer; user-select:none" class="hg-sort-header" data-sort="${sortKey}">${label}${getHgSortIndicator(sortKey)}</th>`
+      : '';
+
+  const headerCells = [
+    selectAllTh,
+    th('rank', 'rank', 'Rank', 'width:46px;'),
+    th('name', 'name', 'Sailor', 'width:180px;'),
+    th('gender', 'gender', 'G', 'width:32px; text-align:center;'),
+    th('enteredGold', 'enteredGold', 'Entered Gold', 'width:100px; text-align:center;'),
+    th('valJun24', 'valJun24', 'Jun 24', 'width:70px; text-align:center;'),
+    th('valDec24', 'valDec24', 'Dec 24', 'width:70px; text-align:center;'),
+    th('valJun25', 'valJun25', 'Jun 25', 'width:70px; text-align:center;'),
+    th('valDec25', 'valDec25', 'Dec 25', 'width:70px; text-align:center;'),
+    th('valJun26', 'valJun26', 'Jun 26', 'width:70px; text-align:center;'),
+    ...HG_SQUAD_PERIODS.map(p => th(p.key, p.key, p.label.replace('Squad ', ''), 'width:95px; text-align:center;'))
+  ].join('');
+
+  const visibleCount = HG_COLUMN_DEFS.filter(c => isHgColVisible(c.id)).length + (isEditable ? 1 : 0);
 
   container.innerHTML = `
-    <table>
+    <table class="rankings-table" style="min-width:100%;">
       <thead>
         <tr>
-          ${selectAllTh}
-          <th style="width:46px; cursor:pointer; user-select:none" class="hg-sort-header" data-sort="rank">Rank${getHgSortIndicator('rank')}</th>
-          <th style="width:180px; cursor:pointer; user-select:none" class="hg-sort-header" data-sort="name">Sailor${getHgSortIndicator('name')}</th>
-          <th style="width:32px; text-align:center; cursor:pointer; user-select:none" class="hg-sort-header" data-sort="gender">G${getHgSortIndicator('gender')}</th>
-          <th style="width:100px; text-align:center; cursor:pointer; user-select:none" class="hg-sort-header" data-sort="enteredGold">Entered Gold${getHgSortIndicator('enteredGold')}</th>
-          <th style="width:70px; text-align:center; cursor:pointer; user-select:none" class="hg-sort-header" data-sort="valJun24">Jun 24${getHgSortIndicator('valJun24')}</th>
-          <th style="width:70px; text-align:center; cursor:pointer; user-select:none" class="hg-sort-header" data-sort="valDec24">Dec 24${getHgSortIndicator('valDec24')}</th>
-          <th style="width:70px; text-align:center; cursor:pointer; user-select:none" class="hg-sort-header" data-sort="valJun25">Jun 25${getHgSortIndicator('valJun25')}</th>
-          <th style="width:70px; text-align:center; cursor:pointer; user-select:none" class="hg-sort-header" data-sort="valDec25">Dec 25${getHgSortIndicator('valDec25')}</th>
-          <th style="width:70px; text-align:center; cursor:pointer; user-select:none" class="hg-sort-header" data-sort="valJun26">Jun 26${getHgSortIndicator('valJun26')}</th>
+          ${headerCells}
         </tr>
       </thead>
       <tbody>
-        ${rows || `<tr><td colspan="${colSpan}" style="text-align:center; color:var(--text3); padding:16px;">No records match criteria.</td></tr>`}
+        ${rows || `<tr><td colspan="${Math.max(visibleCount, 2)}" style="text-align:center; color:var(--text3); padding:16px;">No records match criteria.</td></tr>`}
       </tbody>
     </table>
   `;
@@ -1547,7 +1742,6 @@ function renderHistGoldPanel() {
       updateBulkCount();
     });
   }
-  // Wire up individual checkboxes to update count
   container.querySelectorAll('.hg-row-cb').forEach(cb => {
     cb.addEventListener('change', updateBulkCount);
   });

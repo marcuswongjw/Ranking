@@ -1305,7 +1305,7 @@
           input.value = input.defaultValue || '';
           return;
         }
-        const name = input.getAttribute('data-sailor');
+        const name = sailorNameFromDataAttr(input.getAttribute('data-sailor'));
         const field = input.getAttribute('data-field');
         let val = input.value.trim().replace('#', '');
         let num = null;
@@ -1319,9 +1319,30 @@
           num = n;
         }
         
-        if (!SAILOR_METADATA[name]) SAILOR_METADATA[name] = {};
-        SAILOR_METADATA[name][field] = num;
+        const key = typeof resolveSailorMetadataKey === 'function' ? resolveSailorMetadataKey(name) : name;
+        if (!SAILOR_METADATA[key]) SAILOR_METADATA[key] = {};
+        SAILOR_METADATA[key][field] = num;
         
+        recomputeSailors();
+        saveData();
+        renderAll();
+        return;
+      }
+
+      // Historical & Gold: per-row squad status
+      const hgSquad = e.target.closest('.hg-squad-select');
+      if (hgSquad) {
+        if (!requireEditor()) {
+          hgSquad.value = hgSquad.defaultValue || '';
+          return;
+        }
+        const name = sailorNameFromDataAttr(hgSquad.getAttribute('data-sailor'));
+        const field = hgSquad.getAttribute('data-field');
+        if (!name || !field) return;
+        const key = typeof resolveSailorMetadataKey === 'function' ? resolveSailorMetadataKey(name) : name;
+        if (!SAILOR_METADATA[key]) SAILOR_METADATA[key] = {};
+        if (hgSquad.value) SAILOR_METADATA[key][field] = hgSquad.value;
+        else delete SAILOR_METADATA[key][field];
         recomputeSailors();
         saveData();
         renderAll();

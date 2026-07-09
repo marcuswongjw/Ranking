@@ -20,6 +20,8 @@ let mcSortKey = 'rank';
 let mcSortAsc = true;
 let hgSortKey = 'rank';
 let hgSortAsc = true;
+// Historical & Gold table column visibility (persists for the session)
+let hgColumnVisibility = null;
 let BULK_EDIT_MODE = false;
 let BULK_EDIT_SNAPSHOT = null;
 
