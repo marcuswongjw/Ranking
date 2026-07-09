@@ -172,10 +172,24 @@ function saveSailorProfile() {
     return;
   }
   
+  // Validate all regatta rank inputs first so we never partially apply a save.
+  const regattaScoreUpdates = [];
+  for (let regIdx = 0; regIdx < REGATTAS.length; regIdx++) {
+    const scoreInput = document.querySelector(`.sm-reg-score[data-reg-idx="${regIdx}"]`);
+    // Empty field = no participation → default DNS in rankings (unless/until edited).
+    const scoreVal = scoreInput && scoreInput.value.trim() !== ''
+      ? parseOptionalPositiveInt(scoreInput.value)
+      : null;
+    if (Number.isNaN(scoreVal)) {
+      alert('Regatta ranks must be whole numbers greater than 0 when provided.');
+      return;
+    }
+    regattaScoreUpdates.push(scoreVal);
+  }
+
   REGATTAS.forEach((reg, regIdx) => {
     let sIdx = reg.sailors.findIndex(x => isSameSailor(x.name, origName));
-    const scoreInput = document.querySelector(`.sm-reg-score[data-reg-idx="${regIdx}"]`);
-    const scoreVal = scoreInput && scoreInput.value !== '' ? parseFloat(scoreInput.value) : null;
+    const scoreVal = regattaScoreUpdates[regIdx];
     
     if (sIdx !== -1) {
       reg.sailors[sIdx].name = newName;
@@ -183,11 +197,11 @@ function saveSailorProfile() {
       reg.sailors[sIdx].born = born;
       reg.sailors[sIdx].club = club;
       reg.sailors[sIdx].school = school;
-      if (scoreVal !== null) {
-        reg.sailors[sIdx].nett = scoreVal;
-        reg.sailors[sIdx].rank = scoreVal;
-      }
+      // null rank/nett = did not participate → scoring + table use DNS penalty
+      reg.sailors[sIdx].nett = scoreVal;
+      reg.sailors[sIdx].rank = scoreVal;
     } else if (scoreVal !== null) {
+      // Edited rank for a regatta they were not in → add participation
       reg.sailors.push({
         name: newName,
         g: gender,
@@ -862,9 +876,14 @@ function renderRankings() {
       valA = a.score;
       valB = b.score;
     } else if (sortKey.startsWith('reg_')) {
-      const regIdx = parseInt(sortKey.split('_')[1]);
-      valA = a.ranks[regIdx] !== null && a.ranks[regIdx] !== undefined ? a.ranks[regIdx] : 999;
-      valB = b.ranks[regIdx] !== null && b.ranks[regIdx] !== undefined ? b.ranks[regIdx] : 999;
+      const regIdx = parseInt(sortKey.split('_')[1], 10);
+      // Non-participants sort as their DNS penalty (same as scoring)
+      valA = a.ranks[regIdx] !== null && a.ranks[regIdx] !== undefined
+        ? a.ranks[regIdx]
+        : getRegattaDnsPenalty(latestRegs[regIdx]);
+      valB = b.ranks[regIdx] !== null && b.ranks[regIdx] !== undefined
+        ? b.ranks[regIdx]
+        : getRegattaDnsPenalty(latestRegs[regIdx]);
     } else {
       valA = a.cur;
       valB = b.cur;
@@ -889,14 +908,20 @@ function renderRankings() {
     const rowSt = isExcl ? 'opacity:.42;' : '';
     const exclTag = isExcl ? `<span class="excl-tag">${escapeHtml(EXCLUDED.get(s.name))}</span>` : '';
 
-    const validRanks = s.ranks.map((v, regIdx) => v === null ? getRegattaDnsPenalty(latestRegs[regIdx]) : v);
+    const validRanks = s.ranks.map((v, regIdx) =>
+      (v === null || v === undefined) ? getRegattaDnsPenalty(latestRegs[regIdx]) : v
+    );
     const best3Indices = validRanks.map((v, i) => ({ v, i })).sort((a,b) => a.v - b.v).slice(0,3).map(x => x.i);
     const isBest3 = new Set(best3Indices);
 
-    const cells = latestRegs.map((_, idx) => {
+    const cells = latestRegs.map((reg, idx) => {
       const v = s.ranks[idx];
-      if (v === null || v === undefined) return '<td style="text-align:center;font-family:var(--mono);font-size:10px;color:var(--text3)">—</td>';
-      return `<td style="text-align:center"><span class="pos-tag${isBest3.has(idx) ? ' best' : ''}">${v}</span></td>`;
+      // No result for this ranking regatta → default DNS (reg.dns+1 / fleet penalty)
+      if (v === null || v === undefined) {
+        const dns = getRegattaDnsPenalty(reg);
+        return `<td style="text-align:center"><span class="pos-tag dns" title="Did not participate — default DNS ${dns}">${dns}</span></td>`;
+      }
+      return `<td style="text-align:center"><span class="pos-tag${isBest3.has(idx) ? ' best' : ''}">${escapeHtml(String(v))}</span></td>`;
     }).join('');
 
     const safeName = escapeHtml(s.name);
