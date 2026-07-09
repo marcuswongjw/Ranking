@@ -1639,6 +1639,8 @@
     BULK_EDIT_MODE = true;
     BULK_EDIT_SNAPSHOT = JSON.parse(JSON.stringify(reg.sailors));
     updateBulkEditUI();
+    // Re-render so rank/nett inputs become enabled
+    renderSpecificRegattaResults();
   }
 
   function saveBulkEditChanges() {
@@ -1680,10 +1682,25 @@
     const cancelBtn = document.getElementById('bulk-edit-cancel-btn');
     if (saveBtn) saveBtn.style.display = BULK_EDIT_MODE ? 'inline-flex' : 'none';
     if (cancelBtn) cancelBtn.style.display = BULK_EDIT_MODE ? 'inline-flex' : 'none';
+
+    // Rank / nett points: only interactive during bulk edit
+    document.querySelectorAll('.reg-rank-input, .reg-points-input').forEach(inp => {
+      const allow = isEditor() && BULK_EDIT_MODE;
+      inp.disabled = !allow;
+      inp.tabIndex = allow ? (inp.tabIndex > 0 ? inp.tabIndex : 0) : -1;
+      inp.style.cursor = allow ? '' : 'not-allowed';
+      inp.style.background = allow ? '' : 'var(--bg2)';
+      inp.style.color = allow ? '' : 'var(--text3)';
+    });
   }
 
   function updateRegattaSailorRank(regName, sailorName, val) {
     if (!requireEditor()) return;
+    if (!BULK_EDIT_MODE) {
+      alert('Click "Bulk Edit" to change ranks and nett points.');
+      renderSpecificRegattaResults();
+      return;
+    }
     const reg = REGATTAS.find(r => r.name === regName);
     if (!reg) return;
     const s = reg.sailors.find(x => isSameSailor(x.name, sailorName));
@@ -1695,16 +1712,17 @@
         return;
       }
       s.rank = parsed;
-      if (BULK_EDIT_MODE) return;
-      // Soft save: do not rebuild the results table body (that steals Tab focus)
-      recomputeSailors();
-      saveData();
-      refreshViewsAfterInlineRegattaEdit();
+      // Defer recompute/save until "Save All Changes"
     }
   }
 
   function updateRegattaSailorPoints(regName, sailorName, val) {
     if (!requireEditor()) return;
+    if (!BULK_EDIT_MODE) {
+      alert('Click "Bulk Edit" to change ranks and nett points.');
+      renderSpecificRegattaResults();
+      return;
+    }
     const reg = REGATTAS.find(r => r.name === regName);
     if (!reg) return;
     const s = reg.sailors.find(x => isSameSailor(x.name, sailorName));
@@ -1716,11 +1734,7 @@
         return;
       }
       s.nett = parsed;
-      if (BULK_EDIT_MODE) return;
-      // Soft save: keep the results table DOM so Tab can move Rank → Nett → next sailor
-      recomputeSailors();
-      saveData();
-      refreshViewsAfterInlineRegattaEdit();
+      // Defer recompute/save until "Save All Changes"
     }
   }
 

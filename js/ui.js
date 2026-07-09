@@ -449,10 +449,12 @@ function renderSpecificRegattaResults(regName) {
       else if (pct <= 75) { pctLabel = 'Top 75%'; pctColor = 'var(--accent3)'; pctBg = 'var(--accent3-l)'; }
       else { pctLabel = 'Bottom 25%'; pctColor = 'var(--red)'; pctBg = 'var(--red-l)'; }
       
-      // Explicit tabindex so Tab goes: A rank → A nett → B rank → B nett
-      // (delete buttons are skipped with tabindex=-1)
-      const tabRank = idx * 2 + 1;
-      const tabNett = idx * 2 + 2;
+      // Rank/nett only editable in Bulk Edit mode (editors). Tab order: A rank → A nett → B...
+      const canEditScores = isEditor() && BULK_EDIT_MODE;
+      const tabRank = canEditScores ? idx * 2 + 1 : -1;
+      const tabNett = canEditScores ? idx * 2 + 2 : -1;
+      const disabledAttr = canEditScores ? '' : 'disabled';
+      const inputBg = canEditScores ? '' : 'background:var(--bg2); color:var(--text3); cursor:not-allowed;';
       return `<tr>
         <td class="rank-c">${idx + 1}</td>
         <td class="name-c" data-sailor="${safeName}" style="cursor:pointer; color:var(--accent); font-weight:600; text-decoration:underline;">${safeName}</td>
@@ -461,13 +463,15 @@ function renderSpecificRegattaResults(regName) {
         <td class="sub-c" style="font-size:10px">${escapeHtml(s.club || '—')}</td>
         <td style="text-align:center;">
           <input type="number" class="reg-rank-input" data-reg="${escapeHtml(reg.name)}" data-sailor="${safeName}" value="${rankVal}"
-                 tabindex="${tabRank}" inputmode="numeric"
-                 style="width:70px; height:24px; text-align:center; padding:2px; font-family:var(--mono);" ${!isEditor() ? 'disabled' : ''}>
+                 tabindex="${tabRank}" inputmode="numeric" ${disabledAttr}
+                 title="${canEditScores ? 'Rank in regatta' : 'Click Bulk Edit to change rank'}"
+                 style="width:70px; height:24px; text-align:center; padding:2px; font-family:var(--mono); ${inputBg}">
         </td>
         <td style="text-align:center;">
           <input type="number" class="reg-points-input" data-reg="${escapeHtml(reg.name)}" data-sailor="${safeName}" value="${pointsVal}"
-                 tabindex="${tabNett}" inputmode="numeric" title="Nett points"
-                 style="width:70px; height:24px; text-align:center; padding:2px; font-family:var(--mono); font-weight:600; color:var(--accent2);" ${!isEditor() ? 'disabled' : ''}>
+                 tabindex="${tabNett}" inputmode="numeric" ${disabledAttr}
+                 title="${canEditScores ? 'Nett points' : 'Click Bulk Edit to change nett points'}"
+                 style="width:70px; height:24px; text-align:center; padding:2px; font-family:var(--mono); font-weight:600; color:var(--accent2); ${inputBg}">
         </td>
         <td style="text-align:center;"><span class="pct-b" style="background:${pctBg};color:${pctColor};font-size:9.5px;padding:3px 6px;border-radius:3px;font-weight:600">${pctLabel}</span></td>
         <td class="table-editor-only" style="text-align:center;">
@@ -1214,6 +1218,7 @@ const HG_COLUMN_DEFS = [
   { id: 'rank', label: 'Rank', locked: false },
   { id: 'name', label: 'Sailor', locked: true },
   { id: 'gender', label: 'Gender', locked: false },
+  { id: 'born', label: 'Birth Year', locked: false },
   { id: 'enteredGold', label: 'Entered Gold', locked: false },
   { id: 'valJun24', label: 'Jun 24 rank', locked: false },
   { id: 'valDec24', label: 'Dec 24 rank', locked: false },
@@ -1227,8 +1232,8 @@ function getHgColumnVisibility() {
   if (!hgColumnVisibility) {
     hgColumnVisibility = {};
     HG_COLUMN_DEFS.forEach(c => {
-      // Default: core cols + historical ranks + current period squad (Jan 25)
-      if (c.id === 'name' || c.id === 'rank' || c.id === 'gender' || c.id === 'enteredGold') {
+      // Default: core cols + birth year + historical ranks + current period squad (Jan 25)
+      if (c.id === 'name' || c.id === 'rank' || c.id === 'gender' || c.id === 'born' || c.id === 'enteredGold') {
         hgColumnVisibility[c.id] = true;
       } else if (c.id.startsWith('val')) {
         hgColumnVisibility[c.id] = true;
@@ -1239,6 +1244,8 @@ function getHgColumnVisibility() {
       }
     });
   }
+  // Sessions that loaded before "born" existed: default it on once
+  if (hgColumnVisibility.born === undefined) hgColumnVisibility.born = true;
   return hgColumnVisibility;
 }
 
@@ -1447,6 +1454,7 @@ function renderHistGoldPanel() {
     
     const curRank = activeObj ? activeObj.cur : null;
     const gender = activeObj ? (activeObj.g || '—') : (meta.g || sObj?.g || '—');
+    const born = activeObj ? (activeObj.born || '—') : (meta.born || sObj?.born || '—');
     const enteredGold = meta.enteredGold || '—';
     
     const valJun24 = meta.histJun24 !== undefined && meta.histJun24 !== null ? meta.histJun24 : '';
@@ -1459,6 +1467,7 @@ function renderHistGoldPanel() {
       name,
       curRank,
       gender,
+      born,
       enteredGold,
       valJun24,
       valDec24,
@@ -1591,6 +1600,11 @@ function renderHistGoldPanel() {
     } else if (hgSortKey === 'gender') {
       valA = a.gender;
       valB = b.gender;
+    } else if (hgSortKey === 'born') {
+      valA = a.born === '—' || a.born === '' || a.born == null ? 9999 : Number(a.born);
+      valB = b.born === '—' || b.born === '' || b.born == null ? 9999 : Number(b.born);
+      if (Number.isNaN(valA)) valA = 9999;
+      if (Number.isNaN(valB)) valB = 9999;
     } else if (hgSortKey === 'enteredGold') {
       valA = a.enteredGold === '—' ? 'zzzz' : a.enteredGold;
       valB = b.enteredGold === '—' ? 'zzzz' : b.enteredGold;
@@ -1676,6 +1690,7 @@ function renderHistGoldPanel() {
     const safeName = escapeHtml(s.name);
     const dataName = encodeURIComponent(cleanSailorName(s.name));
     const safeGender = escapeHtml(s.gender);
+    const safeBorn = escapeHtml(String(s.born ?? '—'));
     const safeEntered = escapeHtml(s.enteredGold);
     const cbCol = isEditable
       ? `<td style="text-align:center; padding:4px;"><input type="checkbox" class="hg-row-cb" data-sailor="${dataName}" style="width:15px; height:15px; cursor:pointer;"></td>`
@@ -1686,6 +1701,7 @@ function renderHistGoldPanel() {
       ${isHgColVisible('rank') ? `<td class="rank-c" style="text-align:center;">${rankStr}</td>` : ''}
       <td class="name-c" data-sailor="${dataName}" style="cursor:pointer; color:var(--accent); font-weight:600; text-decoration:underline;">${safeName}</td>
       ${isHgColVisible('gender') ? `<td class="sub-c" style="text-align:center;">${safeGender}</td>` : ''}
+      ${isHgColVisible('born') ? `<td class="sub-c" style="text-align:center;">${safeBorn}</td>` : ''}
       ${isHgColVisible('enteredGold') ? `<td style="font-family:var(--sans);font-size:11px;color:var(--text2)">${safeEntered}</td>` : ''}
       ${renderRankCell('histJun24', s.valJun24, '2024-06-30')}
       ${renderRankCell('histDec24', s.valDec24, '2024-12-31')}
@@ -1710,6 +1726,7 @@ function renderHistGoldPanel() {
     th('rank', 'rank', 'Rank', 'width:46px;'),
     th('name', 'name', 'Sailor', 'width:180px;'),
     th('gender', 'gender', 'G', 'width:32px; text-align:center;'),
+    th('born', 'born', 'Born', 'width:50px; text-align:center;'),
     th('enteredGold', 'enteredGold', 'Entered Gold', 'width:100px; text-align:center;'),
     th('valJun24', 'valJun24', 'Jun 24', 'width:70px; text-align:center;'),
     th('valDec24', 'valDec24', 'Dec 24', 'width:70px; text-align:center;'),
