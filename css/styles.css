@@ -45,6 +45,23 @@ select:focus,input:focus{border-color:var(--accent)}
 .editor-only{display:none !important}
 body.is-editor .editor-only{display:inline-flex !important}
 body.is-editor .editor-only.bulk-edit-hidden{display:none !important}
+.editor-only-block{display:none !important}
+body.is-editor .editor-only-block{display:block !important}
+.sb-menu-toggle{
+  display:none;
+  margin-left:auto;
+  background:rgba(255,255,255,.1);
+  border:1px solid rgba(255,255,255,.15);
+  color:#fff;
+  border-radius:4px;
+  width:34px;
+  height:30px;
+  font-size:16px;
+  cursor:pointer;
+  align-items:center;
+  justify-content:center;
+}
+.sb-menu-toggle:hover{background:rgba(255,255,255,.16)}
 .table-editor-only{display:none !important}
 body.is-editor .table-editor-only{display:table-cell !important}
 /* In view-only mode, neutralise the edit forms so they can't be typed into. */
@@ -276,10 +293,11 @@ td{padding:8px 10px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
     position: relative;
   }
   .sb-logo {
-    padding: 14px 20px;
+    padding: 14px 16px;
     display: flex;
     justify-content: space-between;
     align-items: center;
+    gap: 10px;
   }
   .sb-logo h1 {
     font-size: 14px;
@@ -287,22 +305,31 @@ td{padding:8px 10px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .sb-tag {
     margin-top: 0;
   }
+  .sb-menu-toggle {
+    display: inline-flex;
+  }
   .sb-nav {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 6px;
-    padding: 10px;
+    display: none;
+    flex-direction: column;
+    flex-wrap: nowrap;
+    gap: 2px;
+    padding: 8px 10px 12px;
     border-bottom: 1px solid rgba(255,255,255,.1);
     flex: none;
+    max-height: min(70vh, 480px);
+    overflow-y: auto;
+  }
+  .sidebar.nav-open .sb-nav {
+    display: flex;
   }
   .nav-sec {
     width: 100%;
-    margin: 8px 0 2px;
+    margin: 10px 0 4px;
   }
   .nav-item {
-    width: auto;
-    display: inline-flex;
-    padding: 6px 12px;
+    width: 100%;
+    display: flex;
+    padding: 9px 12px;
   }
   .sb-footer {
     display: none;

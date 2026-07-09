@@ -1197,11 +1197,40 @@
       }
     });
 
+    // Mobile sidebar menu
+    document.getElementById('sb-menu-toggle')?.addEventListener('click', e => {
+      e.stopPropagation();
+      const sidebar = document.getElementById('app-sidebar');
+      const btn = document.getElementById('sb-menu-toggle');
+      if (!sidebar) return;
+      const open = sidebar.classList.toggle('nav-open');
+      if (btn) {
+        btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+        btn.setAttribute('aria-label', open ? 'Close menu' : 'Open menu');
+      }
+    });
+    document.querySelectorAll('.sb-nav .nav-item').forEach(item => {
+      item.addEventListener('click', () => {
+        const sidebar = document.getElementById('app-sidebar');
+        const btn = document.getElementById('sb-menu-toggle');
+        if (sidebar?.classList.contains('nav-open')) {
+          sidebar.classList.remove('nav-open');
+          if (btn) {
+            btn.setAttribute('aria-expanded', 'false');
+            btn.setAttribute('aria-label', 'Open menu');
+          }
+        }
+      });
+    });
+
     // Rankings Panel Filter and Search elements
-    document.getElementById('nameSearch')?.addEventListener('input', () => renderRankings());
+    document.getElementById('nameSearch')?.addEventListener('input', () => {
+      renderRankings();
+      if (lastMainView === 'charts') renderComparisonChart();
+    });
     document.getElementById('squadFilter')?.addEventListener('change', () => {
       renderRankings();
-      renderComparisonChart();
+      if (lastMainView === 'charts') renderComparisonChart();
     });
     document.getElementById('top50')?.addEventListener('change', () => renderRankings());
     
@@ -1212,6 +1241,7 @@
         pill.classList.add('active');
         genderFilter = pill.getAttribute('data-gender');
         renderRankings();
+        if (lastMainView === 'charts') renderComparisonChart();
       });
     });
 

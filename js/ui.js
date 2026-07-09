@@ -37,6 +37,8 @@ function switchView(viewId, navBtn, skipHash) {
     renderFleetPanel();
   } else if (viewId === 'charts') {
     if (typeof renderCharts === 'function') renderCharts();
+    // Comparison chart lives on Analysis now (not Rankings)
+    if (typeof renderComparisonChart === 'function') renderComparisonChart();
   } else if (viewId === 'results') {
     if (typeof renderSpecificRegattaResults === 'function') renderSpecificRegattaResults();
   } else if (viewId === 'exclusions') {
@@ -629,8 +631,9 @@ function renderComparisonChart() {
   const chartEl = document.getElementById('comparisonChart');
   if (!chartEl) return;
 
-  const squadFilterVal = document.getElementById('squadFilter').value;
-  const nameSearchVal = document.getElementById('nameSearch').value.toLowerCase();
+  // Top 20 overall by rank (best-3 score); filters optional if controls exist
+  const squadFilterVal = document.getElementById('squadFilter')?.value || '';
+  const nameSearchVal = (document.getElementById('nameSearch')?.value || '').toLowerCase();
   
   const squadMap = computeSquads(SAILORS);
   let dataset = SAILORS.filter(s => {
@@ -770,32 +773,6 @@ function renderRankingsPanel() {
         <div class="mc-sub">Active: ${latestRegs.length} loaded</div>
       </div>
     </div>
-    
-    <div class="charts-grid" style="margin-bottom:20px;">
-      <div class="chart-card">
-        <h3>Squad Score Comparison (Top 10)</h3>
-        <div class="chart-container">
-          <canvas id="comparisonChart"></canvas>
-        </div>
-      </div>
-      <div class="chart-card" style="display:flex; flex-direction:column; justify-content:center;">
-        <h3>Squad Distribution</h3>
-        <div style="display:flex; justify-content:space-around; align-items:center; height:100%; padding:10px 0;">
-          <div style="text-align:center;">
-            <div style="font-size:24px; font-weight:600; color:var(--accent); font-family:var(--mono);" id="dist-a">0</div>
-            <div style="font-size:10px; color:var(--text3); text-transform:uppercase; margin-top:4px;">National A</div>
-          </div>
-          <div style="text-align:center;">
-            <div style="font-size:24px; font-weight:600; color:var(--accent2); font-family:var(--mono);" id="dist-b">0</div>
-            <div style="font-size:10px; color:var(--text3); text-transform:uppercase; margin-top:4px;">National B</div>
-          </div>
-          <div style="text-align:center;">
-            <div style="font-size:24px; font-weight:600; color:var(--accent3); font-family:var(--mono);" id="dist-ds">0</div>
-            <div style="font-size:10px; color:var(--text3); text-transform:uppercase; margin-top:4px;">Dev Squad</div>
-          </div>
-        </div>
-      </div>
-    </div>
 
     <div class="rankings-legend" aria-label="Rankings legend">
       <span class="leg-label">Legend</span>
@@ -812,7 +789,7 @@ function renderRankingsPanel() {
           <th class="sort-header" style="cursor:pointer;user-select:none" data-sort="gender">G${getSortIndicator('gender')}</th>
           <th class="sort-header" style="cursor:pointer;user-select:none" data-sort="born">Born${getSortIndicator('born')}</th>
           <th class="col-squad sort-header" style="cursor:pointer;user-select:none" data-sort="squad">${escapeHtml('Squad (Jul ' + String(COMP_YEAR).slice(-2) + ')')}${getSortIndicator('squad')}</th>
-          <th class="col-squad sort-header" style="cursor:pointer;user-select:none" data-sort="squadNext">${escapeHtml('Squad (Jan ' + String(COMP_YEAR + 1).slice(-2) + ')')}${getSortIndicator('squadNext')}</th>
+          ${isEditor() ? `<th class="col-squad sort-header editor-only-col" style="cursor:pointer;user-select:none" data-sort="squadNext">${escapeHtml('Squad (Jan ' + String(COMP_YEAR + 1).slice(-2) + ')')}${getSortIndicator('squadNext')}</th>` : ''}
           <th class="col-score sort-header" style="cursor:pointer;user-select:none" data-sort="score">Best 3 of ${latestRegs.length}${getSortIndicator('score')}</th>
           ${regHeaders}
         </tr></thead>
@@ -854,11 +831,6 @@ function renderRankings() {
   if (mSqA) mSqA.textContent = countA;
   if (mSqB) mSqB.textContent = countB;
   if (mSqDs) mSqDs.textContent = countDS;
-  
-  const distA = document.getElementById('dist-a'), distB = document.getElementById('dist-b'), distDs = document.getElementById('dist-ds');
-  if (distA) distA.textContent = countA;
-  if (distB) distB.textContent = countB;
-  if (distDs) distDs.textContent = countDS;
 
   const data = SAILORS.filter(s => {
     if (genderFilter !== 'all' && s.g !== genderFilter) return false;
@@ -959,20 +931,23 @@ function renderRankings() {
       </select>`;
     };
 
+    const squadNextCell = isEditor()
+      ? `<td class="col-squad">${isExcl ? '<span class="badge b-n">Excl.</span>' : isRetiringNext ? '<span class="badge b-n" style="background:var(--red-l);color:var(--red)" title="Turns 16 by then — ages out of the Gold Fleet">Retiring</span>' : squadBadge(squadNext)}</td>`
+      : '';
+
     return `<tr style="${rowSt}">
       <td class="rank-c col-rank">${s.cur}</td>
       <td class="name-c col-name" data-sailor="${safeName}" style="cursor:pointer; color:var(--accent); font-weight:600; text-decoration:underline;">${safeName}${exclTag}</td>
       <td class="sub-c">${safeGender}</td>
       <td class="sub-c">${safeBorn}</td>
       <td class="col-squad">${isExcl && !lockJul && !isEditor() ? '<span class="badge b-n">Excl.</span>' : squadLockCell(squadJulKey, lockJul, isExcl ? null : squad)}</td>
-      <td class="col-squad">${isExcl ? '<span class="badge b-n">Excl.</span>' : isRetiringNext ? '<span class="badge b-n" style="background:var(--red-l);color:var(--red)" title="Turns 16 by then — ages out of the Gold Fleet">Retiring</span>' : squadBadge(squadNext)}</td>
+      ${squadNextCell}
       <td class="score-c col-score" style="text-align:center">${s.score}</td>
       ${cells}
     </tr>`;
-  }).join('') || `<tr><td colspan="${7 + latestRegs.length}" style="text-align:center;color:var(--text3);padding:24px">No sailors match criteria.</td></tr>`;
+  }).join('') || `<tr><td colspan="${(isEditor() ? 7 : 6) + latestRegs.length}" style="text-align:center;color:var(--text3);padding:24px">No sailors match criteria.</td></tr>`;
 
   syncRankingsStickyOffsets();
-  renderComparisonChart();
 }
 
 /** Keep sticky Sailor column flush against Rank when the table scrolls horizontally. */
@@ -1878,24 +1853,61 @@ function dropSailor(name) {
   renderAll();
   renderFleetPanel();
   updateSailorProfileFleetControls();
-  toastSuccess(`Dropped ${cleaned} from the active fleet.`);
+
+  // Undo toast (10s)
+  const host = document.getElementById('toast-host');
+  if (!host || typeof showToast !== 'function') {
+    toastSuccess(`Dropped ${cleaned} from the active fleet.`);
+    return;
+  }
+  const el = document.createElement('div');
+  el.className = 'toast toast-success';
+  el.setAttribute('role', 'status');
+  el.innerHTML = `
+    <span class="toast-icon">✓</span>
+    <div class="toast-body">
+      <div class="toast-title">Dropped from fleet</div>
+      <div class="toast-msg">${escapeHtml(cleaned)} is hidden from rankings.</div>
+    </div>
+    <button type="button" class="btn-secondary toast-undo-btn" style="padding:4px 10px; font-size:10px; flex-shrink:0;">Undo</button>
+    <button type="button" class="toast-close" aria-label="Dismiss">×</button>
+  `;
+  let undone = false;
+  const removeToast = () => {
+    if (el._gone) return;
+    el._gone = true;
+    el.classList.add('toast-out');
+    setTimeout(() => el.remove(), 180);
+  };
+  el.querySelector('.toast-close')?.addEventListener('click', removeToast);
+  el.querySelector('.toast-undo-btn')?.addEventListener('click', () => {
+    if (undone) return;
+    undone = true;
+    promoteSailor(cleaned, { silent: true });
+    removeToast();
+    toastSuccess(`Restored ${cleaned} to the active fleet.`);
+  });
+  host.appendChild(el);
+  setTimeout(() => { if (!undone) removeToast(); }, 10000);
 }
 
-function promoteSailor(name) {
+function promoteSailor(name, opts = {}) {
   if (!requireEditor()) return;
   const cleaned = cleanSailorName(name);
   if (!cleaned) {
-    toastError('Could not re-promote sailor — missing name.');
+    if (!opts.silent) toastError('Could not re-promote sailor — missing name.');
     return;
   }
   unmarkSailorDropped(cleaned);
   sanitizeDroppedSailors();
   // If they only appear dropped due to age limit, re-promote cannot override that
   const sys = getAllSailorsInSystem().find(s => isSameSailor(s.name, cleaned));
-  if (sys && isAgeDropped(sys.born)) {
-    toastWarn(`"${cleaned}" is age-limited (born ${sys.born}) and stays out of active rankings.`);
-  } else {
-    toastSuccess(`Re-promoted ${cleaned} to the active fleet.`);
+  if (!opts.silent) {
+    if (sys && isAgeDropped(sys.born)) {
+      toastWarn(`"${cleaned}" is age-limited (born ${sys.born}) and stays out of active rankings.`);
+    } else {
+      toastSuccess(`Re-promoted ${cleaned} to the active fleet.`);
+    }
   }
   recomputeSailors();
   saveData();
