@@ -7,15 +7,16 @@
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><defs><linearGradient id='g' x1='0%' y1='0%' x2='100%' y2='100%'><stop offset='0%' stop-color='%231a472a'/><stop offset='100%' stop-color='%232d4a8a'/></linearGradient></defs><rect width='100' height='100' rx='22' fill='url(%23g)'/><text x='50' y='66' font-size='46' font-weight='800' font-family='-apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, Roboto, sans-serif' fill='white' text-anchor='middle' letter-spacing='-0.03em'>OP</text></svg>">
   
   <!-- Local libraries for offline support and CDNs for Firebase -->
-  <script src="js/libs/chart.umd.js"></script>
-  <script src="js/libs/xlsx.full.min.js"></script>
+  <!-- ?v= busts CDN/browser cache after deploys -->
+  <script src="js/libs/chart.umd.js?v=20260709d"></script>
+  <script src="js/libs/xlsx.full.min.js?v=20260709d"></script>
   <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-storage-compat.js"></script>
 
   <!-- External Stylesheet -->
-  <link rel="stylesheet" href="css/styles.css">
+  <link rel="stylesheet" href="css/styles.css?v=20260709d">
 </head>
 <body>
 <div id="dropOverlay" class="drop-overlay">
@@ -776,14 +777,14 @@
 </main>
 </div>
 
-<!-- Load Application Modules -->
-<script src="js/config.js"></script>
-<script src="js/seed.js"></script>
-<script src="js/utils.js"></script>
-<script src="js/state.js"></script>
-<script src="js/calculations.js"></script>
-<script src="js/ui.js"></script>
-<script src="js/main.js"></script>
-<script src="js/charts.js"></script>
+<!-- Load Application Modules (?v= forces browsers to fetch after deploy) -->
+<script src="js/config.js?v=20260709d"></script>
+<script src="js/seed.js?v=20260709d"></script>
+<script src="js/utils.js?v=20260709d"></script>
+<script src="js/state.js?v=20260709d"></script>
+<script src="js/calculations.js?v=20260709d"></script>
+<script src="js/ui.js?v=20260709d"></script>
+<script src="js/main.js?v=20260709d"></script>
+<script src="js/charts.js?v=20260709d"></script>
 </body>
 </html>
