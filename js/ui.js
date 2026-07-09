@@ -144,11 +144,28 @@ function saveSailorProfile() {
   const school = document.getElementById('sm-school').value.trim();
   
   const enteredGold = document.getElementById('sm-entered-gold').value;
-  const histJun24 = document.getElementById('sm-override-jun24').value !== '' ? parseInt(document.getElementById('sm-override-jun24').value) : null;
-  const histDec24 = document.getElementById('sm-override-dec24').value !== '' ? parseInt(document.getElementById('sm-override-dec24').value) : null;
-  const histJun25 = document.getElementById('sm-override-jun25').value !== '' ? parseInt(document.getElementById('sm-override-jun25').value) : null;
-  const histDec25 = document.getElementById('sm-override-dec25').value !== '' ? parseInt(document.getElementById('sm-override-dec25').value) : null;
-  const histJun26 = document.getElementById('sm-override-jun26').value !== '' ? parseInt(document.getElementById('sm-override-jun26').value) : null;
+  const histJun24Raw = document.getElementById('sm-override-jun24').value;
+  const histDec24Raw = document.getElementById('sm-override-dec24').value;
+  const histJun25Raw = document.getElementById('sm-override-jun25').value;
+  const histDec25Raw = document.getElementById('sm-override-dec25').value;
+  const histJun26Raw = document.getElementById('sm-override-jun26').value;
+  // Use Number() so decimals like "1.5" are rejected (parseInt would truncate them).
+  const parseOptionalPositiveRank = (raw) => {
+    if (raw === '') return null;
+    const n = Number(String(raw).trim());
+    if (!Number.isInteger(n) || n < 1) return NaN;
+    return n;
+  };
+  const histJun24 = parseOptionalPositiveRank(histJun24Raw);
+  const histDec24 = parseOptionalPositiveRank(histDec24Raw);
+  const histJun25 = parseOptionalPositiveRank(histJun25Raw);
+  const histDec25 = parseOptionalPositiveRank(histDec25Raw);
+  const histJun26 = parseOptionalPositiveRank(histJun26Raw);
+  const invalidHistRank = [histJun24, histDec24, histJun25, histDec25, histJun26].some(v => v !== null && (Number.isNaN(v) || !Number.isInteger(v) || v < 1));
+  if (invalidHistRank) {
+    alert('Historical rank overrides must be whole numbers greater than 0 when provided.');
+    return;
+  }
 
   if (!newName) {
     alert("Name cannot be empty.");

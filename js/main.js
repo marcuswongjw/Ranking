@@ -8,6 +8,11 @@
     setupDropZone();
     bindStaticEventListeners();
     populateGoldEntrySelect(document.getElementById('sm-entered-gold'));
+    const fleetBornInput = document.getElementById('fleet-add-born');
+    if (fleetBornInput) {
+      // Default to typical Optimist age (~13), always within [COMP_YEAR-20, COMP_YEAR]
+      fleetBornInput.value = String(COMP_YEAR - 13);
+    }
   });
 
   // Real-time viewer synchronization
@@ -770,7 +775,12 @@
     if (!requireEditor()) return;
     const name = document.getElementById('fleet-add-name').value.trim();
     const gender = document.getElementById('fleet-add-gender').value;
-    const born = parseInt(document.getElementById('fleet-add-born').value) || 2013;
+    const bornRaw = document.getElementById('fleet-add-born').value.trim();
+    const born = parseBirthYearInput(bornRaw);
+    if (born === null || Number.isNaN(born)) {
+      alert(`Please enter a valid Birth Year (between ${COMP_YEAR - 20} and ${COMP_YEAR}).`);
+      return;
+    }
     const club = document.getElementById('fleet-add-club').value.trim();
     const school = document.getElementById('fleet-add-school').value.trim();
     
@@ -1281,12 +1291,15 @@
         const name = input.getAttribute('data-sailor');
         const field = input.getAttribute('data-field');
         let val = input.value.trim().replace('#', '');
-        const num = val !== '' ? parseInt(val) : null;
-        
-        if (num !== null && (isNaN(num) || num < 1)) {
-          alert('Please enter a valid rank (positive integer).');
-          input.value = input.defaultValue || '';
-          return;
+        let num = null;
+        if (val !== '') {
+          const n = Number(val);
+          if (!Number.isInteger(n) || n < 1) {
+            alert('Please enter a valid rank (positive integer).');
+            input.value = input.defaultValue || '';
+            return;
+          }
+          num = n;
         }
         
         if (!SAILOR_METADATA[name]) SAILOR_METADATA[name] = {};
