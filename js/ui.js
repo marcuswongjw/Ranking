@@ -745,41 +745,24 @@ function renderRankingsPanel() {
     return `<th class="col-reg sort-header" style="cursor:pointer;user-select:none;white-space:normal;line-height:1.35" data-sort="reg_${idx}">${title}${getSortIndicator('reg_' + idx)}</th>`;
   }).join('');
 
-  container.innerHTML = `
-    <div class="metrics">
-      <div class="mc mc1">
-        <div class="mc-lbl">Active Fleet</div>
-        <div class="mc-val" id="m-fleet">${SAILORS.length}</div>
-        <div class="mc-sub">Qualified for rankings</div>
-      </div>
-      <div class="mc mc2">
-        <div class="mc-lbl">National A</div>
-        <div class="mc-val" id="m-sq-a">0</div>
-        <div class="mc-sub">Top 8 Boys & Girls</div>
-      </div>
-      <div class="mc mc3">
-        <div class="mc-lbl">National B</div>
-        <div class="mc-val" id="m-sq-b">0</div>
-        <div class="mc-sub">Age group allocations</div>
-      </div>
-      <div class="mc mc4">
-        <div class="mc-lbl">Dev Squad</div>
-        <div class="mc-val" id="m-sq-ds">0</div>
-        <div class="mc-sub">Younger talent pipeline</div>
-      </div>
-      <div class="mc mc5">
-        <div class="mc-lbl">Regattas</div>
-        <div class="mc-val" id="m-regattas">${REGATTAS.length}</div>
-        <div class="mc-sub">Active: ${latestRegs.length} loaded</div>
-      </div>
-    </div>
+  const regWindowLabel = latestRegs.length
+    ? latestRegs.map(r => r.name).join(' · ')
+    : 'none selected';
 
+  container.innerHTML = `
+    <div class="rankings-status" aria-label="Rankings summary">
+      <span><strong>${SAILORS.length}</strong> sailors in rankings</span>
+      <span class="rankings-status-sep">·</span>
+      <span>Best <strong>3 of ${latestRegs.length}</strong> regattas</span>
+      <span class="rankings-status-sep">·</span>
+      <span class="rankings-status-regs" title="${escapeHtml(regWindowLabel)}">${escapeHtml(regWindowLabel)}</span>
+    </div>
     <div class="rankings-legend" aria-label="Rankings legend">
       <span class="leg-label">Legend</span>
       <span class="leg-item"><span class="pos-tag best">12</span> Counted in best 3</span>
       <span class="leg-item"><span class="pos-tag">28</span> Regatta finish</span>
       <span class="leg-item"><span class="pos-tag dns">85</span> DNS — did not race (default for non-starters)</span>
-      <span class="leg-item" style="color:var(--text3);">Scroll sideways for all regatta columns · Score = best 3 of ${latestRegs.length}</span>
+      <span class="leg-item" style="color:var(--text3);">Scroll sideways for all regatta columns</span>
     </div>
     <div class="tbl-wrap rankings-tbl-wrap" title="Scroll horizontally to see all columns">
       <table class="rankings-table">
@@ -817,20 +800,6 @@ function renderRankings() {
   const squadLock = (name, key) => (SAILOR_METADATA[name] || {})[key] || null;
 
   const latestRegs = getActiveRegattas();
-
-  // Count squad distributions
-  let countA = 0, countB = 0, countDS = 0;
-  SAILORS.forEach(s => {
-    const squad = EXCLUDED.has(s.name) ? null : sq.get(s.name);
-    if (squad === 'Nat A') countA++;
-    else if (squad === 'Nat B') countB++;
-    else if (squad === 'DS') countDS++;
-  });
-  
-  const mSqA = document.getElementById('m-sq-a'), mSqB = document.getElementById('m-sq-b'), mSqDs = document.getElementById('m-sq-ds');
-  if (mSqA) mSqA.textContent = countA;
-  if (mSqB) mSqB.textContent = countB;
-  if (mSqDs) mSqDs.textContent = countDS;
 
   const data = SAILORS.filter(s => {
     if (genderFilter !== 'all' && s.g !== genderFilter) return false;
