@@ -61,6 +61,50 @@ function isSameSailor(nameA, nameB) {
   return normalizeName(nameA) === normalizeName(nameB);
 }
 
+/**
+ * Decode a sailor name from a data-sailor attribute.
+ * Fleet buttons use encodeURIComponent; other UI may store plain / HTML-decoded names.
+ */
+function sailorNameFromDataAttr(raw) {
+  if (raw === null || raw === undefined) return '';
+  const s = String(raw);
+  try {
+    return decodeURIComponent(s);
+  } catch (_) {
+    return s;
+  }
+}
+
+/**
+ * Whether this sailor is in the manually-dropped set.
+ * Uses normalized name matching so "Jared Tan" and "JARED TAN" both hit.
+ */
+function isDroppedSailor(name) {
+  if (!name) return false;
+  if (DROPPED_SAILORS.has(name)) return true;
+  for (const d of DROPPED_SAILORS) {
+    if (isSameSailor(d, name)) return true;
+  }
+  return false;
+}
+
+/** Add name to the dropped set, collapsing any prior aliases of the same person. */
+function markSailorDropped(name) {
+  if (!name) return;
+  for (const d of Array.from(DROPPED_SAILORS)) {
+    if (isSameSailor(d, name)) DROPPED_SAILORS.delete(d);
+  }
+  DROPPED_SAILORS.add(name);
+}
+
+/** Remove this person (any name spelling) from the dropped set. */
+function unmarkSailorDropped(name) {
+  if (!name) return;
+  for (const d of Array.from(DROPPED_SAILORS)) {
+    if (isSameSailor(d, name)) DROPPED_SAILORS.delete(d);
+  }
+}
+
 function getRegattaPercentileBase(reg) {
   if (reg && reg.dns !== undefined && reg.dns !== null && reg.dns > 0) {
     return reg.dns;
@@ -227,7 +271,7 @@ function getHistoricalRank(sailorName, dateStr) {
         }
       });
       
-      if (DROPPED_SAILORS.has(originalName)) return;
+      if (isDroppedSailor(originalName)) return;
       if (isAgeDropped(born)) return;
       
       const scores = activeRegs.map(reg => {

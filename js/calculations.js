@@ -142,7 +142,7 @@ function recomputeSailors() {
   
   const allSystemSailors = getAllSailorsInSystem();
   allSystemSailors.forEach(s => {
-    if (DROPPED_SAILORS.has(s.name)) return;
+    if (isDroppedSailor(s.name)) return;
     if (isAgeDropped(s.born)) return;
     const norm = normalizeName(s.name);
     normalizedToOriginal.set(norm, s.name);
@@ -159,7 +159,9 @@ function recomputeSailors() {
   
   latestRegs.forEach((reg, regIdx) => {
     reg.sailors.forEach(s => {
-      if (DROPPED_SAILORS.has(s.name)) return;
+      // Normalized drop check — exact Set.has() missed spelling/case variants
+      // and re-added the sailor from regatta rows into the rankings table.
+      if (isDroppedSailor(s.name)) return;
       if (isAgeDropped(s.born)) return;
       
       const norm = normalizeName(s.name);

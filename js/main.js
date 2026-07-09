@@ -680,7 +680,7 @@
           const club = String(r[clubIdx] || '').trim();
           const school = String(r[schoolIdx] || '').trim();
           
-          DROPPED_SAILORS.delete(name);
+          unmarkSailorDropped(name);
           
           const existing = currentSystemSailors.find(s => isSameSailor(s.name, name));
           if (!existing) {
@@ -793,8 +793,8 @@
     const existing = currentSystemSailors.find(s => isSameSailor(s.name, name));
     
     if (existing) {
-      if (DROPPED_SAILORS.has(existing.name)) {
-        DROPPED_SAILORS.delete(existing.name);
+      if (isDroppedSailor(existing.name)) {
+        unmarkSailorDropped(existing.name);
         alert(`"${name}" was already in the database and has been re-promoted to active fleet.`);
       } else {
         alert(`"${name}" is already an active sailor.`);
@@ -973,12 +973,8 @@
         // Exclude age-limit-dropped sailors (born too early for Optimist class)
         if (isAgeDropped(born)) return;
 
-        // Exclude manually dropped sailors
-        if (DROPPED_SAILORS.has(canonicalName)) return;
-        // Also check by normalised name in case casing differs
-        let isDropped = false;
-        DROPPED_SAILORS.forEach(d => { if (normalizeName(d) === norm) isDropped = true; });
-        if (isDropped) return;
+        // Exclude manually dropped sailors (normalized name match)
+        if (isDroppedSailor(canonicalName)) return;
 
         sailors.push({
           name: sysObj?.name || canonicalName,
@@ -1166,11 +1162,11 @@
     // Fleet list active/dropped delegation
     document.getElementById('fleet-active-list')?.addEventListener('click', e => {
       const btn = e.target.closest('.fleet-drop-btn');
-      if (btn) dropSailor(btn.getAttribute('data-sailor'));
+      if (btn) dropSailor(sailorNameFromDataAttr(btn.getAttribute('data-sailor')));
     });
     document.getElementById('fleet-dropped-list')?.addEventListener('click', e => {
       const btn = e.target.closest('.fleet-promote-btn');
-      if (btn) promoteSailor(btn.getAttribute('data-sailor'));
+      if (btn) promoteSailor(sailorNameFromDataAttr(btn.getAttribute('data-sailor')));
     });
 
     // Manage Fleet panel inputs/buttons
@@ -1254,7 +1250,7 @@
     document.addEventListener('click', e => {
       const nameCell = e.target.closest('.name-c');
       if (nameCell && nameCell.hasAttribute('data-sailor')) {
-        openSailorModal(nameCell.getAttribute('data-sailor'));
+        openSailorModal(sailorNameFromDataAttr(nameCell.getAttribute('data-sailor')));
       }
       
       // Delete sailor from specific regatta delegation

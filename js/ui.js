@@ -222,9 +222,9 @@ function saveSailorProfile() {
       EXCLUDED.set(newName, reason);
     }
     // Keep dropped status attached to the sailor across renames
-    if (DROPPED_SAILORS.has(origName)) {
-      DROPPED_SAILORS.delete(origName);
-      DROPPED_SAILORS.add(newName);
+    if (isDroppedSailor(origName)) {
+      unmarkSailorDropped(origName);
+      markSailorDropped(newName);
     }
     delete SAILOR_METADATA[origName];
   }
@@ -1570,7 +1570,7 @@ function renderFleetPanel() {
   
   const activeSailors = allSystem.filter(s => {
     const isAutoDrop = isAgeDropped(s.born);
-    const isDropped = DROPPED_SAILORS.has(s.name) || isAutoDrop;
+    const isDropped = isDroppedSailor(s.name) || isAutoDrop;
     return !isDropped && s.name.toLowerCase().includes(searchActive);
   });
   activeSailors.sort((a, b) => {
@@ -1583,6 +1583,9 @@ function renderFleetPanel() {
     const sailorRank = SAILORS.find(sr => isSameSailor(sr.name, s.name));
     const rankStr = sailorRank ? `#${sailorRank.cur}` : '—';
     const safeName = escapeHtml(s.name);
+    // encodeURIComponent keeps the raw name intact through data-attributes
+    // (escapeHtml was wrong here — e.g. O'Brien became a different string).
+    const dataName = encodeURIComponent(s.name);
     const safeGender = escapeHtml(s.g);
     const safeBorn = escapeHtml(s.born);
     const safeClub = escapeHtml(s.club || 'No Club');
@@ -1591,33 +1594,34 @@ function renderFleetPanel() {
       <div style="display:flex;align-items:center;gap:10px">
         <span style="font-family:var(--mono);font-size:10px;color:var(--text3);min-width:32px">${rankStr}</span>
         <div>
-          <div class="excl-name name-c" data-sailor="${safeName}" style="cursor:pointer; color:var(--accent); text-decoration:underline; font-weight:600;">${safeName}</div>
+          <div class="excl-name name-c" data-sailor="${dataName}" style="cursor:pointer; color:var(--accent); text-decoration:underline; font-weight:600;">${safeName}</div>
           <div class="excl-reason">${safeGender} · ${safeBorn} · ${safeClub}</div>
         </div>
       </div>
-      <button class="excl-rm fleet-drop-btn" data-sailor="${safeName}" style="background:var(--red-l); color:var(--red); border:1px solid rgba(138,28,28,.15); min-width:65px; height:24px; padding:0 8px;">✕ Drop</button>
+      <button class="excl-rm fleet-drop-btn" data-sailor="${dataName}" style="background:var(--red-l); color:var(--red); border:1px solid rgba(138,28,28,.15); min-width:65px; height:24px; padding:0 8px;">✕ Drop</button>
     </div>`;
   }).join('') || '<div class="excl-empty">No active sailors.</div>';
 
   const droppedSailors = allSystem.filter(s => {
     const isAutoDrop = isAgeDropped(s.born);
-    const isDropped = DROPPED_SAILORS.has(s.name) || isAutoDrop;
+    const isDropped = isDroppedSailor(s.name) || isAutoDrop;
     return isDropped && s.name.toLowerCase().includes(searchDropped);
   });
   
   droppedList.innerHTML = droppedSailors.map(s => {
     const isAutoDrop = isAgeDropped(s.born);
     const safeName = escapeHtml(s.name);
+    const dataName = encodeURIComponent(s.name);
     const safeGender = escapeHtml(s.g);
     const safeBorn = escapeHtml(s.born);
     const safeClub = escapeHtml(s.club || 'No Club');
     const actionButton = isAutoDrop
       ? `<span class="badge b-n" style="background:var(--red-l); color:var(--red); font-size:9px; padding:3px 6px;">Age Limit (>15)</span>`
-      : `<button class="excl-rm fleet-promote-btn" data-sailor="${safeName}" style="background:var(--accent-l); color:var(--accent); border:1px solid rgba(26,71,42,.15); min-width:90px; height:24px; padding:0 8px;">＋ Re-promote</button>`;
+      : `<button class="excl-rm fleet-promote-btn" data-sailor="${dataName}" style="background:var(--accent-l); color:var(--accent); border:1px solid rgba(26,71,42,.15); min-width:90px; height:24px; padding:0 8px;">＋ Re-promote</button>`;
 
     return `<div class="excl-item" style="margin-bottom:4px; opacity:0.8;">
       <div>
-        <div class="excl-name name-c" data-sailor="${safeName}" style="cursor:pointer; color:var(--accent); text-decoration:underline; font-weight:600;">${safeName}</div>
+        <div class="excl-name name-c" data-sailor="${dataName}" style="cursor:pointer; color:var(--accent); text-decoration:underline; font-weight:600;">${safeName}</div>
         <div class="excl-reason">${safeGender} · ${safeBorn} · ${safeClub}</div>
       </div>
       ${actionButton}
@@ -1627,7 +1631,7 @@ function renderFleetPanel() {
 
 function dropSailor(name) {
   if (!requireEditor()) return;
-  DROPPED_SAILORS.add(name);
+  markSailorDropped(name);
   recomputeSailors();
   saveData();
   renderAll();
@@ -1636,7 +1640,7 @@ function dropSailor(name) {
 
 function promoteSailor(name) {
   if (!requireEditor()) return;
-  DROPPED_SAILORS.delete(name);
+  unmarkSailorDropped(name);
   recomputeSailors();
   saveData();
   renderAll();
