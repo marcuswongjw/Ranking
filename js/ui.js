@@ -449,6 +449,10 @@ function renderSpecificRegattaResults(regName) {
       else if (pct <= 75) { pctLabel = 'Top 75%'; pctColor = 'var(--accent3)'; pctBg = 'var(--accent3-l)'; }
       else { pctLabel = 'Bottom 25%'; pctColor = 'var(--red)'; pctBg = 'var(--red-l)'; }
       
+      // Explicit tabindex so Tab goes: A rank → A nett → B rank → B nett
+      // (delete buttons are skipped with tabindex=-1)
+      const tabRank = idx * 2 + 1;
+      const tabNett = idx * 2 + 2;
       return `<tr>
         <td class="rank-c">${idx + 1}</td>
         <td class="name-c" data-sailor="${safeName}" style="cursor:pointer; color:var(--accent); font-weight:600; text-decoration:underline;">${safeName}</td>
@@ -457,15 +461,18 @@ function renderSpecificRegattaResults(regName) {
         <td class="sub-c" style="font-size:10px">${escapeHtml(s.club || '—')}</td>
         <td style="text-align:center;">
           <input type="number" class="reg-rank-input" data-reg="${escapeHtml(reg.name)}" data-sailor="${safeName}" value="${rankVal}"
+                 tabindex="${tabRank}" inputmode="numeric"
                  style="width:70px; height:24px; text-align:center; padding:2px; font-family:var(--mono);" ${!isEditor() ? 'disabled' : ''}>
         </td>
         <td style="text-align:center;">
           <input type="number" class="reg-points-input" data-reg="${escapeHtml(reg.name)}" data-sailor="${safeName}" value="${pointsVal}"
+                 tabindex="${tabNett}" inputmode="numeric" title="Nett points"
                  style="width:70px; height:24px; text-align:center; padding:2px; font-family:var(--mono); font-weight:600; color:var(--accent2);" ${!isEditor() ? 'disabled' : ''}>
         </td>
         <td style="text-align:center;"><span class="pct-b" style="background:${pctBg};color:${pctColor};font-size:9.5px;padding:3px 6px;border-radius:3px;font-weight:600">${pctLabel}</span></td>
         <td class="table-editor-only" style="text-align:center;">
-          <button class="reg-sailor-delete-btn" data-reg="${escapeHtml(reg.name)}" data-sailor="${safeName}"
+          <button type="button" class="reg-sailor-delete-btn" data-reg="${escapeHtml(reg.name)}" data-sailor="${safeName}"
+                  tabindex="-1"
                   style="background:none; border:none; color:var(--red); cursor:pointer; font-weight:bold; font-size:14px;" title="Remove Sailor" ${BULK_EDIT_MODE ? 'disabled' : ''}>✕</button>
         </td>
       </tr>`;

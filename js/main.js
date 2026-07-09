@@ -1585,7 +1585,7 @@
     if (pointsRaw !== '') {
       pointsVal = parseFloat(pointsRaw);
       if (isNaN(pointsVal) || pointsVal < 0) {
-        alert("Points must be a non-negative number.");
+        alert("Nett points must be a non-negative number.");
         return;
       }
     }
@@ -1675,10 +1675,10 @@
       }
       s.rank = parsed;
       if (BULK_EDIT_MODE) return;
+      // Soft save: do not rebuild the results table body (that steals Tab focus)
       recomputeSailors();
       saveData();
-      renderAll();
-      renderSpecificRegattaResults();
+      refreshViewsAfterInlineRegattaEdit();
     }
   }
 
@@ -1690,17 +1690,26 @@
     if (s) {
       const parsed = val.trim() !== '' ? parseFloat(val.trim()) : null;
       if (parsed !== null && (isNaN(parsed) || parsed < 0)) {
-        alert("Points must be a non-negative number.");
+        alert("Nett points must be a non-negative number.");
         renderSpecificRegattaResults();
         return;
       }
       s.nett = parsed;
       if (BULK_EDIT_MODE) return;
+      // Soft save: keep the results table DOM so Tab can move Rank → Nett → next sailor
       recomputeSailors();
       saveData();
-      renderAll();
-      renderSpecificRegattaResults();
+      refreshViewsAfterInlineRegattaEdit();
     }
+  }
+
+  /** Update rankings and related views without re-rendering the results editor table. */
+  function refreshViewsAfterInlineRegattaEdit() {
+    renderRankingsPanel();
+    renderRegattasPanel();
+    populateResultsDropdown();
+    populateRegattaCheckboxList();
+    updateDatabaseSourceTags();
   }
 
   function updateRegattaDns(regName, val) {
