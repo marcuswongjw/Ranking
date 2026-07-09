@@ -272,6 +272,7 @@ function saveSailorProfile() {
   saveData();
   closeSailorModal();
   renderAll();
+  toastSuccess('Sailor profile saved.');
 }
 
 
@@ -796,6 +797,13 @@ function renderRankingsPanel() {
       </div>
     </div>
 
+    <div class="rankings-legend" aria-label="Rankings legend">
+      <span class="leg-label">Legend</span>
+      <span class="leg-item"><span class="pos-tag best">12</span> Counted in best 3</span>
+      <span class="leg-item"><span class="pos-tag">28</span> Regatta finish</span>
+      <span class="leg-item"><span class="pos-tag dns">85</span> DNS — did not race (default for non-starters)</span>
+      <span class="leg-item" style="color:var(--text3);">Scroll sideways for all regatta columns · Score = best 3 of ${latestRegs.length}</span>
+    </div>
     <div class="tbl-wrap rankings-tbl-wrap" title="Scroll horizontally to see all columns">
       <table class="rankings-table">
         <thead><tr>
@@ -1396,7 +1404,7 @@ function renderHistGoldPanel() {
       document.getElementById('hg-bulk-apply')?.addEventListener('click', () => {
         if (!requireEditor()) return;
         const checked = document.querySelectorAll('.hg-row-cb:checked');
-        if (checked.length === 0) { alert('No sailors selected.'); return; }
+        if (checked.length === 0) { toastWarn('No sailors selected.'); return; }
         const field = document.getElementById('hg-bulk-field')?.value;
         const val = document.getElementById('hg-bulk-value')?.value;
         if (!field) return;
@@ -1416,6 +1424,7 @@ function renderHistGoldPanel() {
         saveData();
         renderAll();
         renderHistGoldPanel();
+        toastSuccess(`Updated ${checked.length} sailor${checked.length === 1 ? '' : 's'}.`);
       });
     }
   } else if (!isEditable && bulkBar) {
@@ -1859,7 +1868,7 @@ function dropSailor(name) {
   if (!requireEditor()) return;
   const cleaned = cleanSailorName(name);
   if (!cleaned) {
-    alert('Could not drop sailor — missing name.');
+    toastError('Could not drop sailor — missing name.');
     return;
   }
   markSailorDropped(cleaned);
@@ -1869,13 +1878,14 @@ function dropSailor(name) {
   renderAll();
   renderFleetPanel();
   updateSailorProfileFleetControls();
+  toastSuccess(`Dropped ${cleaned} from the active fleet.`);
 }
 
 function promoteSailor(name) {
   if (!requireEditor()) return;
   const cleaned = cleanSailorName(name);
   if (!cleaned) {
-    alert('Could not re-promote sailor — missing name.');
+    toastError('Could not re-promote sailor — missing name.');
     return;
   }
   unmarkSailorDropped(cleaned);
@@ -1883,7 +1893,9 @@ function promoteSailor(name) {
   // If they only appear dropped due to age limit, re-promote cannot override that
   const sys = getAllSailorsInSystem().find(s => isSameSailor(s.name, cleaned));
   if (sys && isAgeDropped(sys.born)) {
-    alert(`"${cleaned}" is age-limited (born ${sys.born}) and stays out of active rankings. Only manually dropped sailors can be re-promoted.`);
+    toastWarn(`"${cleaned}" is age-limited (born ${sys.born}) and stays out of active rankings.`);
+  } else {
+    toastSuccess(`Re-promoted ${cleaned} to the active fleet.`);
   }
   recomputeSailors();
   saveData();

@@ -2,6 +2,50 @@ const nameNormalizationCache = new Map();
 const historicalRankCache = new Map();
 
 /**
+ * Non-blocking toast notifications (replaces routine alert() noise).
+ * @param {string} message
+ * @param {'success'|'error'|'info'|'warn'} [type]
+ * @param {{ title?: string, duration?: number }} [opts]
+ */
+function showToast(message, type = 'info', opts = {}) {
+  const host = document.getElementById('toast-host');
+  if (!host) {
+    // Fallback if host not mounted yet
+    if (type === 'error') console.error(message);
+    else console.log(message);
+    return;
+  }
+  const duration = opts.duration != null ? opts.duration : (type === 'error' ? 5200 : 3200);
+  const icons = { success: '✓', error: '!', info: 'i', warn: '⚠' };
+  const el = document.createElement('div');
+  el.className = `toast toast-${type}`;
+  el.setAttribute('role', type === 'error' ? 'alert' : 'status');
+  const titleHtml = opts.title
+    ? `<div class="toast-title">${escapeHtml(opts.title)}</div>`
+    : '';
+  el.innerHTML = `
+    <span class="toast-icon">${icons[type] || icons.info}</span>
+    <div class="toast-body">${titleHtml}<div class="toast-msg">${escapeHtml(String(message))}</div></div>
+    <button type="button" class="toast-close" aria-label="Dismiss">×</button>
+  `;
+  const dismiss = () => {
+    if (el._gone) return;
+    el._gone = true;
+    el.classList.add('toast-out');
+    setTimeout(() => el.remove(), 180);
+  };
+  el.querySelector('.toast-close')?.addEventListener('click', dismiss);
+  host.appendChild(el);
+  if (duration > 0) setTimeout(dismiss, duration);
+  return dismiss;
+}
+
+function toastSuccess(msg, opts) { return showToast(msg, 'success', opts); }
+function toastError(msg, opts) { return showToast(msg, 'error', opts); }
+function toastInfo(msg, opts) { return showToast(msg, 'info', opts); }
+function toastWarn(msg, opts) { return showToast(msg, 'warn', opts); }
+
+/**
  * Sanitize HTML to prevent XSS attacks
  * @param {string} str - Raw string to sanitize
  * @returns {string} - Sanitized string safe for innerHTML

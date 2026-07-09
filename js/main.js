@@ -99,18 +99,62 @@
     }
   }
 
-  async function signInEditor() {
-    const pass = prompt('Enter the editor passcode:');
-    if (!pass) return;
+  function openSignInModal() {
+    const modal = document.getElementById('signin-modal');
+    const passEl = document.getElementById('signin-pass');
+    const errEl = document.getElementById('signin-error');
+    if (!modal) return;
+    if (errEl) {
+      errEl.textContent = '';
+      errEl.classList.remove('show');
+    }
+    if (passEl) passEl.value = '';
+    modal.classList.add('open');
+    setTimeout(() => passEl?.focus(), 30);
+  }
+
+  function closeSignInModal() {
+    const modal = document.getElementById('signin-modal');
+    if (modal) modal.classList.remove('open');
+  }
+
+  async function submitSignIn() {
+    const passEl = document.getElementById('signin-pass');
+    const errEl = document.getElementById('signin-error');
+    const submitBtn = document.getElementById('signin-submit-btn');
+    const pass = passEl?.value || '';
+    if (!pass) {
+      if (errEl) {
+        errEl.textContent = 'Enter the editor passcode.';
+        errEl.classList.add('show');
+      }
+      passEl?.focus();
+      return;
+    }
+    if (submitBtn) submitBtn.disabled = true;
     try {
       await auth.signInWithEmailAndPassword(ADMIN_EMAIL, pass);
+      closeSignInModal();
+      toastSuccess('Signed in — you can edit rankings and fleet.');
     } catch (e) {
-      alert('Incorrect passcode — still in view-only mode.');
+      if (errEl) {
+        errEl.textContent = 'Incorrect passcode — still in view-only mode.';
+        errEl.classList.add('show');
+      }
+      toastError('Incorrect passcode — still in view-only mode.');
+      passEl?.select();
+    } finally {
+      if (submitBtn) submitBtn.disabled = false;
     }
+  }
+
+  function signInEditor() {
+    openSignInModal();
   }
 
   function signOutEditor() {
     auth.signOut();
+    toastInfo('Signed out — back to view-only.');
   }
 
   function setSyncStatus(state, detail) {
@@ -129,6 +173,9 @@
     el.style.color = color;
     el.style.background = bg;
     el.title = state === 'error' && detail ? ('Save failed: ' + detail) : '';
+    if (state === 'error' && detail && typeof toastError === 'function') {
+      toastError(detail, { title: 'Not saved' });
+    }
   }
 
   // Excel drop zone setup
@@ -634,7 +681,7 @@
     saveData();
     renderAll();
     closeImportModal();
-    alert("Spreadsheet imported successfully!");
+    toastSuccess('Spreadsheet imported successfully.');
   }
 
   function uploadFleetExcel(input) {
@@ -704,9 +751,9 @@
         saveData();
         renderAll();
         renderFleetPanel();
-        alert(`Successfully processed fleet Excel. Activated / Promoted ${importedCount} sailors!`);
+        toastSuccess(`Fleet Excel processed — activated / promoted ${importedCount} sailors.`);
       } catch (err) {
-        alert('Could not read fleet Excel file: ' + err.message);
+        toastError('Could not read fleet Excel file: ' + err.message);
       }
       input.value = '';
     };
@@ -803,14 +850,14 @@
     const bornRaw = document.getElementById('fleet-add-born').value.trim();
     const born = parseBirthYearInput(bornRaw);
     if (born === null || Number.isNaN(born)) {
-      alert(`Please enter a valid Birth Year (between ${COMP_YEAR - 20} and ${COMP_YEAR}).`);
+      toastError(`Please enter a valid Birth Year (between ${COMP_YEAR - 20} and ${COMP_YEAR}).`);
       return;
     }
     const club = document.getElementById('fleet-add-club').value.trim();
     const school = document.getElementById('fleet-add-school').value.trim();
     
     if (!name) {
-      alert("Please enter a sailor name.");
+      toastError('Please enter a sailor name.');
       return;
     }
     
@@ -820,9 +867,9 @@
     if (existing) {
       if (isDroppedSailor(existing.name)) {
         unmarkSailorDropped(existing.name);
-        alert(`"${name}" was already in the database and has been re-promoted to active fleet.`);
+        toastSuccess(`"${name}" was already in the database and has been re-promoted.`);
       } else {
-        alert(`"${name}" is already an active sailor.`);
+        toastInfo(`"${name}" is already an active sailor.`);
         return;
       }
     } else {
@@ -838,7 +885,7 @@
           rank: null
         });
       } else {
-        alert("No regattas loaded yet. Please drop an Excel file to initialize the system first.");
+        toastError('No regattas loaded yet. Drop an Excel file to initialize first.');
         return;
       }
     }
@@ -851,7 +898,7 @@
     saveData();
     renderAll();
     renderFleetPanel();
-    alert(`Successfully added "${name}" to the active fleet.`);
+    toastSuccess(`Added "${name}" to the active fleet.`);
   }
 
   function clearAllData() {
@@ -1022,9 +1069,9 @@
     renderAll();
     closeAddRegattaModal();
     if (addGold) {
-      alert(`Added upcoming regatta "${name}" and populated with ${sailors.length} Gold Fleet sailors.`);
+      toastSuccess(`Added "${name}" with ${sailors.length} Gold Fleet sailors.`);
     } else {
-      alert(`Added upcoming regatta "${name}". You can now add sailor scores in their profiles.`);
+      toastSuccess(`Added upcoming regatta "${name}".`);
     }
   }
 
@@ -1131,6 +1178,24 @@
         else signInEditor();
       });
     }
+    document.getElementById('signin-cancel-btn')?.addEventListener('click', () => closeSignInModal());
+    document.getElementById('signin-submit-btn')?.addEventListener('click', () => submitSignIn());
+    document.getElementById('signin-modal')?.addEventListener('click', e => {
+      if (e.target === e.currentTarget) closeSignInModal();
+    });
+    document.getElementById('signin-pass')?.addEventListener('keydown', e => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        submitSignIn();
+      } else if (e.key === 'Escape') {
+        closeSignInModal();
+      }
+    });
+    document.addEventListener('keydown', e => {
+      if (e.key === 'Escape' && document.getElementById('signin-modal')?.classList.contains('open')) {
+        closeSignInModal();
+      }
+    });
 
     // Rankings Panel Filter and Search elements
     document.getElementById('nameSearch')?.addEventListener('input', () => renderRankings());
@@ -1666,6 +1731,7 @@
     updateBulkEditUI();
     // Re-render so rank/nett inputs become enabled
     renderSpecificRegattaResults();
+    toastInfo('Bulk edit on — edit ranks and nett points, then Save All Changes.');
   }
 
   function saveBulkEditChanges() {
@@ -1676,6 +1742,7 @@
     renderAll();
     renderSpecificRegattaResults();
     updateBulkEditUI();
+    toastSuccess('Regatta scores saved.');
   }
 
   function cancelBulkEdit() {
@@ -1689,6 +1756,7 @@
     renderAll();
     renderSpecificRegattaResults();
     updateBulkEditUI();
+    toastInfo('Bulk edits discarded.');
   }
 
   function updateBulkEditUI() {
@@ -1708,6 +1776,21 @@
     if (saveBtn) saveBtn.style.display = BULK_EDIT_MODE ? 'inline-flex' : 'none';
     if (cancelBtn) cancelBtn.style.display = BULK_EDIT_MODE ? 'inline-flex' : 'none';
 
+    const hint = document.getElementById('bulk-edit-hint');
+    const activeBanner = document.getElementById('bulk-edit-active-banner');
+    const showResults = !!CURRENT_SELECTED_REGATTA;
+    if (hint) {
+      // CSS editor-only uses display:inline-flex !important; override carefully
+      if (isEditor() && showResults && !BULK_EDIT_MODE) {
+        hint.style.setProperty('display', 'flex', 'important');
+      } else {
+        hint.style.setProperty('display', 'none', 'important');
+      }
+    }
+    if (activeBanner) {
+      activeBanner.style.display = (isEditor() && showResults && BULK_EDIT_MODE) ? 'flex' : 'none';
+    }
+
     // Rank / nett points: only interactive during bulk edit
     document.querySelectorAll('.reg-rank-input, .reg-points-input').forEach(inp => {
       const allow = isEditor() && BULK_EDIT_MODE;
@@ -1722,7 +1805,7 @@
   function updateRegattaSailorRank(regName, sailorName, val) {
     if (!requireEditor()) return;
     if (!BULK_EDIT_MODE) {
-      alert('Click "Bulk Edit" to change ranks and nett points.');
+      toastWarn('Click Bulk Edit to change ranks and nett points.');
       renderSpecificRegattaResults();
       return;
     }
@@ -1744,7 +1827,7 @@
   function updateRegattaSailorPoints(regName, sailorName, val) {
     if (!requireEditor()) return;
     if (!BULK_EDIT_MODE) {
-      alert('Click "Bulk Edit" to change ranks and nett points.');
+      toastWarn('Click Bulk Edit to change ranks and nett points.');
       renderSpecificRegattaResults();
       return;
     }
@@ -1844,12 +1927,12 @@
         
         saveData();
         renderSpecificRegattaResults(regName);
-        alert("Document uploaded successfully!");
+        toastSuccess('Document uploaded.');
       }
     } catch (err) {
       console.error("Upload error:", err);
       setSyncStatus('error', err.message);
-      alert("Failed to upload document: " + err.message);
+      toastError('Failed to upload document: ' + err.message);
     }
   }
 
@@ -1879,11 +1962,11 @@
       
       saveData();
       renderSpecificRegattaResults(regName);
-      alert("Document removed successfully!");
+      toastSuccess('Document removed.');
     } catch (err) {
       console.error("Removal error:", err);
       setSyncStatus('error', err.message);
-      alert("Failed to remove document: " + err.message);
+      toastError('Failed to remove document: ' + err.message);
     }
   }
 

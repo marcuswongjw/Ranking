@@ -439,3 +439,196 @@ td{padding:8px 10px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   text-align: center;
 }
 
+/* —— Toasts —— */
+.toast-host {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  z-index: 500;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-width: min(360px, calc(100vw - 32px));
+  pointer-events: none;
+}
+.toast {
+  pointer-events: auto;
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 11px 14px;
+  border-radius: var(--r);
+  background: var(--card);
+  border: 1px solid var(--border);
+  box-shadow: 0 8px 28px rgba(0,0,0,.12);
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--text);
+  animation: toast-in .18s ease-out;
+}
+.toast.toast-out { animation: toast-out .16s ease-in forwards; }
+.toast-icon {
+  flex-shrink: 0;
+  width: 18px;
+  text-align: center;
+  font-size: 13px;
+  line-height: 1.3;
+}
+.toast-body { flex: 1; min-width: 0; }
+.toast-title {
+  font-weight: 600;
+  font-size: 12px;
+  margin-bottom: 1px;
+}
+.toast-msg { color: var(--text2); font-size: 11.5px; }
+.toast-close {
+  flex-shrink: 0;
+  border: none;
+  background: none;
+  color: var(--text3);
+  cursor: pointer;
+  font-size: 14px;
+  line-height: 1;
+  padding: 0 2px;
+}
+.toast-close:hover { color: var(--text); }
+.toast-success { border-left: 3px solid var(--accent); }
+.toast-error { border-left: 3px solid var(--red); }
+.toast-warn { border-left: 3px solid var(--accent3); }
+.toast-info { border-left: 3px solid var(--accent2); }
+@keyframes toast-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes toast-out {
+  from { opacity: 1; transform: translateY(0); }
+  to { opacity: 0; transform: translateY(6px); }
+}
+
+/* —— Sign-in modal —— */
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 400;
+  background: rgba(26,25,22,.4);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+.modal-backdrop.open { display: flex; }
+.modal-card {
+  width: 100%;
+  max-width: 380px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  box-shadow: 0 16px 48px rgba(0,0,0,.18);
+  padding: 22px 24px 18px;
+}
+.modal-card h2 {
+  font-family: var(--mono);
+  font-size: 15px;
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+.modal-card .modal-desc {
+  font-size: 12px;
+  color: var(--text2);
+  margin-bottom: 16px;
+  line-height: 1.5;
+}
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 16px;
+}
+.modal-error {
+  display: none;
+  margin-top: 10px;
+  font-size: 11.5px;
+  color: var(--red);
+  background: var(--red-l);
+  border: 1px solid rgba(138,28,28,.15);
+  border-radius: var(--r);
+  padding: 7px 10px;
+}
+.modal-error.show { display: block; }
+.btn-secondary {
+  padding: 7px 14px;
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  font-size: 11px;
+  font-family: var(--mono);
+  cursor: pointer;
+  color: var(--text);
+}
+.btn-primary {
+  padding: 7px 16px;
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  border-radius: var(--r);
+  font-size: 11px;
+  font-weight: 600;
+  font-family: var(--mono);
+  cursor: pointer;
+}
+.btn-primary:disabled { opacity: .55; cursor: wait; }
+
+/* —— Rankings legend / helper banners —— */
+.ux-banner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 14px;
+  padding: 9px 12px;
+  margin-bottom: 12px;
+  border-radius: var(--r);
+  border: 1px solid var(--border);
+  background: var(--bg2);
+  font-size: 11.5px;
+  color: var(--text2);
+  line-height: 1.4;
+}
+.ux-banner strong { color: var(--text); font-weight: 600; }
+.ux-banner-info {
+  background: var(--accent2-l);
+  border-color: rgba(45,74,138,.18);
+  color: var(--accent2);
+}
+.ux-banner-info strong { color: var(--accent2); }
+.ux-banner-warn {
+  background: var(--accent3-l);
+  border-color: rgba(122,53,0,.15);
+  color: var(--accent3);
+}
+.rankings-legend {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 16px;
+  margin: 0 0 10px;
+  padding: 8px 12px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  font-size: 11px;
+  color: var(--text2);
+}
+.rankings-legend .leg-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.rankings-legend .leg-label {
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: var(--text3);
+  margin-right: 4px;
+}
+

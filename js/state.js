@@ -39,7 +39,9 @@ function isEditor() {
 function requireEditor() {
   if (isEditor()) return true;
   setSyncStatus('locked');
-  alert('View-only mode. Click "🔒 Sign in to edit" to make changes.');
+  if (typeof toastWarn === 'function') {
+    toastWarn('View-only mode. Sign in to edit rankings and fleet.');
+  }
   return false;
 }
 
@@ -169,7 +171,7 @@ async function maybeMigrate() {
   if (confirm(msg)) {
     await saveData();
     PENDING_LOCAL_MIGRATION = null;
-    alert('Data published to the cloud — all viewers now read this shared copy.');
+    toastSuccess('Data published to the cloud — all viewers now share this copy.');
   }
 }
 
@@ -177,7 +179,7 @@ async function forceMigrateLocalToCloud() {
   if (!requireEditor()) return;
   const legacy = readLegacyLocalState();
   if (!legacy) {
-    alert("No legacy browser cache found in this browser.");
+    toastWarn('No legacy browser cache found in this browser.');
     return;
   }
   const msg = "Are you sure you want to overwrite the Firestore cloud database with this browser's local cache? This will replace whatever is currently in the cloud database.";
@@ -187,9 +189,9 @@ async function forceMigrateLocalToCloud() {
       recomputeSailors();
       await saveData();
       renderAll();
-      alert("Success! Cloud database has been overwritten with your browser's local cache.");
+      toastSuccess('Cloud database overwritten with this browser’s local cache.');
     } catch (e) {
-      alert("Failed to migrate: " + e.message);
+      toastError('Failed to migrate: ' + e.message);
     }
   }
 }
