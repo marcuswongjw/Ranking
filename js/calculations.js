@@ -168,13 +168,17 @@ function recomputeSailors() {
     if (droppedNorms.has(norm) || ageDroppedNorms.has(norm)) return;
     if (isDroppedSailor(s.name)) return;
     if (isAgeDropped(s.born)) return;
+    const metaKey = (typeof resolveSailorMetadataKey === 'function')
+      ? resolveSailorMetadataKey(s.name)
+      : s.name;
+    const meta = SAILOR_METADATA[metaKey] || SAILOR_METADATA[s.name] || {};
     normalizedToOriginal.set(norm, s.name);
     sailorMap.set(s.name, {
       name: s.name,
-      g: s.g,
-      born: s.born,
-      club: s.club,
-      school: s.school || '',
+      g: s.g || meta.g || null,
+      born: s.born || meta.born || null,
+      club: s.club || meta.club || '',
+      school: s.school || meta.school || '',
       scores: Array(latestRegs.length).fill(null),
       ranks: Array(latestRegs.length).fill(null)
     });
@@ -234,13 +238,16 @@ function recomputeSailors() {
     const sortedScores = validScores.slice().sort((a, b) => a - b);
     const score = sortedScores.slice(0, 3).reduce((a, b) => a + b, 0);
 
-    const metadata = SAILOR_METADATA[s.name] || {};
+    const metaKey = (typeof resolveSailorMetadataKey === 'function')
+      ? resolveSailorMetadataKey(s.name)
+      : s.name;
+    const metadata = SAILOR_METADATA[metaKey] || SAILOR_METADATA[s.name] || {};
     computed.push({
       name: s.name,
-      g: s.g,
-      born: s.born,
-      club: s.club,
-      school: s.school,
+      g: s.g || metadata.g || null,
+      born: s.born || metadata.born || null,
+      club: s.club || metadata.club || '',
+      school: s.school || metadata.school || '',
       score: score,
       scores: s.scores,
       ranks: s.ranks,

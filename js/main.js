@@ -744,30 +744,55 @@
   function getAllSailorsInSystem() {
     const allNames = new Map();
     const normalizedToOriginal = new Map();
-    
+
+    function upsertSailor(s) {
+      if (!s || !s.name) return;
+      const norm = normalizeName(s.name);
+      if (!norm) return;
+      let matchedKey = normalizedToOriginal.get(norm);
+      if (!matchedKey) {
+        matchedKey = s.name;
+        normalizedToOriginal.set(norm, matchedKey);
+        allNames.set(matchedKey, {
+          name: s.name,
+          g: s.g || s.gender || null,
+          born: s.born || null,
+          club: s.club || '',
+          school: s.school || ''
+        });
+        return;
+      }
+      const obj = allNames.get(matchedKey);
+      if ((s.g || s.gender) && !obj.g) obj.g = s.g || s.gender;
+      if (s.born && !obj.born) obj.born = s.born;
+      if (s.club && !obj.club) obj.club = s.club;
+      if (s.school && !obj.school) obj.school = s.school;
+    }
+
+    // 1) Anyone who appears on any regatta entry (including null rank = DNS)
     REGATTAS.forEach(reg => {
-      reg.sailors.forEach(s => {
-        const norm = normalizeName(s.name);
-        let matchedKey = normalizedToOriginal.get(norm);
-        if (!matchedKey) {
-          matchedKey = s.name;
-          normalizedToOriginal.set(norm, matchedKey);
-          allNames.set(matchedKey, {
-            name: s.name,
-            g: s.g,
-            born: s.born,
-            club: s.club,
-            school: s.school || ''
-          });
-        } else {
-          const obj = allNames.get(matchedKey);
-          if (s.g && !obj.g) obj.g = s.g;
-          if (s.born && !obj.born) obj.born = s.born;
-          if (s.club && !obj.club) obj.club = s.club;
-          if (s.school && !obj.school) obj.school = s.school;
-        }
+      (reg.sailors || []).forEach(upsertSailor);
+    });
+
+    // 2) Gold-fleet / profile sailors who may not have raced yet.
+    //    Previously only regatta participants entered rankings, so a sailor
+    //    promoted to Gold (Entered Gold set, or fleet profile in metadata)
+    //    but missing from July results was omitted entirely.
+    Object.keys(SAILOR_METADATA || {}).forEach(name => {
+      const meta = SAILOR_METADATA[name] || {};
+      const enteredGold = meta.enteredGold && meta.enteredGold !== '—';
+      const hasFleetProfile = !!(meta.g || meta.born || meta.club || meta.school);
+      const hasSquadLock = Object.keys(meta).some(k => k.startsWith('squad') && meta[k]);
+      if (!enteredGold && !hasFleetProfile && !hasSquadLock) return;
+      upsertSailor({
+        name,
+        g: meta.g,
+        born: meta.born,
+        club: meta.club,
+        school: meta.school
       });
     });
+
     return Array.from(allNames.values());
   }
 
