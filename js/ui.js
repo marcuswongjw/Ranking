@@ -771,8 +771,8 @@ function renderRankingsPanel() {
           <th class="col-name sort-header" style="cursor:pointer;user-select:none" data-sort="name">Sailor${getSortIndicator('name')}</th>
           <th class="sort-header" style="cursor:pointer;user-select:none" data-sort="gender">G${getSortIndicator('gender')}</th>
           <th class="sort-header" style="cursor:pointer;user-select:none" data-sort="born">Born${getSortIndicator('born')}</th>
-          <th class="col-squad sort-header" style="cursor:pointer;user-select:none" data-sort="squad">${escapeHtml('Squad (Jul ' + String(COMP_YEAR).slice(-2) + ')')}${getSortIndicator('squad')}</th>
-          ${isEditor() ? `<th class="col-squad sort-header editor-only-col" style="cursor:pointer;user-select:none" data-sort="squadNext">${escapeHtml('Squad (Jan ' + String(COMP_YEAR + 1).slice(-2) + ')')}${getSortIndicator('squadNext')}</th>` : ''}
+          <th class="col-squad sort-header" style="cursor:pointer;user-select:none;white-space:normal;line-height:1.35" data-sort="squad">Squad<br><span style="font-weight:400;color:var(--text3)">(Jul ${String(COMP_YEAR).slice(-2)})</span>${getSortIndicator('squad')}</th>
+          ${isEditor() ? `<th class="col-squad sort-header editor-only-col" style="cursor:pointer;user-select:none;white-space:normal;line-height:1.35" data-sort="squadNext">Squad<br><span style="font-weight:400;color:var(--text3)">(Jan ${String(COMP_YEAR + 1).slice(-2)})</span>${getSortIndicator('squadNext')}</th>` : ''}
           <th class="col-score sort-header" style="cursor:pointer;user-select:none" data-sort="score">Best 3 of ${latestRegs.length}${getSortIndicator('score')}</th>
           ${regHeaders}
         </tr></thead>
