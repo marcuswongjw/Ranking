@@ -252,6 +252,52 @@ function defaultBirthYear() {
   return (typeof COMP_YEAR === 'number' ? COMP_YEAR : new Date().getFullYear()) - 13;
 }
 
+/** Canonical metadata key for squad period locks, e.g. squadJul26 / squadJan27. */
+function squadPeriodKey(kind, year) {
+  const y = year != null ? year : (typeof COMP_YEAR === 'number' ? COMP_YEAR : new Date().getFullYear());
+  const yy = String(y).slice(-2);
+  return (kind === 'jan' ? 'squadJan' : 'squadJul') + yy;
+}
+
+/**
+ * Single source of truth for squad status: metadata lock wins, else auto map.
+ * @returns {{ value: string|null, locked: boolean, periodKey: string }}
+ */
+function getEffectiveSquad(sailorName, periodKey, autoMap) {
+  const metaKey = (typeof resolveSailorMetadataKey === 'function')
+    ? resolveSailorMetadataKey(sailorName)
+    : sailorName;
+  const meta = (SAILOR_METADATA && (SAILOR_METADATA[metaKey] || SAILOR_METADATA[sailorName])) || {};
+  if (meta[periodKey]) {
+    return { value: meta[periodKey], locked: true, periodKey };
+  }
+  if (autoMap) {
+    if (autoMap.has && autoMap.has(sailorName)) {
+      return { value: autoMap.get(sailorName) || null, locked: false, periodKey };
+    }
+    // Map may use a different spelling of the name
+    if (autoMap.forEach) {
+      let found = null;
+      autoMap.forEach((v, n) => {
+        if (!found && isSameSailor(n, sailorName)) found = v;
+      });
+      if (found) return { value: found, locked: false, periodKey };
+    }
+  }
+  return { value: null, locked: false, periodKey };
+}
+
+/** Write squad lock into SAILOR_METADATA (shared by Rankings + Historical & Gold). */
+function setSquadStatus(sailorName, periodKey, value) {
+  const key = (typeof resolveSailorMetadataKey === 'function')
+    ? resolveSailorMetadataKey(sailorName)
+    : cleanSailorName(sailorName);
+  if (!key) return;
+  if (!SAILOR_METADATA[key]) SAILOR_METADATA[key] = {};
+  if (value) SAILOR_METADATA[key][periodKey] = value;
+  else delete SAILOR_METADATA[key][periodKey];
+}
+
 function getRegattaPercentileBase(reg) {
   if (reg && reg.dns !== undefined && reg.dns !== null && reg.dns > 0) {
     return reg.dns;

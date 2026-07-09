@@ -139,7 +139,7 @@ function saveSailorProfile() {
   const bornRaw = document.getElementById('sm-born').value;
   const bornParsed = parseBirthYearInput(bornRaw);
   if (bornRaw !== '' && (bornParsed === null || Number.isNaN(bornParsed))) {
-    alert(`Please enter a valid Birth Year (between ${COMP_YEAR - 20} and ${COMP_YEAR}).`);
+    toastWarn(`Please enter a valid Birth Year (between ${COMP_YEAR - 20} and ${COMP_YEAR}).`);
     return;
   }
   const born = bornParsed;
@@ -166,12 +166,12 @@ function saveSailorProfile() {
   const histJun26 = parseOptionalPositiveRank(histJun26Raw);
   const invalidHistRank = [histJun24, histDec24, histJun25, histDec25, histJun26].some(v => v !== null && (Number.isNaN(v) || !Number.isInteger(v) || v < 1));
   if (invalidHistRank) {
-    alert('Historical rank overrides must be whole numbers greater than 0 when provided.');
+    toastWarn('Historical rank overrides must be whole numbers greater than 0 when provided.');
     return;
   }
 
   if (!newName) {
-    alert("Name cannot be empty.");
+    toastWarn('Name cannot be empty.');
     return;
   }
   
@@ -184,7 +184,7 @@ function saveSailorProfile() {
       ? parseOptionalPositiveInt(scoreInput.value)
       : null;
     if (Number.isNaN(scoreVal)) {
-      alert('Regatta ranks must be whole numbers greater than 0 when provided.');
+      toastWarn('Regatta ranks must be whole numbers greater than 0 when provided.');
       return;
     }
     regattaScoreUpdates.push(scoreVal);
@@ -830,18 +830,16 @@ function renderRankings() {
   const sq = computeSquads(SAILORS);
   const sqNext = computeSquads(SAILORS, COMP_YEAR + 1);
 
-  // Manually locked squad statuses, stored per sailor in SAILOR_METADATA
-  // under year-suffixed keys (e.g. squadJul26 for COMP_YEAR 2026).
-  const yy = String(COMP_YEAR).slice(-2);
-  const squadJulKey = 'squadJul' + yy;
-  const squadLock = (name, key) => (SAILOR_METADATA[name] || {})[key] || null;
+  // Squad locks: shared SAILOR_METADATA keys (squadJul26 / squadJan27) with Historical & Gold
+  const squadJulKey = squadPeriodKey('jul', COMP_YEAR);
+  const squadJanNextKey = squadPeriodKey('jan', COMP_YEAR + 1);
 
   const latestRegs = getActiveRegattas();
 
   const data = SAILORS.filter(s => {
     if (genderFilter !== 'all' && s.g !== genderFilter) return false;
-    const squad = isExcludedSailor(s.name) ? null : (sq.get(s.name) || null);
-    if (sqF && squad !== sqF) return false;
+    const eff = isExcludedSailor(s.name) ? { value: null } : getEffectiveSquad(s.name, squadJulKey, sq);
+    if (sqF && eff.value !== sqF) return false;
     if (nm && !s.name.toLowerCase().includes(nm)) return false;
     if (t50 && s.cur > 50) return false;
     return true;
@@ -862,11 +860,11 @@ function renderRankings() {
       valA = a.born;
       valB = b.born;
     } else if (sortKey === 'squad') {
-      valA = squadNameOrder(squadLock(a.name, squadJulKey) || sq.get(a.name));
-      valB = squadNameOrder(squadLock(b.name, squadJulKey) || sq.get(b.name));
+      valA = squadNameOrder(getEffectiveSquad(a.name, squadJulKey, sq).value);
+      valB = squadNameOrder(getEffectiveSquad(b.name, squadJulKey, sq).value);
     } else if (sortKey === 'squadNext') {
-      valA = squadNameOrder(sqNext.get(a.name));
-      valB = squadNameOrder(sqNext.get(b.name));
+      valA = squadNameOrder(getEffectiveSquad(a.name, squadJanNextKey, sqNext).value);
+      valB = squadNameOrder(getEffectiveSquad(b.name, squadJanNextKey, sqNext).value);
     } else if (sortKey === 'enteredGold') {
       valA = a.enteredGold || '—';
       valB = b.enteredGold || '—';
@@ -900,9 +898,9 @@ function renderRankings() {
 
   body.innerHTML = data.map(s => {
     const isExcl = isExcludedSailor(s.name);
-    const squad = isExcl ? null : (sq.get(s.name) || null);
+    const effJul = isExcl ? { value: null, locked: false } : getEffectiveSquad(s.name, squadJulKey, sq);
     const isRetiringNext = isAgeDropped(s.born, COMP_YEAR + 1);
-    const squadNext = isExcl ? null : (sqNext.get(s.name) || null);
+    const effNext = isExcl ? { value: null, locked: false } : getEffectiveSquad(s.name, squadJanNextKey, sqNext);
     const rowSt = isExcl ? 'opacity:.42;' : '';
     const exclTag = isExcl ? `<span class="excl-tag">${escapeHtml(getExclusionReason(s.name))}</span>` : '';
 
@@ -922,38 +920,63 @@ function renderRankings() {
       return `<td class="col-reg" style="text-align:center"><span class="pos-tag${isBest3.has(idx) ? ' best' : ''}">${escapeHtml(String(v))}</span></td>`;
     }).join('');
 
+    const dataName = encodeURIComponent(cleanSailorName(s.name));
     const safeName = escapeHtml(s.name);
     const safeGender = escapeHtml(s.g);
     const safeBorn = escapeHtml(s.born);
 
-    const lockJul = squadLock(s.name, squadJulKey);
-    const squadLockCell = (field, locked, autoLabel) => {
-      if (!isEditor()) return locked ? squadBadge(locked) : (autoLabel !== null ? squadBadge(autoLabel) : '<span class="badge b-n">—</span>');
-      const autoText = autoLabel !== null ? `— auto (${autoLabel || '—'}) —` : '—';
-      return `<select class="squad-lock-select" data-sailor="${safeName}" data-field="${field}"
-        style="height:22px;font-size:10px;padding:1px 2px;max-width:100px;${locked ? 'border-color:var(--accent);font-weight:600;' : ''}">
+    const squadLockCell = (field, eff) => {
+      const locked = eff.locked ? eff.value : null;
+      const autoLabel = eff.locked ? null : eff.value;
+      if (!isEditor()) {
+        if (isExcl && !locked) return '<span class="badge b-n">Excl.</span>';
+        return locked || autoLabel ? squadBadge(locked || autoLabel) : '<span class="badge b-n">—</span>';
+      }
+      const autoText = autoLabel ? `— auto (${autoLabel}) —` : '— auto —';
+      return `<select class="squad-lock-select" data-sailor="${dataName}" data-field="${field}"
+        style="height:22px;font-size:10px;padding:1px 2px;max-width:100px;${locked ? 'border-color:var(--accent);font-weight:600;' : ''}"
+        title="Lock overrides auto squad (same data as Historical & Gold)">
         <option value="">${autoText}</option>
         ${['Nat A', 'Nat B', 'DS'].map(o => `<option value="${o}" ${locked === o ? 'selected' : ''}>${o} 🔒</option>`).join('')}
       </select>`;
     };
 
     const squadNextCell = isEditor()
-      ? `<td class="col-squad">${isExcl ? '<span class="badge b-n">Excl.</span>' : isRetiringNext ? '<span class="badge b-n" style="background:var(--red-l);color:var(--red)" title="Turns 16 by then — ages out of the Gold Fleet">Retiring</span>' : squadBadge(squadNext)}</td>`
+      ? `<td class="col-squad">${isExcl ? '<span class="badge b-n">Excl.</span>' : isRetiringNext ? '<span class="badge b-n" style="background:var(--red-l);color:var(--red)" title="Turns 16 by then — ages out of the Gold Fleet">Retiring</span>' : squadLockCell(squadJanNextKey, effNext)}</td>`
       : '';
 
     return `<tr style="${rowSt}">
       <td class="rank-c col-rank">${s.cur}</td>
-      <td class="name-c col-name" data-sailor="${safeName}" style="cursor:pointer; color:var(--accent); font-weight:600; text-decoration:underline;">${safeName}${exclTag}</td>
+      <td class="name-c col-name" data-sailor="${dataName}" style="cursor:pointer; color:var(--accent); font-weight:600; text-decoration:underline;">${safeName}${exclTag}</td>
       <td class="sub-c">${safeGender}</td>
       <td class="sub-c">${safeBorn}</td>
-      <td class="col-squad">${isExcl && !lockJul && !isEditor() ? '<span class="badge b-n">Excl.</span>' : squadLockCell(squadJulKey, lockJul, isExcl ? null : squad)}</td>
+      <td class="col-squad">${squadLockCell(squadJulKey, effJul)}</td>
       ${squadNextCell}
       <td class="score-c col-score" style="text-align:center">${s.score}</td>
       ${cells}
     </tr>`;
-  }).join('') || `<tr><td colspan="${(isEditor() ? 7 : 6) + latestRegs.length}" style="text-align:center;color:var(--text3);padding:24px">No sailors match criteria.</td></tr>`;
+  }).join('') || `<tr><td colspan="${(isEditor() ? 7 : 6) + latestRegs.length}" style="text-align:center;color:var(--text3);padding:24px">
+      <div style="margin-bottom:10px">No sailors match the current filters.</div>
+      <button type="button" id="clear-rankings-filters" class="btn-secondary" style="display:inline-flex;">Clear filters</button>
+    </td></tr>`;
 
+  document.getElementById('clear-rankings-filters')?.addEventListener('click', () => clearRankingsFilters());
   syncRankingsStickyOffsets();
+}
+
+function clearRankingsFilters() {
+  genderFilter = 'all';
+  document.querySelectorAll('.pill[data-gender]').forEach(p => {
+    p.classList.toggle('active', p.getAttribute('data-gender') === 'all');
+  });
+  const squadEl = document.getElementById('squadFilter');
+  if (squadEl) squadEl.value = '';
+  const nameEl = document.getElementById('nameSearch');
+  if (nameEl) nameEl.value = '';
+  const top50 = document.getElementById('top50');
+  if (top50) top50.checked = false;
+  renderRankings();
+  toastInfo('Filters cleared.');
 }
 
 /** Keep sticky Sailor column flush against Rank when the table scrolls horizontally. */
@@ -1392,13 +1415,12 @@ function renderHistGoldPanel() {
         checked.forEach(cb => {
           const name = sailorNameFromDataAttr(cb.getAttribute('data-sailor'));
           if (!name) return;
-          const key = resolveSailorMetadataKey(name);
-          if (!SAILOR_METADATA[key]) SAILOR_METADATA[key] = {};
           if (field === 'enteredGold') {
+            const key = resolveSailorMetadataKey(name);
+            if (!SAILOR_METADATA[key]) SAILOR_METADATA[key] = {};
             SAILOR_METADATA[key].enteredGold = val;
           } else if (field.startsWith('squad')) {
-            if (val) SAILOR_METADATA[key][field] = val;
-            else delete SAILOR_METADATA[key][field];
+            setSquadStatus(name, field, val || '');
           }
         });
         recomputeSailors();
@@ -2010,4 +2032,5 @@ function renderAll() {
   if (CURRENT_SELECTED_REGATTA) {
     renderSpecificRegattaResults(CURRENT_SELECTED_REGATTA);
   }
+  if (typeof updateDataFreshnessUI === 'function') updateDataFreshnessUI();
 }

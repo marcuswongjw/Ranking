@@ -33,6 +33,7 @@
       }
       recomputeSailors();
       renderAll();
+      if (typeof updateDataFreshnessUI === 'function') updateDataFreshnessUI();
     }, err => console.error('Realtime listener error:', err));
   }
 
@@ -81,7 +82,7 @@
     setSyncStatus(isEditor() ? (CLOUD_HAS_DATA ? 'saved' : 'unpublished') : 'view');
     
     if (!isEditor()) {
-      const editorOnlyViews = ['simulator', 'target', 'exclusions', 'charts', 'major-comps', 'hist-gold', 'fleet'];
+      const editorOnlyViews = ['simulator', 'target', 'exclusions', 'major-comps', 'hist-gold', 'fleet'];
       if (editorOnlyViews.includes(lastMainView)) {
         switchView('rankings');
       }
@@ -176,6 +177,35 @@
     if (state === 'error' && detail && typeof toastError === 'function') {
       toastError(detail, { title: 'Not saved' });
     }
+    updateDataFreshnessUI();
+  }
+
+  /** Show when data was last saved and which regatta ends the ranking window. */
+  function updateDataFreshnessUI() {
+    const el = document.getElementById('data-freshness');
+    if (!el) return;
+    const parts = [];
+    if (LAST_DATA_UPDATED_AT && !Number.isNaN(LAST_DATA_UPDATED_AT.getTime())) {
+      const d = LAST_DATA_UPDATED_AT;
+      const sameDay = new Date().toDateString() === d.toDateString();
+      const timeStr = d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      const dateStr = sameDay ? timeStr : d.toLocaleDateString([], { day: 'numeric', month: 'short' }) + ' ' + timeStr;
+      parts.push('Updated ' + dateStr);
+    }
+    try {
+      const regs = typeof getActiveRegattas === 'function' ? getActiveRegattas() : [];
+      if (regs.length) {
+        const last = regs[regs.length - 1];
+        parts.push('after ' + (last.name || last.date || 'latest regatta'));
+      }
+    } catch (_) { /* ignore */ }
+    if (!parts.length) {
+      el.textContent = CLOUD_HAS_DATA ? 'Cloud data' : '—';
+      el.title = 'No update timestamp yet';
+      return;
+    }
+    el.textContent = parts.join(' · ');
+    el.title = parts.join('\n');
   }
 
   // Excel drop zone setup
@@ -226,7 +256,7 @@
     if (!requireEditor()) return;
     const n = file.name.toLowerCase();
     if (!n.endsWith('.xlsx') && !n.endsWith('.xlsm') && !n.endsWith('.xls')) {
-      alert('Please drop an Excel file (.xlsx, .xlsm, or .xls).');
+      toastWarn('Please drop an Excel file (.xlsx, .xlsm, or .xls).');
       return;
     }
     const reader = new FileReader();
@@ -236,7 +266,7 @@
         const sn = wb.SheetNames.find(n => /sheet1/i.test(n)) || wb.SheetNames[0];
         parseSheet(XLSX.utils.sheet_to_json(wb.Sheets[sn], { header: 1, defval: null }), file.name);
       } catch (err) {
-        alert('Could not read file: ' + err.message);
+        toastError('Could not read file: ' + err.message);
       }
     };
     reader.readAsArrayBuffer(file);
@@ -938,8 +968,12 @@
   }
 
   function getSortIndicator(key) {
-    if (sortKey !== key) return ' <span style="font-size:8px;color:var(--text3);opacity:0.3;">↕</span>';
-    return sortAsc ? ' <span style="font-size:9px;color:var(--accent);font-weight:bold">▲</span>' : ' <span style="font-size:9px;color:var(--accent);font-weight:bold">▼</span>';
+    if (sortKey !== key) {
+      return ' <span class="sort-ind sort-ind-idle" aria-hidden="true">↕</span>';
+    }
+    return sortAsc
+      ? ' <span class="sort-ind sort-ind-active" aria-hidden="true">▲</span>'
+      : ' <span class="sort-ind sort-ind-active" aria-hidden="true">▼</span>';
   }
 
   function handleMcSort(key) {
@@ -953,8 +987,12 @@
   }
 
   function getMcSortIndicator(key) {
-    if (mcSortKey !== key) return '';
-    return mcSortAsc ? ' ▲' : ' ▼';
+    if (mcSortKey !== key) {
+      return ' <span class="sort-ind sort-ind-idle" aria-hidden="true">↕</span>';
+    }
+    return mcSortAsc
+      ? ' <span class="sort-ind sort-ind-active" aria-hidden="true">▲</span>'
+      : ' <span class="sort-ind sort-ind-active" aria-hidden="true">▼</span>';
   }
 
   function handleHgSort(key) {
@@ -968,8 +1006,12 @@
   }
 
   function getHgSortIndicator(key) {
-    if (hgSortKey !== key) return '';
-    return hgSortAsc ? ' ▲' : ' ▼';
+    if (hgSortKey !== key) {
+      return ' <span class="sort-ind sort-ind-idle" aria-hidden="true">↕</span>';
+    }
+    return hgSortAsc
+      ? ' <span class="sort-ind sort-ind-active" aria-hidden="true">▲</span>'
+      : ' <span class="sort-ind sort-ind-active" aria-hidden="true">▼</span>';
   }
 
   function openAddRegattaModal() {
@@ -992,16 +1034,16 @@
     const date = document.getElementById('ar-date').value;
     const dns = parseInt(document.getElementById('ar-dns').value);
     if (!name || !date) {
-      alert("Please fill in both name and date.");
+      toastWarn('Please fill in both name and date.');
       return;
     }
     if (isNaN(dns) || dns < 1) {
-      alert("Please enter the total number of sailors in the regatta (positive integer).");
+      toastWarn('Please enter the total number of sailors in the regatta (positive integer).');
       return;
     }
 
     if (REGATTAS.some(r => r.name.toLowerCase() === name.toLowerCase())) {
-      alert("A regatta with this name already exists.");
+      toastWarn('A regatta with this name already exists.');
       return;
     }
 
@@ -1428,7 +1470,7 @@
         if (val !== '') {
           const n = Number(val);
           if (!Number.isInteger(n) || n < 1) {
-            alert('Please enter a valid rank (positive integer).');
+            toastWarn('Please enter a valid rank (positive integer).');
             input.value = input.defaultValue || '';
             return;
           }
@@ -1455,10 +1497,7 @@
         const name = sailorNameFromDataAttr(hgSquad.getAttribute('data-sailor'));
         const field = hgSquad.getAttribute('data-field');
         if (!name || !field) return;
-        const key = typeof resolveSailorMetadataKey === 'function' ? resolveSailorMetadataKey(name) : name;
-        if (!SAILOR_METADATA[key]) SAILOR_METADATA[key] = {};
-        if (hgSquad.value) SAILOR_METADATA[key][field] = hgSquad.value;
-        else delete SAILOR_METADATA[key][field];
+        setSquadStatus(name, field, hgSquad.value || '');
         recomputeSailors();
         saveData();
         renderAll();
@@ -1477,24 +1516,21 @@
         return;
       }
 
-      // Squad status lock selects on the rankings table
+      // Squad status lock selects on the rankings table (same keys as Historical & Gold)
       const squadSel = e.target.closest('.squad-lock-select');
       if (squadSel) {
         if (!requireEditor()) {
           renderRankings();
           return;
         }
-        const name = squadSel.getAttribute('data-sailor');
+        const name = sailorNameFromDataAttr(squadSel.getAttribute('data-sailor'));
         const field = squadSel.getAttribute('data-field');
         const val = squadSel.value;
-        if (!SAILOR_METADATA[name]) SAILOR_METADATA[name] = {};
-        if (val) {
-          SAILOR_METADATA[name][field] = val;
-        } else {
-          delete SAILOR_METADATA[name][field];
-        }
+        setSquadStatus(name, field, val || '');
         saveData();
+        recomputeSailors();
         renderRankings();
+        if (lastMainView === 'hist-gold') renderHistGoldPanel();
         return;
       }
     });
@@ -1675,7 +1711,7 @@
     if (mode === 'existing') {
       name = document.getElementById('asr-existing-select').value;
       if (!name) {
-        alert("Please select a sailor.");
+        toastWarn('Please select a sailor.');
         return;
       }
       const info = getAllSailorsInSystem().find(s => s.name === name);
@@ -1686,11 +1722,11 @@
     } else {
       name = document.getElementById('asr-new-name').value.trim();
       if (!name) {
-        alert("Sailor name cannot be empty.");
+        toastWarn('Sailor name cannot be empty.');
         return;
       }
       if (getAllSailorsInSystem().some(s => isSameSailor(s.name, name))) {
-        alert("A sailor with this name already exists — use \"Existing Sailor\" instead.");
+        toastWarn('A sailor with this name already exists — use "Existing Sailor" instead.');
         return;
       }
       gender = document.getElementById('asr-new-gender').value;
@@ -1699,7 +1735,7 @@
       const bornRaw = document.getElementById('asr-new-born').value;
       born = parseBirthYearInput(bornRaw);
       if (born === null || Number.isNaN(born)) {
-        alert(`Please enter a valid Birth Year (between ${minBirthYear} and ${maxBirthYear}).`);
+        toastWarn(`Please enter a valid Birth Year (between ${minBirthYear} and ${maxBirthYear}).`);
         return;
       }
       club = document.getElementById('asr-new-club').value.trim();
@@ -1707,13 +1743,13 @@
     }
 
     if (reg.sailors.some(s => isSameSailor(s.name, name))) {
-      alert("This sailor already has a result in this regatta.");
+      toastWarn('This sailor already has a result in this regatta.');
       return;
     }
 
     const rank = parseInt(document.getElementById('asr-rank').value);
     if (isNaN(rank) || rank < 1) {
-      alert("Please enter a valid Rank (positive integer).");
+      toastWarn('Please enter a valid Rank (positive integer).');
       return;
     }
 
@@ -1722,7 +1758,7 @@
     if (pointsRaw !== '') {
       pointsVal = parseFloat(pointsRaw);
       if (isNaN(pointsVal) || pointsVal < 0) {
-        alert("Nett points must be a non-negative number.");
+        toastWarn('Nett points must be a non-negative number.');
         return;
       }
     }
@@ -1841,7 +1877,7 @@
     if (s) {
       const parsed = parseOptionalPositiveInt(val);
       if (Number.isNaN(parsed)) {
-        alert("Rank must be a positive integer.");
+        toastWarn('Rank must be a positive integer.');
         renderSpecificRegattaResults();
         return;
       }
@@ -1863,7 +1899,7 @@
     if (s) {
       const parsed = val.trim() !== '' ? parseFloat(val.trim()) : null;
       if (parsed !== null && (isNaN(parsed) || parsed < 0)) {
-        alert("Nett points must be a non-negative number.");
+        toastWarn('Nett points must be a non-negative number.');
         renderSpecificRegattaResults();
         return;
       }
@@ -1887,7 +1923,7 @@
     if (!reg) return;
     const parsed = parseInt(val);
     if (isNaN(parsed) || parsed < 1) {
-      alert("Total sailors in regatta must be a positive integer.");
+      toastWarn('Total sailors in regatta must be a positive integer.');
       renderSpecificRegattaResults();
       return;
     }
@@ -1925,19 +1961,78 @@
     if (!requireEditor()) return;
     const idx = REGATTAS.findIndex(r => r.name === regName);
     if (idx === -1) return;
-    if (!confirm(`Are you sure you want to delete the regatta "${regName}"? This will delete all sailor results inside it.`)) return;
-    
+    if (!confirm(`Delete regatta "${regName}" and all sailor results in it?\n\nYou can Undo for 10 seconds after deleting.`)) return;
+
+    const snapshot = JSON.parse(JSON.stringify(REGATTAS[idx]));
+    const insertAt = idx;
     REGATTAS.splice(idx, 1);
+    if (SELECTED_REGATTA_NAMES && Array.isArray(SELECTED_REGATTA_NAMES)) {
+      SELECTED_REGATTA_NAMES = SELECTED_REGATTA_NAMES.filter(n => n !== regName);
+      if (SELECTED_REGATTA_NAMES.length === 0) SELECTED_REGATTA_NAMES = null;
+    }
     recomputeSailors();
     saveData();
     renderAll();
     renderSpecificRegattaResults(null);
+
+    PENDING_REGATTA_UNDO = { snapshot, insertAt, name: regName };
+    const host = document.getElementById('toast-host');
+    if (!host) {
+      toastSuccess(`Deleted "${regName}".`);
+      return;
+    }
+    const el = document.createElement('div');
+    el.className = 'toast toast-warn';
+    el.setAttribute('role', 'status');
+    el.innerHTML = `
+      <span class="toast-icon">⚠</span>
+      <div class="toast-body">
+        <div class="toast-title">Regatta deleted</div>
+        <div class="toast-msg">${escapeHtml(regName)} — undo within 10s</div>
+      </div>
+      <button type="button" class="btn-secondary toast-undo-btn" style="padding:4px 10px; font-size:10px; flex-shrink:0;">Undo</button>
+      <button type="button" class="toast-close" aria-label="Dismiss">×</button>
+    `;
+    let settled = false;
+    const finish = () => {
+      if (el._gone) return;
+      el._gone = true;
+      el.classList.add('toast-out');
+      setTimeout(() => el.remove(), 180);
+    };
+    el.querySelector('.toast-close')?.addEventListener('click', finish);
+    el.querySelector('.toast-undo-btn')?.addEventListener('click', () => {
+      if (settled) return;
+      settled = true;
+      if (PENDING_REGATTA_UNDO && PENDING_REGATTA_UNDO.name === regName) {
+        const { snapshot: snap, insertAt: at } = PENDING_REGATTA_UNDO;
+        const pos = Math.min(at, REGATTAS.length);
+        REGATTAS.splice(pos, 0, snap);
+        PENDING_REGATTA_UNDO = null;
+        recomputeSailors();
+        saveData();
+        renderAll();
+        renderSpecificRegattaResults(snap.name);
+        toastSuccess(`Restored "${snap.name}".`);
+      }
+      finish();
+    });
+    host.appendChild(el);
+    setTimeout(() => {
+      if (!settled) {
+        settled = true;
+        if (PENDING_REGATTA_UNDO && PENDING_REGATTA_UNDO.name === regName) {
+          PENDING_REGATTA_UNDO = null;
+        }
+        finish();
+      }
+    }, 10000);
   }
 
   async function uploadRegattaDocument(regName, file) {
     if (!requireEditor()) return;
     if (!storage) {
-      alert("Document uploads are unavailable right now (storage failed to load). Please refresh the page and try again.");
+      toastError('Document uploads are unavailable right now (storage failed to load). Please refresh the page and try again.');
       return;
     }
     try {

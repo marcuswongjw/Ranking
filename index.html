@@ -8,15 +8,15 @@
   
   <!-- Local libraries for offline support and CDNs for Firebase -->
   <!-- ?v= busts CDN/browser cache after deploys -->
-  <script src="js/libs/chart.umd.js?v=20260709j"></script>
-  <script src="js/libs/xlsx.full.min.js?v=20260709j"></script>
+  <script src="js/libs/chart.umd.js?v=20260709m"></script>
+  <script src="js/libs/xlsx.full.min.js?v=20260709m"></script>
   <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-storage-compat.js"></script>
 
   <!-- External Stylesheet -->
-  <link rel="stylesheet" href="css/styles.css?v=20260709j">
+  <link rel="stylesheet" href="css/styles.css?v=20260709m">
 </head>
 <body>
 <div id="dropOverlay" class="drop-overlay">
@@ -54,11 +54,11 @@
     <div class="nav-sec">Watch</div>
     <button class="nav-item active" data-view="rankings"><span class="nav-dot dot-n"></span>Rankings</button>
     <button class="nav-item" data-view="regattas"><span class="nav-dot dot-n"></span>Regattas</button>
+    <button class="nav-item" data-view="charts"><span class="nav-dot dot-n"></span>Analysis</button>
 
     <div class="nav-sec editor-only-block">Plan</div>
     <button class="nav-item editor-only" data-view="simulator"><span class="nav-dot dot-n"></span>Simulation</button>
     <button class="nav-item editor-only" data-view="target"><span class="nav-dot dot-n"></span>Squad target</button>
-    <button class="nav-item editor-only" data-view="charts"><span class="nav-dot dot-n"></span>Analysis</button>
 
     <div class="nav-sec editor-only-block">Admin</div>
     <button class="nav-item editor-only" data-view="fleet"><span class="nav-dot dot-n"></span>Manage Fleet</button>
@@ -111,6 +111,7 @@
     <div class="topbar-right">
       <span class="src-tag" id="src-tag">No file loaded</span>
       <span id="sync-status" class="src-tag" style="font-family:var(--mono);">View-only</span>
+      <span id="data-freshness" class="src-tag data-freshness" title="When rankings data was last saved, and the latest regatta in the ranking window">—</span>
       <button class="editor-only upload-btn" id="load-xlsx-trigger">↑ Load .xlsx</button>
       <input type="file" id="fileInput" accept=".xlsx,.xlsm,.xls" style="display:none;">
       <button id="auth-btn" style="background:var(--text);color:#fff;border:none;border-radius:var(--r);font-size:11px;padding:6px 12px;font-family:var(--mono);cursor:pointer;font-weight:500;height:30px;transition:all .15s;">🔒 Sign in to edit</button>
@@ -817,13 +818,13 @@
 </div>
 
 <!-- Load Application Modules (?v= forces browsers to fetch after deploy) -->
-<script src="js/config.js?v=20260709j"></script>
-<script src="js/seed.js?v=20260709j"></script>
-<script src="js/utils.js?v=20260709j"></script>
-<script src="js/state.js?v=20260709j"></script>
-<script src="js/calculations.js?v=20260709j"></script>
-<script src="js/ui.js?v=20260709j"></script>
-<script src="js/main.js?v=20260709j"></script>
-<script src="js/charts.js?v=20260709j"></script>
+<script src="js/config.js?v=20260709m"></script>
+<script src="js/seed.js?v=20260709m"></script>
+<script src="js/utils.js?v=20260709m"></script>
+<script src="js/state.js?v=20260709m"></script>
+<script src="js/calculations.js?v=20260709m"></script>
+<script src="js/ui.js?v=20260709m"></script>
+<script src="js/main.js?v=20260709m"></script>
+<script src="js/charts.js?v=20260709m"></script>
 </body>
 </html>

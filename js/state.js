@@ -24,6 +24,10 @@ let hgSortAsc = true;
 let hgColumnVisibility = null;
 let BULK_EDIT_MODE = false;
 let BULK_EDIT_SNAPSHOT = null;
+/** @type {Date|null} last known cloud/local data update */
+let LAST_DATA_UPDATED_AT = null;
+/** Pending regatta soft-delete for undo */
+let PENDING_REGATTA_UNDO = null;
 
 // Firestore collection hook
 const CLOUD_DOC = () => db.collection('opRanking').doc('state');
@@ -74,6 +78,16 @@ function applyState(s) {
   }
   SAILOR_METADATA = (s.metadata && typeof s.metadata === 'object') ? s.metadata : {};
   SELECTED_REGATTA_NAMES = (s.selectedRegattas === undefined) ? null : s.selectedRegattas;
+  // Firestore Timestamp or ISO / millis
+  if (s.updatedAt) {
+    if (typeof s.updatedAt.toDate === 'function') LAST_DATA_UPDATED_AT = s.updatedAt.toDate();
+    else if (s.updatedAt instanceof Date) LAST_DATA_UPDATED_AT = s.updatedAt;
+    else if (typeof s.updatedAt === 'number') LAST_DATA_UPDATED_AT = new Date(s.updatedAt);
+    else if (typeof s.updatedAt === 'string') {
+      const d = new Date(s.updatedAt);
+      LAST_DATA_UPDATED_AT = Number.isNaN(d.getTime()) ? null : d;
+    }
+  }
 }
 
 function applyStateFromSeed() {
@@ -114,7 +128,9 @@ async function saveData() {
     payload.updatedAt = firebase.firestore.FieldValue.serverTimestamp();
     await CLOUD_DOC().set(payload);
     CLOUD_HAS_DATA = true;
+    LAST_DATA_UPDATED_AT = new Date();
     setSyncStatus('saved');
+    if (typeof updateDataFreshnessUI === 'function') updateDataFreshnessUI();
   } catch (e) {
     console.error('Cloud save failed:', e);
     setSyncStatus('error', e && e.message);

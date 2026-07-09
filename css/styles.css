@@ -95,9 +95,10 @@ body:not(.is-editor) #regatta-checkboxes-list input{
   border:1px solid var(--border);
   border-radius:var(--r);
   overflow-x:auto;
-  overflow-y:hidden;
+  overflow-y:auto;
+  max-height:min(72vh, calc(100vh - 200px));
   -webkit-overflow-scrolling:touch;
-  overscroll-behavior-x:contain;
+  overscroll-behavior:contain;
   box-shadow:var(--sh);
   max-width:100%;
 }
@@ -115,6 +116,14 @@ table{width:100%;border-collapse:collapse;font-size:12px;table-layout:fixed}
   white-space:nowrap;
   vertical-align:middle;
 }
+/* Sticky header row when the table scrolls vertically */
+.rankings-table thead th{
+  position:sticky;
+  top:0;
+  z-index:4;
+  background:var(--bg2);
+  box-shadow:0 1px 0 var(--border);
+}
 .rankings-table .col-rank,
 .rankings-table .col-name{
   position:sticky;
@@ -123,12 +132,28 @@ table{width:100%;border-collapse:collapse;font-size:12px;table-layout:fixed}
 }
 .rankings-table thead .col-rank,
 .rankings-table thead .col-name{
-  z-index:3;
+  z-index:5; /* corner cells: sticky top + sticky left */
   background:var(--bg2);
 }
 .rankings-table tbody tr:hover .col-rank,
 .rankings-table tbody tr:hover .col-name{
   background:var(--bg2);
+}
+.sort-ind{
+  display:inline-block;
+  margin-left:3px;
+  font-size:9px;
+  line-height:1;
+  vertical-align:middle;
+}
+.sort-ind-idle{color:var(--text3);opacity:.4}
+.sort-ind-active{color:var(--accent);font-weight:700;opacity:1}
+.data-freshness{
+  max-width:min(320px, 42vw);
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+  color:var(--text3);
 }
 .rankings-table .col-rank{
   left:0;
