@@ -73,8 +73,66 @@ body:not(.is-editor) #regatta-checkboxes-list input{
 .mc-lbl{font-family:var(--mono);font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--text3);margin-bottom:6px}
 .mc-val{font-family:var(--mono);font-size:24px;font-weight:600;line-height:1}
 .mc-sub{font-size:11px;color:var(--text3);margin-top:3px}
-.tbl-wrap{background:var(--card);border:1px solid var(--border);border-radius:var(--r);overflow:hidden;box-shadow:var(--sh)}
+.tbl-wrap{
+  background:var(--card);
+  border:1px solid var(--border);
+  border-radius:var(--r);
+  overflow-x:auto;
+  overflow-y:hidden;
+  -webkit-overflow-scrolling:touch;
+  overscroll-behavior-x:contain;
+  box-shadow:var(--sh);
+  max-width:100%;
+}
 table{width:100%;border-collapse:collapse;font-size:12px;table-layout:fixed}
+/* Rankings: size to content and scroll horizontally instead of crushing columns */
+.rankings-table{
+  width:max-content;
+  min-width:100%;
+  table-layout:auto;
+  border-collapse:separate;
+  border-spacing:0;
+}
+.rankings-table thead th,
+.rankings-table tbody td{
+  white-space:nowrap;
+  vertical-align:middle;
+}
+.rankings-table .col-rank,
+.rankings-table .col-name{
+  position:sticky;
+  z-index:2;
+  background:var(--card);
+}
+.rankings-table thead .col-rank,
+.rankings-table thead .col-name{
+  z-index:3;
+  background:var(--bg2);
+}
+.rankings-table tbody tr:hover .col-rank,
+.rankings-table tbody tr:hover .col-name{
+  background:var(--bg2);
+}
+.rankings-table .col-rank{
+  left:0;
+  min-width:46px;
+  box-shadow:1px 0 0 var(--border);
+}
+.rankings-table .col-name{
+  /* left offset synced in JS from measured rank column width */
+  left:46px;
+  min-width:140px;
+  max-width:220px;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  box-shadow:2px 0 6px rgba(0,0,0,.06);
+}
+.rankings-table .col-reg{
+  min-width:68px;
+  text-align:center;
+}
+.rankings-table .col-squad{min-width:100px}
+.rankings-table .col-score{min-width:72px;text-align:center}
 thead th{background:var(--bg2);padding:8px 10px;text-align:left;font-family:var(--mono);font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--text3);border-bottom:1px solid var(--border);font-weight:400;white-space:nowrap}
 tbody tr{border-bottom:1px solid var(--border);transition:background .08s}
 tbody tr:last-child{border-bottom:none}
@@ -290,15 +348,17 @@ td{padding:8px 10px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .charts-grid {
     grid-template-columns: 1fr;
   }
+  /* Ranking / data tables: always scroll horizontally rather than hide columns */
   .tbl-wrap {
     overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
   }
-  table {
+  table:not(.rankings-table):not(.ct) {
     table-layout: auto;
     min-width: 600px;
   }
-  .hide-mobile {
-    display: none !important;
+  .rankings-table .col-name {
+    max-width: 160px;
   }
   .import-confirm-modal {
     padding: 16px;

@@ -726,7 +726,7 @@ function renderRankingsPanel() {
     const title = m
       ? `${escapeHtml(m[1])}<br><span style="font-weight:400;color:var(--text3)">${escapeHtml(m[2])}</span>`
       : escapeHtml(reg.name);
-    return `<th style="width:65px;text-align:center;cursor:pointer;user-select:none;white-space:normal;line-height:1.35" class="hide-mobile sort-header" data-sort="reg_${idx}">${title}${getSortIndicator('reg_' + idx)}</th>`;
+    return `<th class="col-reg sort-header" style="cursor:pointer;user-select:none;white-space:normal;line-height:1.35" data-sort="reg_${idx}">${title}${getSortIndicator('reg_' + idx)}</th>`;
   }).join('');
 
   container.innerHTML = `
@@ -784,16 +784,16 @@ function renderRankingsPanel() {
       </div>
     </div>
 
-    <div class="tbl-wrap">
-      <table>
+    <div class="tbl-wrap rankings-tbl-wrap" title="Scroll horizontally to see all columns">
+      <table class="rankings-table">
         <thead><tr>
-          <th style="width:46px;cursor:pointer;user-select:none" class="sort-header" data-sort="cur">Rank${getSortIndicator('cur')}</th>
-          <th style="width:180px;cursor:pointer;user-select:none" class="sort-header" data-sort="name">Sailor${getSortIndicator('name')}</th>
-          <th style="width:32px;cursor:pointer;user-select:none" class="sort-header" data-sort="gender">G${getSortIndicator('gender')}</th>
-          <th style="width:46px;cursor:pointer;user-select:none" class="sort-header" data-sort="born">Born${getSortIndicator('born')}</th>
-          <th style="width:105px;cursor:pointer;user-select:none" class="sort-header" data-sort="squad">${escapeHtml('Squad (Jul ' + String(COMP_YEAR).slice(-2) + ')')}${getSortIndicator('squad')}</th>
-          <th style="width:105px;cursor:pointer;user-select:none" class="sort-header" data-sort="squadNext">${escapeHtml('Squad (Jan ' + String(COMP_YEAR + 1).slice(-2) + ')')}${getSortIndicator('squadNext')}</th>
-          <th style="width:80px;text-align:center;cursor:pointer;user-select:none" class="sort-header" data-sort="score">Best 3 of ${latestRegs.length}${getSortIndicator('score')}</th>
+          <th class="col-rank sort-header" style="cursor:pointer;user-select:none" data-sort="cur">Rank${getSortIndicator('cur')}</th>
+          <th class="col-name sort-header" style="cursor:pointer;user-select:none" data-sort="name">Sailor${getSortIndicator('name')}</th>
+          <th class="sort-header" style="cursor:pointer;user-select:none" data-sort="gender">G${getSortIndicator('gender')}</th>
+          <th class="sort-header" style="cursor:pointer;user-select:none" data-sort="born">Born${getSortIndicator('born')}</th>
+          <th class="col-squad sort-header" style="cursor:pointer;user-select:none" data-sort="squad">${escapeHtml('Squad (Jul ' + String(COMP_YEAR).slice(-2) + ')')}${getSortIndicator('squad')}</th>
+          <th class="col-squad sort-header" style="cursor:pointer;user-select:none" data-sort="squadNext">${escapeHtml('Squad (Jan ' + String(COMP_YEAR + 1).slice(-2) + ')')}${getSortIndicator('squadNext')}</th>
+          <th class="col-score sort-header" style="cursor:pointer;user-select:none" data-sort="score">Best 3 of ${latestRegs.length}${getSortIndicator('score')}</th>
           ${regHeaders}
         </tr></thead>
         <tbody id="rank-body"></tbody>
@@ -919,9 +919,9 @@ function renderRankings() {
       // No result for this ranking regatta → default DNS (reg.dns+1 / fleet penalty)
       if (v === null || v === undefined) {
         const dns = getRegattaDnsPenalty(reg);
-        return `<td style="text-align:center"><span class="pos-tag dns" title="Did not participate — default DNS ${dns}">${dns}</span></td>`;
+        return `<td class="col-reg" style="text-align:center"><span class="pos-tag dns" title="Did not participate — default DNS ${dns}">${dns}</span></td>`;
       }
-      return `<td style="text-align:center"><span class="pos-tag${isBest3.has(idx) ? ' best' : ''}">${escapeHtml(String(v))}</span></td>`;
+      return `<td class="col-reg" style="text-align:center"><span class="pos-tag${isBest3.has(idx) ? ' best' : ''}">${escapeHtml(String(v))}</span></td>`;
     }).join('');
 
     const safeName = escapeHtml(s.name);
@@ -940,18 +940,38 @@ function renderRankings() {
     };
 
     return `<tr style="${rowSt}">
-      <td class="rank-c">${s.cur}</td>
-      <td class="name-c" data-sailor="${safeName}" style="cursor:pointer; color:var(--accent); font-weight:600; text-decoration:underline;">${safeName}${exclTag}</td>
+      <td class="rank-c col-rank">${s.cur}</td>
+      <td class="name-c col-name" data-sailor="${safeName}" style="cursor:pointer; color:var(--accent); font-weight:600; text-decoration:underline;">${safeName}${exclTag}</td>
       <td class="sub-c">${safeGender}</td>
       <td class="sub-c">${safeBorn}</td>
-      <td>${isExcl && !lockJul && !isEditor() ? '<span class="badge b-n">Excl.</span>' : squadLockCell(squadJulKey, lockJul, isExcl ? null : squad)}</td>
-      <td>${isExcl ? '<span class="badge b-n">Excl.</span>' : isRetiringNext ? '<span class="badge b-n" style="background:var(--red-l);color:var(--red)" title="Turns 16 by then — ages out of the Gold Fleet">Retiring</span>' : squadBadge(squadNext)}</td>
-      <td class="score-c" style="text-align:center">${s.score}</td>
+      <td class="col-squad">${isExcl && !lockJul && !isEditor() ? '<span class="badge b-n">Excl.</span>' : squadLockCell(squadJulKey, lockJul, isExcl ? null : squad)}</td>
+      <td class="col-squad">${isExcl ? '<span class="badge b-n">Excl.</span>' : isRetiringNext ? '<span class="badge b-n" style="background:var(--red-l);color:var(--red)" title="Turns 16 by then — ages out of the Gold Fleet">Retiring</span>' : squadBadge(squadNext)}</td>
+      <td class="score-c col-score" style="text-align:center">${s.score}</td>
       ${cells}
     </tr>`;
-  }).join('') || '<tr><td colspan="7" style="text-align:center;color:var(--text3);padding:24px">No sailors match criteria.</td></tr>';
+  }).join('') || `<tr><td colspan="${7 + latestRegs.length}" style="text-align:center;color:var(--text3);padding:24px">No sailors match criteria.</td></tr>`;
 
+  syncRankingsStickyOffsets();
   renderComparisonChart();
+}
+
+/** Keep sticky Sailor column flush against Rank when the table scrolls horizontally. */
+function syncRankingsStickyOffsets() {
+  const table = document.querySelector('.rankings-table');
+  if (!table) return;
+  const rankTh = table.querySelector('thead .col-rank');
+  if (!rankTh) return;
+  const w = Math.ceil(rankTh.getBoundingClientRect().width);
+  table.querySelectorAll('.col-name').forEach(el => {
+    el.style.left = w + 'px';
+  });
+}
+
+if (typeof window !== 'undefined' && !window.__rankingsStickyResizeBound) {
+  window.__rankingsStickyResizeBound = true;
+  window.addEventListener('resize', () => {
+    if (document.querySelector('.rankings-table')) syncRankingsStickyOffsets();
+  });
 }
 
 function renderRegattasPanel() {
