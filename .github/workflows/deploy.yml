@@ -1,4 +1,4 @@
-name: Deploy to GitHub Pages
+name: Deploy ranking SPA to GitHub Pages
 
 on:
   push:
@@ -11,7 +11,6 @@ permissions:
   pages: write
   id-token: write
 
-# Allow only one concurrent deployment, cancelling in-progress runs
 concurrency:
   group: "pages"
   cancel-in-progress: true
@@ -26,14 +25,20 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Stage ranking SPA only (exclude SailorPath Next app)
+        run: |
+          mkdir -p _site
+          cp index.html .nojekyll _site/
+          cp -R css js _site/
+          # intentionally omit web/, scripts/, SAILORPATH.md
+
       - name: Setup Pages
         uses: actions/configure-pages@v5
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          # Upload the entire repo root (index.html, css/, js/)
-          path: '.'
+          path: '_site'
 
       - name: Deploy to GitHub Pages
         id: deployment

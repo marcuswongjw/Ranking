@@ -1,0 +1,4 @@
+{
+  "framework": "nextjs",
+  "buildCommand": "node ../scripts/build-snapshot.mjs && next build"
+}
