@@ -31,10 +31,14 @@ let PENDING_REGATTA_UNDO = null;
 
 // Firestore collection hook
 const CLOUD_DOC = () => db.collection('opRanking').doc('state');
+/** Public SailorPath payload (read by sailorpath.com); written on each editor save. */
+const CLOUD_SAILORPATH_DOC = () => db.collection('opRanking').doc('sailorpathSnapshot');
 let CURRENT_USER = null;          // set by auth listener; non-null = editor
 let PENDING_LOCAL_MIGRATION = null; // legacy localStorage backup
 let SUPPRESS_SNAPSHOT = false;     // suppress snapshot echo when saving
 let CLOUD_HAS_DATA = false;        // true if doc exists with data
+/** Ranking board filter: gold | silver (regattas tagged per fleet). */
+let ACTIVE_FLEET = 'gold';
 
 function isEditor() { 
   return !!CURRENT_USER; 
@@ -64,6 +68,12 @@ function serializeState() {
 // Load state into the global variables
 function applyState(s) {
   REGATTAS = Array.isArray(s.regattas) ? s.regattas : [];
+  // Default legacy regattas to gold fleet
+  REGATTAS.forEach(reg => {
+    if (!reg.fleet || (reg.fleet !== 'gold' && reg.fleet !== 'silver')) {
+      reg.fleet = 'gold';
+    }
+  });
   DROPPED_SAILORS = new Set(Array.isArray(s.dropped) ? s.dropped : []);
   // Clean HTML-entity / URI-mangled names so re-promote and rankings agree
   if (typeof sanitizeDroppedSailors === 'function') {
@@ -118,6 +128,32 @@ function readLegacyLocalState() {
   }
 }
 
+/** Publish SailorPath multi-fleet snapshot for sailorpath.com (public read). */
+async function publishSailorpathSnapshot() {
+  if (typeof buildSailorpathSnapshot !== 'function') {
+    console.warn('buildSailorpathSnapshot not loaded — skip SailorPath publish');
+    return;
+  }
+  try {
+    const snapshot = buildSailorpathSnapshot({
+      regattas: REGATTAS,
+      dropped: Array.from(DROPPED_SAILORS),
+      excluded: Object.fromEntries(EXCLUDED),
+      metadata: SAILOR_METADATA,
+      source: 'firestore',
+      compYear: typeof COMP_YEAR === 'number' ? COMP_YEAR : new Date().getFullYear()
+    });
+    await CLOUD_SAILORPATH_DOC().set({
+      version: snapshot.meta.version,
+      updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+      json: JSON.stringify(snapshot)
+    });
+    console.log('✅ SailorPath snapshot published', snapshot.meta.exportedAt);
+  } catch (e) {
+    console.error('SailorPath snapshot publish failed:', e);
+  }
+}
+
 // Save state to the cloud database (Firestore)
 async function saveData() {
   if (!isEditor()) { setSyncStatus('locked'); return; }
@@ -129,6 +165,8 @@ async function saveData() {
     await CLOUD_DOC().set(payload);
     CLOUD_HAS_DATA = true;
     LAST_DATA_UPDATED_AT = new Date();
+    // Phase 1b: keep SailorPath official data in sync with live rankings
+    await publishSailorpathSnapshot();
     setSyncStatus('saved');
     if (typeof updateDataFreshnessUI === 'function') updateDataFreshnessUI();
   } catch (e) {

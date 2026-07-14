@@ -619,3 +619,21 @@ tr:hover td {
 .photo-tile.tone-d {
   background: linear-gradient(145deg, #5b21b6, #1e1b4b);
 }
+
+.fleet-card-gold {
+  border-color: rgba(15, 118, 110, 0.25);
+  background: linear-gradient(180deg, #ecfdf5, #fffcf7);
+}
+
+.fleet-card-silver {
+  border-color: rgba(99, 102, 241, 0.25);
+  background: linear-gradient(180deg, #eef2ff, #fffcf7);
+}
+
+.fleet-card-cta {
+  display: block;
+  margin-top: 0.75rem;
+  font-weight: 700;
+  color: var(--teal);
+  font-size: 0.9rem;
+}

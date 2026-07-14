@@ -1,75 +1,58 @@
 import Link from 'next/link';
-import { getSnapshot } from '@/lib/snapshot';
-import { SquadBadge } from '@/components/SquadBadge';
+import { getFleet, getSnapshot } from '@/lib/snapshot';
 
 export const metadata = {
   title: 'Singapore Optimist',
 };
 
-export default function SeriesHomePage() {
-  const snap = getSnapshot();
-  const base = '/sg/optimist';
+export const revalidate = 60;
+
+export default async function SeriesHubPage() {
+  const snap = await getSnapshot();
+  const gold = getFleet(snap, 'gold');
+  const silver = getFleet(snap, 'silver');
 
   return (
     <>
-      <div className="eyebrow">Series</div>
-      <h1>Singapore · Optimist</h1>
+      <div className="eyebrow">Singapore · Optimist</div>
+      <h1>Choose a fleet series</h1>
       <p className="lede">
-        National series standings (best {snap.meta.bestOf} of last {snap.meta.rankingWindow}),
-        regatta results, and club rosters. Sailor pages link from every name.
+        Gold and Silver are ranked separately (best {snap.meta.bestOf} of last{' '}
+        {snap.meta.rankingWindow} in each fleet). Official data source:{' '}
+        <strong>{snap.meta.source}</strong>
+        {snap.meta.exportedAt
+          ? ` · updated ${new Date(snap.meta.exportedAt).toLocaleString('en-SG')}`
+          : ''}
+        .
       </p>
-      <div className="hero-actions">
-        <Link className="btn btn-primary" href={`${base}/rankings`}>
-          Live ranking tool
+
+      <div className="club-grid" style={{ marginTop: '1.75rem' }}>
+        <Link href="/sg/optimist/gold" className="club-card fleet-card-gold">
+          <strong>Gold Fleet</strong>
+          <span>
+            {gold.standings.length} sailors · {gold.regattas.length} regattas
+          </span>
+          <span className="fleet-card-cta">Open standings →</span>
         </Link>
-        <Link className="btn btn-secondary" href={`${base}/regattas`}>
-          Regattas
-        </Link>
-        <Link className="btn btn-secondary" href={`${base}/clubs`}>
-          Clubs
+        <Link href="/sg/optimist/silver" className="club-card fleet-card-silver">
+          <strong>Silver Fleet</strong>
+          <span>
+            {silver.standings.length} sailors · {silver.regattas.length} regattas
+          </span>
+          <span className="fleet-card-cta">
+            {silver.standings.length ? 'Open standings →' : 'Ready when you add silver regattas →'}
+          </span>
         </Link>
       </div>
 
-      <section className="section">
-        <div className="section-head">
-          <div>
-            <h2>Standings</h2>
-            <p>From official snapshot · not editable on SailorPath</p>
-          </div>
-        </div>
-        <div className="table-wrap">
-          <table>
-            <thead>
-              <tr>
-                <th>#</th>
-                <th>Sailor</th>
-                <th>Club</th>
-                <th>Age band</th>
-                <th>Squad</th>
-                <th>Score</th>
-              </tr>
-            </thead>
-            <tbody>
-              {snap.standings.map((s) => (
-                <tr key={s.slug}>
-                  <td>{s.rank}</td>
-                  <td>
-                    <Link className="name-link" href={`/s/${s.slug}`}>
-                      {s.name}
-                    </Link>
-                  </td>
-                  <td>{s.club || '—'}</td>
-                  <td>{s.ageBand || '—'}</td>
-                  <td>
-                    <SquadBadge squad={s.squad} />
-                  </td>
-                  <td>{s.score}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </section>
+      <div className="hero-actions" style={{ marginTop: '1.5rem' }}>
+        <Link className="btn btn-primary" href="/sg/optimist/rankings">
+          Open ranking tool
+        </Link>
+        <Link className="btn btn-secondary" href="/demo">
+          Sample profile
+        </Link>
+      </div>
     </>
   );
 }

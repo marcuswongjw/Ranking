@@ -1,76 +1,50 @@
-# SailorPath (in this monorepo)
+# SailorPath + Gold / Silver fleets
 
-Public sailor career site + Singapore Optimist discovery pages. The ranking SPA is synced into the Next app at build time and served under `/ranking-app/`.
+## Phase 1b — live data
+
+On every **editor save** in the ranking tool, the app writes:
+
+`opRanking/sailorpathSnapshot` → `{ json: "<snapshot>", version, updatedAt }`
+
+SailorPath (Vercel) loads that document via Firestore REST (revalidate ~60s). If missing, falls back to seed file.
+
+**After deploying the ranking SPA**, open the tool, sign in, make any save (or re-save) so the snapshot document is created.
+
+## Gold vs Silver
+
+| Concept | How it works |
+|---------|----------------|
+| **Regatta.fleet** | `"gold"` or `"silver"` (default gold for legacy) |
+| **Separate series** | Best 3 of last 5 **per fleet** — silver results never mix into gold rank |
+| **Ranking tool UI** | Sidebar **Gold / Silver** pills switch the board |
+| **Add regatta** | Choose **Fleet (series)** + optional populate sailors |
+| **SailorPath URLs** | `/sg/optimist/gold`, `/sg/optimist/silver`, …/regattas, …/clubs |
+| **Sailor profile** | One person page; sections for each fleet they sailed |
+
+### Adding Silver soon
+
+1. Deploy ranking SPA (GitHub Pages + SailorPath `/ranking-app/` sync).
+2. Sign in → switch to **Silver** pill.
+3. **Add regatta** → Fleet = Silver Fleet → enter results / fleet size (DNS).
+4. Save — snapshot republishes; SailorPath Silver pages fill in within ~1 minute.
+
+Optional: populate with fleet sailors checkbox seeds DNS rows for everyone currently known (same as Gold populate).
 
 ## URLs
 
 | Path | Purpose |
 |------|---------|
-| `/` | SailorPath home |
-| `/demo` | **Sample claimed profile** (full feature mock) |
-| `/s/{slug}` | Live sailor profile from official snapshot |
-| `/sg/optimist` | Series standings table |
-| `/sg/optimist/rankings` | Ranking tool (iframe + links to `/ranking-app/`) |
-| `/ranking-app/` | Same-origin ranking SPA (Firebase editor) |
-| `/sg/optimist/regattas` | Regatta list + detail |
-| `/sg/optimist/clubs` | Club rosters |
-| `/privacy` | Privacy notes |
+| `/sg/optimist` | Fleet hub |
+| `/sg/optimist/gold` | Gold standings |
+| `/sg/optimist/silver` | Silver standings |
+| `/sg/optimist/{fleet}/regattas` | Fleet regattas |
+| `/sg/optimist/rankings` | Live ranking tool embed |
+| `/ranking-app/` | Ranking SPA (same origin) |
+| `/s/{slug}` | Sailor profile (multi-fleet) |
+| `/demo` | Sample claimed profile |
 
-Future vanity: `sailorpath.com/{username}` after claim.
-
-## Why fleet size can disagree with the ranking tool
-
-| Source | Used by | Fleet size |
-|--------|---------|------------|
-| **Firestore** (live) | `github.io/Ranking` and `/ranking-app/` | Editor-set **DNS / fleet** (e.g. 90) |
-| **Seed JSON** in `js/seed.js` | SailorPath snapshot today | Count of rows if `dns` missing (e.g. 100) |
-
-Until SailorPath builds its snapshot from a **live export** of Firestore, public regatta pages can show a different fleet size than the editor tool.
-
-## Local dev
+## Local
 
 ```bash
-cd web
-npm install
-npm run dev
+cd web && npm run dev
 ```
-
-## Deploy (Vercel)
-
-- Root Directory: `web`
-- Domain: `sailorpath.com`
-- Build: `npm run build` (runs snapshot + sync ranking SPA)
-
-## Implementation roadmap
-
-### Done (Phase 1 foundation)
-- Next.js SailorPath UI
-- Snapshot profiles, standings, regattas, clubs
-- Trajectory chart
-- Ranking SPA hosted under SailorPath (`/ranking-app/`)
-- Sample `/demo` profile for product vision
-
-### Phase 1b — Data integrity
-1. **Export live snapshot from Firestore** on ranking save (or nightly)
-2. Include `dns` / fleet size and locked squads in export
-3. Stable `sailor_id` (not name-only)
-4. Silver fleet + silver regattas in ranking data
-
-### Phase 2 — Claim
-1. Supabase Auth (magic link) + guardian checkbox
-2. Parent multi-sailor dashboard
-3. Claim flow + admin approve
-4. Vanity username → `sailorpath.com/mikaela`
-5. Bio, avatar, goals (user-editable)
-
-### Phase 3 — Enrichment
-1. Self-reported overseas results (badged)
-2. Photos / certificates (privacy controls)
-3. Auto milestones
-4. Training log + upcoming races (mostly private)
-5. PDF / share card
-
-### Phase 4 — Expand
-1. Second class (`/sg/ilca4/...`)
-2. Optional other countries (`/my/...`)
-3. Optional H2H (careful for youth sport)

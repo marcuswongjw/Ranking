@@ -12,10 +12,11 @@ export function SiteHeader() {
           </span>
         </Link>
         <nav className="nav">
-          <Link href="/sg/optimist/rankings">Rankings</Link>
-          <Link href="/sg/optimist/regattas">Regattas</Link>
-          <Link href="/sg/optimist/clubs">Clubs</Link>
-          <Link href="/demo">Sample profile</Link>
+          <Link href="/sg/optimist">Fleets</Link>
+          <Link href="/sg/optimist/gold">Gold</Link>
+          <Link href="/sg/optimist/silver">Silver</Link>
+          <Link href="/sg/optimist/rankings">Tool</Link>
+          <Link href="/demo">Sample</Link>
           <Link href="/sg/optimist" className="nav-cta">
             SG Optimist
           </Link>

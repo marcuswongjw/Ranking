@@ -810,12 +810,38 @@
   }
 
   function getActiveRegattas() {
-    const selectionRegs = [...REGATTAS];
+    const fleet = (typeof ACTIVE_FLEET === 'string' && ACTIVE_FLEET === 'silver') ? 'silver' : 'gold';
+    const fleetFn = typeof getRegattaFleet === 'function'
+      ? getRegattaFleet
+      : (r) => (r && r.fleet === 'silver' ? 'silver' : 'gold');
+    // Ranking series only: exclude overseas / invitation; filter Gold vs Silver
+    let selectionRegs = REGATTAS.filter(r => {
+      if (!r) return false;
+      if (r.type === 'overseas') return false;
+      return fleetFn(r) === fleet;
+    });
     if (SELECTED_REGATTA_NAMES === null) {
       const regWithResults = selectionRegs.filter(r => r.sailors && r.sailors.length > 0);
       return regWithResults.slice(-5);
     }
     return selectionRegs.filter(r => SELECTED_REGATTA_NAMES.includes(r.name));
+  }
+
+  function setActiveFleet(fleet) {
+    ACTIVE_FLEET = fleet === 'silver' ? 'silver' : 'gold';
+    SELECTED_REGATTA_NAMES = null; // reset window when switching fleets
+    document.querySelectorAll('[data-fleet-pill]').forEach(btn => {
+      btn.classList.toggle('active', btn.getAttribute('data-fleet-pill') === ACTIVE_FLEET);
+    });
+    const h1 = document.getElementById('sidebar-h1');
+    if (h1) {
+      h1.innerHTML = ACTIVE_FLEET === 'silver'
+        ? 'OP Silver<br>Ranking'
+        : 'OP Gold<br>Ranking';
+    }
+    recomputeSailors();
+    renderAll();
+    if (typeof updateDataFreshnessUI === 'function') updateDataFreshnessUI();
   }
 
   function getAllSailorsInSystem() {
@@ -1019,6 +1045,8 @@
     document.getElementById('ar-name').value = '';
     document.getElementById('ar-date').value = new Date().toISOString().split('T')[0];
     document.getElementById('ar-dns').value = '100';
+    const fleetSel = document.getElementById('ar-fleet');
+    if (fleetSel) fleetSel.value = (typeof ACTIVE_FLEET === 'string' && ACTIVE_FLEET === 'silver') ? 'silver' : 'gold';
     const cb = document.getElementById('ar-add-gold-sailors');
     if (cb) cb.checked = false;
     document.getElementById('addRegattaModal').style.display = 'flex';
@@ -1095,21 +1123,33 @@
       });
     }
 
+    const fleetSel = document.getElementById('ar-fleet');
+    const fleet = (fleetSel && fleetSel.value === 'silver') ? 'silver' : 'gold';
+    const typeSel = document.getElementById('ar-type');
+    const regType = (typeSel && typeSel.value === 'overseas') ? 'overseas' : 'selection';
+
     REGATTAS.push({
       name: name,
       date: date,
       dns: dns,
+      fleet: fleet,
+      type: regType,
       sailors: sailors
     });
 
-    recomputeSailors();
+    // Switch board to the fleet you just added
+    if (typeof setActiveFleet === 'function') setActiveFleet(fleet);
+    else {
+      recomputeSailors();
+      renderAll();
+    }
     saveData();
-    renderAll();
     closeAddRegattaModal();
+    const fleetLabel = fleet === 'silver' ? 'Silver' : 'Gold';
     if (addGold) {
-      toastSuccess(`Added "${name}" with ${sailors.length} Gold Fleet sailors.`);
+      toastSuccess(`Added ${fleetLabel} regatta "${name}" with ${sailors.length} fleet sailors.`);
     } else {
-      toastSuccess(`Added upcoming regatta "${name}".`);
+      toastSuccess(`Added ${fleetLabel} regatta "${name}".`);
     }
   }
 
@@ -1188,6 +1228,14 @@
 
     // Sidebar Logo view trigger
     document.querySelector('.sb-logo')?.addEventListener('click', () => switchView('rankings'));
+
+    // Gold / Silver fleet switcher
+    document.querySelectorAll('[data-fleet-pill]').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation(); // logo click also switches to rankings
+        setActiveFleet(btn.getAttribute('data-fleet-pill'));
+      });
+    });
 
     // Quick Squad Filters
     document.querySelectorAll('.quick-filter-btn').forEach(btn => {

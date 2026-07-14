@@ -1,11 +1,14 @@
 import Link from 'next/link';
-import { getSnapshot, seriesBase } from '@/lib/snapshot';
+import { getFleet, getSnapshot } from '@/lib/snapshot';
 import { SquadBadge } from '@/components/SquadBadge';
 
-export default function HomePage() {
-  const snap = getSnapshot();
-  const top = snap.standings.slice(0, 10);
-  const base = seriesBase(snap.meta.country, snap.meta.classSlug);
+export const revalidate = 60;
+
+export default async function HomePage() {
+  const snap = await getSnapshot();
+  const gold = getFleet(snap, 'gold');
+  const silver = getFleet(snap, 'silver');
+  const top = gold.standings.slice(0, 10);
 
   return (
     <>
@@ -14,15 +17,15 @@ export default function HomePage() {
           <div className="eyebrow">SailorPath · Singapore Optimist</div>
           <h1>Every race, kept.</h1>
           <p className="lede">
-            Official series standings and sailor career pages — starting with Singapore Optimist.
-            Profiles show trajectory, results, and club context. Claim & personal media come next.
+            Official Gold and Silver fleet series, sailor career pages, and the live ranking tool —
+            starting with Singapore Optimist.
           </p>
           <div className="hero-actions">
-            <Link className="btn btn-primary" href={`${base}/rankings`}>
-              Open rankings
+            <Link className="btn btn-primary" href="/sg/optimist/gold">
+              Gold standings
             </Link>
-            <Link className="btn btn-secondary" href={`${base}/regattas`}>
-              Browse regattas
+            <Link className="btn btn-secondary" href="/sg/optimist/silver">
+              Silver standings
             </Link>
             <Link className="btn btn-secondary" href="/demo">
               Sample profile
@@ -32,21 +35,23 @@ export default function HomePage() {
         <div className="hero-card">
           <div className="stat-grid">
             <div className="stat">
-              <strong>{snap.sailors.length}</strong>
-              <span>Sailors</span>
+              <strong>{gold.standings.length}</strong>
+              <span>Gold sailors</span>
             </div>
             <div className="stat">
-              <strong>{snap.regattas.length}</strong>
+              <strong>{silver.standings.length}</strong>
+              <span>Silver sailors</span>
+            </div>
+            <div className="stat">
+              <strong>{gold.regattas.length + silver.regattas.length}</strong>
               <span>Regattas</span>
-            </div>
-            <div className="stat">
-              <strong>{snap.clubs.length}</strong>
-              <span>Clubs</span>
             </div>
           </div>
           <p className="muted" style={{ marginTop: '1rem', fontSize: '0.85rem' }}>
-            Snapshot {new Date(snap.meta.exportedAt).toLocaleString('en-SG')} · best{' '}
-            {snap.meta.bestOf} of last {snap.meta.rankingWindow}
+            Data: {snap.meta.source}
+            {snap.meta.exportedAt
+              ? ` · ${new Date(snap.meta.exportedAt).toLocaleString('en-SG')}`
+              : ''}
           </p>
         </div>
       </section>
@@ -54,11 +59,11 @@ export default function HomePage() {
       <section className="section">
         <div className="section-head">
           <div>
-            <h2>Current standings</h2>
-            <p>Top of the national Optimist series window · click a name for their SailorPath</p>
+            <h2>Gold fleet · current standings</h2>
+            <p>Top of the Gold series window · click a name for their SailorPath</p>
           </div>
-          <Link className="btn btn-secondary" href={base}>
-            Full board
+          <Link className="btn btn-secondary" href="/sg/optimist/gold">
+            Full Gold board
           </Link>
         </div>
         <div className="table-wrap">

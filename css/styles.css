@@ -16,6 +16,14 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);font-size:13
 .sb-logo{padding:22px 20px 18px;border-bottom:1px solid rgba(255,255,255,.1)}
 .sb-org{font-family:var(--mono);font-size:8px;letter-spacing:.18em;text-transform:uppercase;color:rgba(255,255,255,.35);margin-bottom:8px}
 .sb-logo h1{font-family:var(--mono);font-size:16px;font-weight:600;line-height:1.25;color:#fff}
+.fleet-switch{display:flex;gap:4px;margin-top:10px}
+.fleet-pill{flex:1;padding:5px 0;border:1px solid rgba(255,255,255,.15);background:transparent;color:rgba(255,255,255,.45);font-family:var(--mono);font-size:10px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;border-radius:4px;cursor:pointer;transition:all .12s}
+.fleet-pill:hover{color:#fff;border-color:rgba(255,255,255,.3)}
+.fleet-pill.active{background:rgba(255,255,255,.14);color:#fff;border-color:rgba(255,255,255,.25)}
+.fleet-pill[data-fleet-pill="silver"].active{background:rgba(163,148,240,.25);border-color:rgba(163,148,240,.45)}
+.fleet-pill[data-fleet-pill="gold"].active{background:rgba(79,209,165,.2);border-color:rgba(79,209,165,.4)}
+.badge-fleet-gold{background:var(--accent-l);color:var(--accent);font-family:var(--mono);font-size:9px;font-weight:700;padding:2px 6px;border-radius:3px}
+.badge-fleet-silver{background:var(--accent2-l);color:var(--accent2);font-family:var(--mono);font-size:9px;font-weight:700;padding:2px 6px;border-radius:3px}
 .sb-tag{display:inline-block;font-family:var(--mono);font-size:9px;margin-top:8px;padding:2px 8px;border-radius:3px;background:rgba(255,255,255,.08);color:rgba(255,255,255,.4)}
 .sb-tag.ok{background:rgba(79,209,165,.15);color:#a3c9b0}
 .sb-nav{padding:14px 10px;flex:1;overflow-y:auto}
