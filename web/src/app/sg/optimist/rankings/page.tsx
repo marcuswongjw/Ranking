@@ -16,12 +16,13 @@ export default function RankingsEmbedPage() {
       <div className="eyebrow">Official series tool</div>
       <h1>SG Optimist rankings</h1>
       <p className="lede">
-        Full ranking board, regatta management, and analysis. Powered by the existing ranking app —
-        SailorPath links sailors from the public standings and profiles.
+        Full ranking board, regatta management, and analysis. This embeds the existing ranking app
+        (hosted on GitHub Pages). SailorPath standings and profiles use a published snapshot; the
+        tool below is where editors update live data.
       </p>
       <p style={{ marginBottom: '1rem' }}>
         <a className="btn btn-secondary" href={RANKING_SPA} target="_blank" rel="noreferrer">
-          Open in new tab ↗
+          Open ranking tool ↗
         </a>
       </p>
       <div className="iframe-frame">

@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { getRegatta, getSnapshot } from '@/lib/snapshot';
-import { formatDate, formatPlace } from '@/lib/format';
+import { formatDate } from '@/lib/format';
 
 export function generateStaticParams() {
   return getSnapshot().regattas.map((r) => ({ slug: r.slug }));
@@ -34,7 +34,7 @@ export default async function RegattaDetailPage({
         <table>
           <thead>
             <tr>
-              <th>Place</th>
+              <th>Rank</th>
               <th>Sailor</th>
               <th>Club</th>
               <th>Nett</th>
@@ -43,7 +43,7 @@ export default async function RegattaDetailPage({
           <tbody>
             {reg.results.map((row, i) => (
               <tr key={`${row.name}-${i}`}>
-                <td>{formatPlace(row.place, reg.fleetSize)}</td>
+                <td>{row.place != null ? row.place : '—'}</td>
                 <td>
                   {row.sailorSlug ? (
                     <Link className="name-link" href={`/s/${row.sailorSlug}`}>

@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { getSailor, getSnapshot } from '@/lib/snapshot';
-import { formatDate, formatPlace } from '@/lib/format';
+import { formatDate } from '@/lib/format';
 import { SquadBadge } from '@/components/SquadBadge';
 import { TrajectoryChart } from '@/components/TrajectoryChart';
 
@@ -84,7 +84,7 @@ export default async function SailorProfilePage({
               <span>Best-3 score</span>
             </div>
             <div className="stat">
-              <strong>{bestPlace != null ? formatPlace(bestPlace) : '—'}</strong>
+              <strong>{bestPlace != null ? bestPlace : '—'}</strong>
               <span>Best finish (window)</span>
             </div>
             <div className="stat">
@@ -106,7 +106,7 @@ export default async function SailorProfilePage({
 
       <section className="card section">
         <h2>Race history</h2>
-        <p className="sub">Ranking-window regattas · place of fleet size</p>
+        <p className="sub">Ranking-window regattas · finish rank</p>
         <div className="timeline">
           {[...sailor.results].reverse().map((r) => (
             <div key={r.regattaId} className="timeline-item">
@@ -122,7 +122,7 @@ export default async function SailorProfilePage({
                 </span>
               </div>
               <div className="place">
-                {r.didNotSail ? '—' : formatPlace(r.place, r.fleetSize)}
+                {r.didNotSail || r.place == null ? '—' : r.place}
               </div>
             </div>
           ))}
