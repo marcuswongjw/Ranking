@@ -15,6 +15,7 @@ export function SiteHeader() {
           <Link href="/sg/optimist/rankings">Rankings</Link>
           <Link href="/sg/optimist/regattas">Regattas</Link>
           <Link href="/sg/optimist/clubs">Clubs</Link>
+          <Link href="/demo">Sample profile</Link>
           <Link href="/sg/optimist" className="nav-cta">
             SG Optimist
           </Link>

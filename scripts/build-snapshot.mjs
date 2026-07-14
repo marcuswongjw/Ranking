@@ -63,8 +63,17 @@ function loadSeed() {
   };
 }
 
+/**
+ * Fleet size for display: prefer explicit reg.dns (entries/fleet count in the
+ * live ranking app). Fall back to number of result rows in the snapshot source.
+ * NOTE: seed data often omits dns and may include placeholder rows, so fleet
+ * can disagree with live Firestore until export is wired from the ranking app.
+ */
 function fleetSize(reg) {
-  if (reg.dns != null && reg.dns !== '') return Number(reg.dns) || reg.sailors.length;
+  if (reg.dns != null && reg.dns !== '') {
+    const n = parseInt(reg.dns, 10);
+    if (!Number.isNaN(n) && n > 0) return n;
+  }
   return (reg.sailors && reg.sailors.length) || 0;
 }
 

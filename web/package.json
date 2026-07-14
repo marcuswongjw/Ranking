@@ -4,8 +4,9 @@
   "private": true,
   "scripts": {
     "snapshot": "node ../scripts/build-snapshot.mjs",
-    "prebuild": "node ../scripts/build-snapshot.mjs",
-    "dev": "node ../scripts/build-snapshot.mjs && next dev --turbopack",
+    "sync-ranking": "node ../scripts/sync-ranking-app.mjs",
+    "prebuild": "node ../scripts/build-snapshot.mjs && node ../scripts/sync-ranking-app.mjs",
+    "dev": "node ../scripts/build-snapshot.mjs && node ../scripts/sync-ranking-app.mjs && next dev --turbopack",
     "build": "next build",
     "start": "next start",
     "lint": "next lint"

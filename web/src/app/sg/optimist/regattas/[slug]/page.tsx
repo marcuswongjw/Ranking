@@ -37,7 +37,7 @@ export default async function RegattaDetailPage({
               <th>Rank</th>
               <th>Sailor</th>
               <th>Club</th>
-              <th>Nett</th>
+              <th>Nett points</th>
             </tr>
           </thead>
           <tbody>

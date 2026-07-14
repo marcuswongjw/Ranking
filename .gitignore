@@ -72,3 +72,5 @@ htmlcov/
 web/.next/
 web/node_modules/
 web/out/
+# Synced from repo root on each build — do not hand-edit
+web/public/ranking-app/

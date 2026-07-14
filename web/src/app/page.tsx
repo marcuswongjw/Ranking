@@ -24,6 +24,9 @@ export default function HomePage() {
             <Link className="btn btn-secondary" href={`${base}/regattas`}>
               Browse regattas
             </Link>
+            <Link className="btn btn-secondary" href="/demo">
+              Sample profile
+            </Link>
           </div>
         </div>
         <div className="hero-card">
