@@ -21,14 +21,18 @@ SailorPath (Vercel) loads that document via Firestore REST (revalidate ~60s). If
 | **SailorPath URLs** | `/sg/optimist/gold`, `/sg/optimist/silver`, …/regattas, …/clubs |
 | **Sailor profile** | One person page; sections for each fleet they sailed |
 
-### Adding Silver soon
+### Adding Silver (Excel uploads)
 
-1. Deploy ranking SPA (GitHub Pages + SailorPath `/ranking-app/` sync).
-2. Sign in → switch to **Silver** pill.
-3. **Add regatta** → Fleet = Silver Fleet → enter results / fleet size (DNS).
-4. Save — snapshot republishes; SailorPath Silver pages fill in within ~1 minute.
-
-Optional: populate with fleet sailors checkbox seeds DNS rows for everyone currently known (same as Gold populate).
+1. Deploy ranking SPA, **Sign in**, switch sidebar to **Silver**.
+2. **Roster list** — Manage Fleet → **Upload roster Excel (active fleet)**  
+   Columns: `Name | Gender | Born | Club | School`  
+   Adds sailors to the latest Silver regatta (or creates “Silver Fleet Roster”).
+3. **Regatta scores** — open a regatta → **Upload scores Excel**  
+   Columns: `Name | Rank | Nett` (or Points)  
+   Merges into **that** regatta only.
+4. **Bulk multi-regatta sheet** — top bar **Load scores .xlsx** (consolidated OP-style sheet).  
+   New regattas are tagged with the **active** Gold/Silver pill.
+5. Save — SailorPath snapshot republishes automatically.
 
 ## URLs
 

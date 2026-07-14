@@ -116,7 +116,7 @@
       <span class="src-tag" id="src-tag">No file loaded</span>
       <span id="sync-status" class="src-tag" style="font-family:var(--mono);">View-only</span>
       <span id="data-freshness" class="src-tag data-freshness" title="When rankings data was last saved, and the latest regatta in the ranking window">—</span>
-      <button class="editor-only upload-btn" id="load-xlsx-trigger">↑ Load .xlsx</button>
+      <button class="editor-only upload-btn" id="load-xlsx-trigger" title="Import regatta scores (multi-column sheet). New events are tagged with the active Gold/Silver fleet.">↑ Load scores .xlsx</button>
       <input type="file" id="fileInput" accept=".xlsx,.xlsm,.xls" style="display:none;">
       <button id="auth-btn" style="background:var(--text);color:#fff;border:none;border-radius:var(--r);font-size:11px;padding:6px 12px;font-family:var(--mono);cursor:pointer;font-weight:500;height:30px;transition:all .15s;">🔒 Sign in to edit</button>
     </div>
@@ -174,7 +174,11 @@
 
           <div id="specific-regatta-doc-container" style="display:flex; align-items:center; gap:6px;"></div>
 
-          <div style="display:flex; gap:6px; align-items:center; margin-left:auto;">
+          <div style="display:flex; gap:6px; align-items:center; margin-left:auto; flex-wrap:wrap;">
+            <span id="regatta-scores-upload-host" class="editor-only" style="display:inline-flex; align-items:center; gap:6px;">
+              <button type="button" id="regatta-scores-upload-trigger" style="background:var(--accent2); color:#fff; border:none; border-radius:3px; padding:6px 12px; font-size:11px; font-family:var(--mono); cursor:pointer; font-weight:600;" title="Excel: Name, Rank, Nett points">↑ Upload scores Excel</button>
+              <input type="file" id="regattaScoresFileInput" accept=".xlsx,.xlsm,.xls" style="display:none;">
+            </span>
             <button class="editor-only" id="add-sailor-result-trigger" style="background:var(--accent); color:#fff; border:none; border-radius:3px; padding:6px 12px; font-size:11px; font-family:var(--mono); cursor:pointer; font-weight:600; transition:all .15s;">＋ Add Sailor Result</button>
             <button class="editor-only" id="bulk-edit-toggle-btn" style="background:var(--bg3); color:var(--text); border:1px solid var(--border); border-radius:3px; padding:6px 12px; font-size:11px; font-family:var(--mono); cursor:pointer; font-weight:600; transition:all .15s;">✎ Bulk Edit</button>
             <button id="bulk-edit-save-btn" style="display:none; background:var(--accent); color:#fff; border:none; border-radius:3px; padding:6px 12px; font-size:11px; font-family:var(--mono); cursor:pointer; font-weight:600; transition:all .15s;">💾 Save All Changes</button>
@@ -463,10 +467,17 @@
               </div>
             </div>
           </div>
-          <div style="display:flex; gap:8px; align-items:center;">
-            <button class="run-btn editor-only" id="fleet-add-sailor-btn">＋ Add New Sailor</button>
-            <button class="run-btn" id="fleet-excel-upload-trigger">↑ Upload Fleet Excel</button>
-            <input type="file" id="fleetFileInput" accept=".xlsx,.xlsm,.xls" style="display:none;">
+          <div style="display:flex; flex-direction:column; gap:8px;">
+            <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+              <button class="run-btn editor-only" id="fleet-add-sailor-btn">＋ Add New Sailor</button>
+              <button class="run-btn editor-only" id="fleet-excel-upload-trigger" title="Uses the Gold/Silver pill currently selected in the sidebar">↑ Upload roster Excel (active fleet)</button>
+              <input type="file" id="fleetFileInput" accept=".xlsx,.xlsm,.xls" style="display:none;">
+            </div>
+            <p class="card-desc" style="margin:0; font-size:11px; line-height:1.45;">
+              <strong>Roster upload</strong> uses the sidebar <strong>Gold / Silver</strong> pill.
+              Columns: <code>Name</code>, <code>Gender</code>, <code>Born</code>, <code>Club</code>, <code>School</code> (header row).
+              Sailors are added to the latest regatta of that fleet (or a new “Fleet Roster” event) with blank ranks until scores are uploaded.
+            </p>
           </div>
           <div class="editor-only" style="margin-top:14px; padding-top:14px; border-top:1px solid var(--border); display:flex; flex-direction:column; gap:6px;">
             <div class="fl-lbl" style="font-weight:600; color:var(--text2);">Legacy Browser Data Recovery</div>

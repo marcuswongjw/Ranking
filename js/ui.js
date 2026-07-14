@@ -421,12 +421,21 @@ function renderSpecificRegattaResults(regName) {
     }
 
     const nameEl = document.getElementById('specific-regatta-name');
-    if (nameEl) nameEl.textContent = reg.name;
+    if (nameEl) {
+      const fleet = (reg.fleet === 'silver') ? 'Silver' : 'Gold';
+      nameEl.textContent = reg.name + ` (${fleet})`;
+    }
 
     const dateInput = document.getElementById('specific-regatta-date-input');
     if (dateInput) {
       dateInput.value = reg.date || '';
       dateInput.disabled = !isEditor();
+    }
+
+    // Fleet-aware score upload control
+    const scoresUploadHost = document.getElementById('regatta-scores-upload-host');
+    if (scoresUploadHost) {
+      scoresUploadHost.style.display = isEditor() ? 'inline-flex' : 'none';
     }
 
     const dnsInput = document.getElementById('specific-regatta-dns');

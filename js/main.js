@@ -676,6 +676,7 @@
       }
     });
 
+    const activeFleet = (typeof ACTIVE_FLEET === 'string' && ACTIVE_FLEET === 'silver') ? 'silver' : 'gold';
     PENDING_IMPORT_DATA.forEach(col => {
       col.sailors.forEach(s => {
         if (nameMap.has(s.name)) {
@@ -685,6 +686,8 @@
 
       const existing = REGATTAS.find(r => r.name.toLowerCase() === col.name.toLowerCase());
       if (existing) {
+        // Keep existing fleet tag; ensure fleet is set
+        if (!existing.fleet) existing.fleet = activeFleet;
         col.sailors.forEach(newSailor => {
           const sIdx = existing.sailors.findIndex(x => isSameSailor(x.name, newSailor.name));
           if (sIdx !== -1) {
@@ -698,10 +701,17 @@
             existing.sailors.push(newSailor);
           }
         });
+        // Refresh fleet size if dns missing or smaller than row count
+        if (existing.dns == null || existing.dns < existing.sailors.length) {
+          existing.dns = Math.max(existing.sailors.length, existing.dns || 0);
+        }
       } else {
         REGATTAS.push({
           name: col.name,
           date: col.date,
+          fleet: activeFleet,
+          type: 'selection',
+          dns: col.sailors.length,
           sailors: col.sailors
         });
       }
@@ -711,12 +721,19 @@
     saveData();
     renderAll();
     closeImportModal();
-    toastSuccess('Spreadsheet imported successfully.');
+    const fl = activeFleet === 'silver' ? 'Silver' : 'Gold';
+    toastSuccess(`Spreadsheet imported into ${fl} series successfully.`);
   }
 
+  /**
+   * Upload a roster list for the ACTIVE fleet (Gold or Silver).
+   * Columns: Name | Gender | Born | Club | School (headers flexible).
+   * Sailors are added to the latest regatta of that fleet (or a new roster event).
+   */
   function uploadFleetExcel(input) {
     const file = input.files[0];
     if (!file) return;
+    if (!requireEditor()) return;
     
     const reader = new FileReader();
     reader.onload = e => {
@@ -742,48 +759,203 @@
         if (bornIdx === -1) bornIdx = 2;
         if (clubIdx === -1) clubIdx = 4;
         if (schoolIdx === -1) schoolIdx = 5;
-        
+
+        const fleet = (typeof ACTIVE_FLEET === 'string' && ACTIVE_FLEET === 'silver') ? 'silver' : 'gold';
+        const fleetFn = typeof getRegattaFleet === 'function'
+          ? getRegattaFleet
+          : (r) => (r && r.fleet === 'silver' ? 'silver' : 'gold');
+
+        // Target: latest selection regatta in this fleet, or create a roster shell
+        let targetReg = [...REGATTAS]
+          .filter(r => r && fleetFn(r) === fleet && r.type !== 'overseas')
+          .sort((a, b) => String(a.date || '').localeCompare(String(b.date || '')))
+          .pop();
+
+        if (!targetReg) {
+          const label = fleet === 'silver' ? 'Silver' : 'Gold';
+          targetReg = {
+            name: `${label} Fleet Roster`,
+            date: new Date().toISOString().slice(0, 10),
+            fleet,
+            type: 'selection',
+            dns: 1,
+            sailors: []
+          };
+          REGATTAS.push(targetReg);
+        }
+
         let importedCount = 0;
-        const currentSystemSailors = getAllSailorsInSystem();
-        
+        let addedCount = 0;
+
         for (let i = 1; i < rows.length; i++) {
           const r = rows[i];
           if (!r || !r[nameIdx]) continue;
           const name = String(r[nameIdx]).trim();
           if (!name || name.toLowerCase() === 'name') continue;
-          
-          const gender = String(r[genderIdx] || 'M').trim().toUpperCase();
-          const born = parseInt(r[bornIdx]) || 2013;
+
+          const genderRaw = String(r[genderIdx] || 'M').trim().toUpperCase();
+          const gender = genderRaw.startsWith('F') ? 'F' : 'M';
+          const born = parseInt(r[bornIdx], 10) || 0;
           const club = String(r[clubIdx] || '').trim();
           const school = String(r[schoolIdx] || '').trim();
-          
+
           unmarkSailorDropped(name);
-          
-          const existing = currentSystemSailors.find(s => isSameSailor(s.name, name));
-          if (!existing) {
-            if (REGATTAS.length > 0) {
-              const latestReg = REGATTAS[REGATTAS.length - 1];
-              latestReg.sailors.push({
-                name,
-                g: gender,
-                born,
-                club,
-                school,
-                nett: null,
-                rank: null
-              });
-            }
+
+          // Upsert metadata so sailor is known system-wide
+          const metaKey = (typeof resolveSailorMetadataKey === 'function')
+            ? resolveSailorMetadataKey(name)
+            : name;
+          SAILOR_METADATA[metaKey] = Object.assign({}, SAILOR_METADATA[metaKey] || {}, {
+            g: gender,
+            born: born || (SAILOR_METADATA[metaKey] && SAILOR_METADATA[metaKey].born) || null,
+            club: club || (SAILOR_METADATA[metaKey] && SAILOR_METADATA[metaKey].club) || '',
+            school: school || (SAILOR_METADATA[metaKey] && SAILOR_METADATA[metaKey].school) || ''
+          });
+
+          const sIdx = targetReg.sailors.findIndex(x => isSameSailor(x.name, name));
+          if (sIdx === -1) {
+            targetReg.sailors.push({
+              name,
+              g: gender,
+              born: born || null,
+              club,
+              school,
+              nett: null,
+              rank: null
+            });
+            addedCount++;
+          } else {
+            const row = targetReg.sailors[sIdx];
+            row.name = name;
+            if (gender) row.g = gender;
+            if (born) row.born = born;
+            if (club) row.club = club;
+            if (school) row.school = school;
           }
           importedCount++;
         }
-        
+
+        if (targetReg.dns == null || targetReg.dns < targetReg.sailors.length) {
+          targetReg.dns = Math.max(targetReg.sailors.length, 1);
+        }
+
         recomputeSailors();
         saveData();
         renderAll();
         renderFleetPanel();
-        toastSuccess(`Fleet Excel processed — activated / promoted ${importedCount} sailors.`);
+        const fl = fleet === 'silver' ? 'Silver' : 'Gold';
+        toastSuccess(
+          `${fl} roster upload: ${importedCount} sailors processed (${addedCount} new) → “${targetReg.name}”.`
+        );
       } catch (err) {
         toastError('Could not read fleet Excel file: ' + err.message);
+      }
+      input.value = '';
+    };
+    reader.readAsArrayBuffer(file);
+  }
+
+  /**
+   * Upload scores for the currently open regatta only.
+   * Columns: Name | Rank | Nett (or Points). Headers flexible.
+   */
+  function uploadRegattaScoresExcel(input) {
+    const file = input.files[0];
+    if (!file) return;
+    if (!requireEditor()) return;
+    const regName = CURRENT_SELECTED_REGATTA;
+    const reg = REGATTAS.find(r => r.name === regName);
+    if (!reg) {
+      toastWarn('Open a regatta first, then upload scores for that event.');
+      input.value = '';
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = e => {
+      try {
+        const wb = XLSX.read(e.target.result, { type: 'array' });
+        const sn = wb.SheetNames[0];
+        const rows = XLSX.utils.sheet_to_json(wb.Sheets[sn], { header: 1, defval: null });
+        const headers = rows[0] || [];
+        let nameIdx = -1, rankIdx = -1, nettIdx = -1, genderIdx = -1, bornIdx = -1, clubIdx = -1;
+
+        for (let c = 0; c < headers.length; c++) {
+          const h = String(headers[c] || '').toLowerCase().trim();
+          if (h === 'name' || h === 'sailor') nameIdx = c;
+          else if (h === 'rank' || h === 'pos' || h === 'position' || h === 'placing') rankIdx = c;
+          else if (h === 'nett' || h === 'points' || h === 'pts' || h === 'score' || h === 'nett points') nettIdx = c;
+          else if (h === 'gender' || h === 'g' || h === 'sex') genderIdx = c;
+          else if (h === 'born' || h === 'birth year' || h === 'year') bornIdx = c;
+          else if (h === 'club') clubIdx = c;
+        }
+        if (nameIdx === -1) nameIdx = 0;
+        if (rankIdx === -1) {
+          for (let c = 0; c < headers.length; c++) {
+            if (/rank|pos|place/i.test(String(headers[c] || ''))) { rankIdx = c; break; }
+          }
+        }
+        if (nettIdx === -1) {
+          for (let c = 0; c < headers.length; c++) {
+            if (/nett|point|score|pts/i.test(String(headers[c] || ''))) { nettIdx = c; break; }
+          }
+        }
+        if (rankIdx === -1 && nettIdx !== -1) rankIdx = nettIdx;
+        if (nettIdx === -1 && rankIdx !== -1) nettIdx = rankIdx;
+
+        let updated = 0;
+        let added = 0;
+        for (let i = 1; i < rows.length; i++) {
+          const r = rows[i];
+          if (!r || !r[nameIdx]) continue;
+          const name = String(r[nameIdx]).trim();
+          if (!name || name.toLowerCase() === 'name') continue;
+          const rank = rankIdx !== -1 ? parseVal(r[rankIdx]) : null;
+          const nett = nettIdx !== -1 ? parseVal(r[nettIdx]) : null;
+          if (rank == null && nett == null) continue;
+
+          const finalRank = rank != null ? rank : nett;
+          const finalNett = nett != null ? nett : rank;
+          const g = genderIdx !== -1 ? String(r[genderIdx] || '').trim().toUpperCase() : '';
+          const born = bornIdx !== -1 ? parseInt(r[bornIdx], 10) || null : null;
+          const club = clubIdx !== -1 ? String(r[clubIdx] || '').trim() : '';
+
+          unmarkSailorDropped(name);
+          const sIdx = reg.sailors.findIndex(x => isSameSailor(x.name, name));
+          if (sIdx !== -1) {
+            reg.sailors[sIdx].rank = finalRank;
+            reg.sailors[sIdx].nett = finalNett;
+            if (g) reg.sailors[sIdx].g = g.startsWith('F') ? 'F' : 'M';
+            if (born) reg.sailors[sIdx].born = born;
+            if (club) reg.sailors[sIdx].club = club;
+            updated++;
+          } else {
+            reg.sailors.push({
+              name,
+              g: g ? (g.startsWith('F') ? 'F' : 'M') : 'M',
+              born: born || null,
+              club: club || '',
+              school: '',
+              rank: finalRank,
+              nett: finalNett
+            });
+            added++;
+          }
+        }
+
+        if (reg.dns == null || reg.dns < reg.sailors.length) {
+          reg.dns = Math.max(reg.sailors.length, reg.dns || 0, 1);
+        }
+
+        recomputeSailors();
+        saveData();
+        renderAll();
+        renderSpecificRegattaResults(reg.name);
+        toastSuccess(
+          `Scores for “${reg.name}”: ${updated} updated, ${added} new (fleet: ${reg.fleet || 'gold'}).`
+        );
+      } catch (err) {
+        toastError('Could not read scores Excel: ' + err.message);
       }
       input.value = '';
     };
@@ -1251,6 +1423,17 @@
     });
     document.getElementById('fleet-excel-upload-trigger')?.addEventListener('click', () => {
       document.getElementById('fleetFileInput')?.click();
+    });
+    document.getElementById('regatta-scores-upload-trigger')?.addEventListener('click', () => {
+      if (!requireEditor()) return;
+      if (!CURRENT_SELECTED_REGATTA) {
+        toastWarn('Open a regatta first, then upload scores.');
+        return;
+      }
+      document.getElementById('regattaScoresFileInput')?.click();
+    });
+    document.getElementById('regattaScoresFileInput')?.addEventListener('change', e => {
+      if (e.target.files[0]) uploadRegattaScoresExcel(e.target);
     });
     document.getElementById('overwrite-cloud-btn')?.addEventListener('click', () => {
       forceMigrateLocalToCloud();
