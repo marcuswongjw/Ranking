@@ -688,7 +688,9 @@
       if (existing) {
         // Keep existing fleet tag; ensure fleet is set
         if (!existing.fleet) existing.fleet = activeFleet;
+        const regFleet = existing.fleet === 'silver' ? 'silver' : 'gold';
         col.sailors.forEach(newSailor => {
+          if (typeof setSailorFleet === 'function') setSailorFleet(newSailor.name, regFleet);
           const sIdx = existing.sailors.findIndex(x => isSameSailor(x.name, newSailor.name));
           if (sIdx !== -1) {
             existing.sailors[sIdx].nett = newSailor.nett;
@@ -706,6 +708,9 @@
           existing.dns = Math.max(existing.sailors.length, existing.dns || 0);
         }
       } else {
+        col.sailors.forEach(s => {
+          if (typeof setSailorFleet === 'function') setSailorFleet(s.name, activeFleet);
+        });
         REGATTAS.push({
           name: col.name,
           date: col.date,
@@ -801,7 +806,7 @@
 
           unmarkSailorDropped(name);
 
-          // Upsert metadata so sailor is known system-wide
+          // Upsert metadata + assign to active Gold/Silver membership pool
           const metaKey = (typeof resolveSailorMetadataKey === 'function')
             ? resolveSailorMetadataKey(name)
             : name;
@@ -809,8 +814,10 @@
             g: gender,
             born: born || (SAILOR_METADATA[metaKey] && SAILOR_METADATA[metaKey].born) || null,
             club: club || (SAILOR_METADATA[metaKey] && SAILOR_METADATA[metaKey].club) || '',
-            school: school || (SAILOR_METADATA[metaKey] && SAILOR_METADATA[metaKey].school) || ''
+            school: school || (SAILOR_METADATA[metaKey] && SAILOR_METADATA[metaKey].school) || '',
+            fleet
           });
+          if (typeof setSailorFleet === 'function') setSailorFleet(name, fleet);
 
           const sIdx = targetReg.sailors.findIndex(x => isSameSailor(x.name, name));
           if (sIdx === -1) {
@@ -905,6 +912,7 @@
 
         let updated = 0;
         let added = 0;
+        const regFleet = reg.fleet === 'silver' ? 'silver' : 'gold';
         for (let i = 1; i < rows.length; i++) {
           const r = rows[i];
           if (!r || !r[nameIdx]) continue;
@@ -921,6 +929,9 @@
           const club = clubIdx !== -1 ? String(r[clubIdx] || '').trim() : '';
 
           unmarkSailorDropped(name);
+          // Scores on a Silver regatta assign Silver membership (and Gold → Gold)
+          if (typeof setSailorFleet === 'function') setSailorFleet(name, regFleet);
+
           const sIdx = reg.sailors.findIndex(x => isSameSailor(x.name, name));
           if (sIdx !== -1) {
             reg.sailors[sIdx].rank = finalRank;
@@ -952,7 +963,7 @@
         renderAll();
         renderSpecificRegattaResults(reg.name);
         toastSuccess(
-          `Scores for “${reg.name}”: ${updated} updated, ${added} new (fleet: ${reg.fleet || 'gold'}).`
+          `Scores for “${reg.name}”: ${updated} updated, ${added} new (${regFleet} membership).`
         );
       } catch (err) {
         toastError('Could not read scores Excel: ' + err.message);
@@ -1088,30 +1099,46 @@
     const currentSystemSailors = getAllSailorsInSystem();
     const existing = currentSystemSailors.find(s => isSameSailor(s.name, name));
     
+    const fleet = (typeof ACTIVE_FLEET === 'string' && ACTIVE_FLEET === 'silver') ? 'silver' : 'gold';
     if (existing) {
+      if (typeof setSailorFleet === 'function') setSailorFleet(existing.name, fleet);
       if (isDroppedSailor(existing.name)) {
         unmarkSailorDropped(existing.name);
-        toastSuccess(`"${name}" was already in the database and has been re-promoted.`);
+        toastSuccess(`"${name}" re-promoted into ${fleet === 'silver' ? 'Silver' : 'Gold'} fleet.`);
       } else {
-        toastInfo(`"${name}" is already an active sailor.`);
-        return;
+        toastSuccess(`"${name}" assigned to ${fleet === 'silver' ? 'Silver' : 'Gold'} fleet.`);
       }
     } else {
-      if (REGATTAS.length > 0) {
-        const latestReg = REGATTAS[REGATTAS.length - 1];
-        latestReg.sailors.push({
-          name,
-          g: gender,
-          born,
-          club,
-          school,
-          nett: null,
-          rank: null
-        });
-      } else {
-        toastError('No regattas loaded yet. Drop an Excel file to initialize first.');
-        return;
+      // Prefer latest regatta in the active fleet
+      const fleetFn = typeof getRegattaFleet === 'function'
+        ? getRegattaFleet
+        : (r) => (r && r.fleet === 'silver' ? 'silver' : 'gold');
+      let latestReg = [...REGATTAS]
+        .filter(r => r && fleetFn(r) === fleet && r.type !== 'overseas')
+        .sort((a, b) => String(a.date || '').localeCompare(String(b.date || '')))
+        .pop();
+      if (!latestReg) {
+        const label = fleet === 'silver' ? 'Silver' : 'Gold';
+        latestReg = {
+          name: `${label} Fleet Roster`,
+          date: new Date().toISOString().slice(0, 10),
+          fleet,
+          type: 'selection',
+          dns: 1,
+          sailors: []
+        };
+        REGATTAS.push(latestReg);
       }
+      latestReg.sailors.push({
+        name,
+        g: gender,
+        born,
+        club,
+        school,
+        nett: null,
+        rank: null
+      });
+      if (typeof setSailorFleet === 'function') setSailorFleet(name, fleet);
     }
     
     document.getElementById('fleet-add-name').value = '';
@@ -1285,6 +1312,12 @@
 
         // Exclude manually dropped sailors (normalized name match)
         if (isDroppedSailor(canonicalName)) return;
+
+        // Only populate with sailors who belong to this regatta's fleet
+        const memberFleet = (typeof getSailorFleet === 'function')
+          ? getSailorFleet(sysObj?.name || canonicalName)
+          : 'gold';
+        if (memberFleet !== fleet) return;
 
         sailors.push({
           name: sysObj?.name || canonicalName,
@@ -1550,6 +1583,15 @@
 
     // Fleet list active/dropped delegation
     document.getElementById('fleet-active-list')?.addEventListener('click', e => {
+      const moveBtn = e.target.closest('.fleet-move-btn');
+      if (moveBtn) {
+        e.preventDefault();
+        e.stopPropagation();
+        const nm = sailorNameFromDataAttr(moveBtn.getAttribute('data-sailor'));
+        const fl = moveBtn.getAttribute('data-fleet');
+        if (nm && typeof moveSailorToFleet === 'function') moveSailorToFleet(nm, fl);
+        return;
+      }
       const btn = e.target.closest('.fleet-drop-btn');
       if (btn) {
         e.preventDefault();

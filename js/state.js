@@ -87,6 +87,21 @@ function applyState(s) {
     EXCLUDED = new Map(Array.isArray(s.excluded) ? s.excluded : []);
   }
   SAILOR_METADATA = (s.metadata && typeof s.metadata === 'object') ? s.metadata : {};
+  // Ensure every known sailor has a fleet membership (default gold; silver if only on silver regs)
+  if (typeof setSailorFleet === 'function' && typeof getSailorFleet === 'function') {
+    const names = new Set();
+    REGATTAS.forEach(reg => (reg.sailors || []).forEach(row => {
+      if (row && row.name) names.add(row.name);
+    }));
+    Object.keys(SAILOR_METADATA).forEach(n => names.add(n));
+    names.forEach(n => {
+      const key = (typeof resolveSailorMetadataKey === 'function') ? resolveSailorMetadataKey(n) : n;
+      const meta = SAILOR_METADATA[key] || SAILOR_METADATA[n];
+      if (meta && (meta.fleet === 'gold' || meta.fleet === 'silver')) return;
+      // Stamp inferred fleet so Gold/Silver pools stay split going forward
+      setSailorFleet(n, getSailorFleet(n));
+    });
+  }
   SELECTED_REGATTA_NAMES = (s.selectedRegattas === undefined) ? null : s.selectedRegattas;
   // Firestore Timestamp or ISO / millis
   if (s.updatedAt) {

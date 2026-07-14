@@ -69,6 +69,12 @@ function openSailorModal(sailorName, skipHash) {
   document.getElementById('sm-school').value = sailor.school || meta.school || '';
 
   document.getElementById('sm-entered-gold').value = meta.enteredGold || '—';
+  const fleetEl = document.getElementById('sm-fleet');
+  if (fleetEl) {
+    fleetEl.value = (typeof getSailorFleet === 'function')
+      ? getSailorFleet(sailor.name)
+      : (meta.fleet === 'silver' ? 'silver' : 'gold');
+  }
 
   const major = meta.majorComps || {};
   const worlds = major.worlds || [];
@@ -239,6 +245,9 @@ function saveSailorProfile() {
 
   // Spread prevMeta first so fields not managed by this form (e.g. the
   // squadJan/squadJul lock keys) survive a profile save or rename.
+  const fleetSel = document.getElementById('sm-fleet');
+  const fleetVal = (fleetSel && fleetSel.value === 'silver') ? 'silver' : 'gold';
+
   SAILOR_METADATA[newName] = {
     ...prevMeta,
     enteredGold,
@@ -251,6 +260,7 @@ function saveSailorProfile() {
     born: born,
     club: club,
     school: school,
+    fleet: fleetVal,
     majorComps: {
       worlds: mcWorlds,
       euros: mcEuros,
@@ -1824,11 +1834,20 @@ function renderFleetPanel() {
   const searchDropped = document.getElementById('fleet-search-dropped').value.toLowerCase();
   
   const allSystem = getAllSailorsInSystem();
+  const fleet = (typeof ACTIVE_FLEET === 'string' && ACTIVE_FLEET === 'silver') ? 'silver' : 'gold';
+  const fleetLabel = fleet === 'silver' ? 'Silver' : 'Gold';
+  const titleEl = document.getElementById('fleet-panel-fleet-label');
+  if (titleEl) titleEl.textContent = fleetLabel;
+
+  // Only show sailors who belong to the active Gold/Silver membership pool
+  const inFleet = (s) => (typeof sailorBelongsToFleet === 'function'
+    ? sailorBelongsToFleet(s.name, fleet)
+    : true);
   
   const activeSailors = allSystem.filter(s => {
     const isAutoDrop = isAgeDropped(s.born);
     const isDropped = isDroppedSailor(s.name) || isAutoDrop;
-    return !isDropped && s.name.toLowerCase().includes(searchActive);
+    return !isDropped && inFleet(s) && s.name.toLowerCase().includes(searchActive);
   });
   activeSailors.sort((a, b) => {
     const rankA = SAILORS.find(s => isSameSailor(s.name, a.name));
@@ -1844,23 +1863,28 @@ function renderFleetPanel() {
     const safeGender = escapeHtml(s.g);
     const safeBorn = escapeHtml(s.born);
     const safeClub = escapeHtml(s.club || 'No Club');
+    const otherFleet = fleet === 'silver' ? 'gold' : 'silver';
+    const otherLabel = otherFleet === 'silver' ? 'Silver' : 'Gold';
 
     return `<div class="excl-item" style="margin-bottom:4px;">
-      <div style="display:flex;align-items:center;gap:10px">
+      <div style="display:flex;align-items:center;gap:10px;flex:1;min-width:0">
         <span style="font-family:var(--mono);font-size:10px;color:var(--text3);min-width:32px">${rankStr}</span>
-        <div>
+        <div style="min-width:0">
           <div class="excl-name name-c" data-sailor="${dataName}" style="cursor:pointer; color:var(--accent); text-decoration:underline; font-weight:600;">${safeName}</div>
-          <div class="excl-reason">${safeGender} · ${safeBorn} · ${safeClub}</div>
+          <div class="excl-reason">${safeGender} · ${safeBorn} · ${safeClub} · <span class="badge-fleet-${fleet}">${fleetLabel}</span></div>
         </div>
       </div>
-      <button class="excl-rm fleet-drop-btn" data-sailor="${dataName}" style="background:var(--red-l); color:var(--red); border:1px solid rgba(138,28,28,.15); min-width:65px; height:24px; padding:0 8px;">✕ Drop</button>
+      <div style="display:flex;gap:4px;flex-shrink:0;">
+        <button class="excl-rm fleet-move-btn" data-sailor="${dataName}" data-fleet="${otherFleet}" title="Move to ${otherLabel} fleet" style="background:var(--accent2-l); color:var(--accent2); border:1px solid rgba(45,74,138,.15); min-width:72px; height:24px; padding:0 6px; font-size:10px;">→ ${otherLabel}</button>
+        <button class="excl-rm fleet-drop-btn" data-sailor="${dataName}" style="background:var(--red-l); color:var(--red); border:1px solid rgba(138,28,28,.15); min-width:65px; height:24px; padding:0 8px;">✕ Drop</button>
+      </div>
     </div>`;
-  }).join('') || '<div class="excl-empty">No active sailors.</div>';
+  }).join('') || `<div class="excl-empty">No active ${fleetLabel} sailors. Upload a roster or add sailors while the ${fleetLabel} pill is selected.</div>`;
 
   const droppedSailors = allSystem.filter(s => {
     const isAutoDrop = isAgeDropped(s.born);
     const isDropped = isDroppedSailor(s.name) || isAutoDrop;
-    return isDropped && s.name.toLowerCase().includes(searchDropped);
+    return isDropped && inFleet(s) && s.name.toLowerCase().includes(searchDropped);
   });
   
   droppedList.innerHTML = droppedSailors.map(s => {
@@ -1890,7 +1914,20 @@ function renderFleetPanel() {
       </div>
       ${actionButton}
     </div>`;
-  }).join('') || '<div class="excl-empty">No dropped sailors.</div>';
+  }).join('') || `<div class="excl-empty">No dropped ${fleetLabel} sailors.</div>`;
+}
+
+function moveSailorToFleet(name, fleet) {
+  if (!requireEditor()) return;
+  const cleaned = cleanSailorName(name);
+  if (!cleaned) return;
+  const target = fleet === 'silver' ? 'silver' : 'gold';
+  setSailorFleet(cleaned, target);
+  recomputeSailors();
+  saveData();
+  renderAll();
+  renderFleetPanel();
+  toastSuccess(`Moved ${cleaned} to ${target === 'silver' ? 'Silver' : 'Gold'} fleet.`);
 }
 
 function dropSailor(name) {

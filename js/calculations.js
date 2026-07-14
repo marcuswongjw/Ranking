@@ -163,11 +163,18 @@ function recomputeSailors() {
     if (isAgeDropped(s.born)) ageDroppedNorms.add(norm);
   });
 
+  const activeFleet = (typeof ACTIVE_FLEET === 'string' && ACTIVE_FLEET === 'silver') ? 'silver' : 'gold';
+  const belongs = (typeof sailorBelongsToFleet === 'function')
+    ? (n) => sailorBelongsToFleet(n, activeFleet)
+    : () => true;
+
+  // Only rank sailors who belong to the active fleet (Gold vs Silver membership)
   allSystemSailors.forEach(s => {
     const norm = normalizeName(s.name);
     if (droppedNorms.has(norm) || ageDroppedNorms.has(norm)) return;
     if (isDroppedSailor(s.name)) return;
     if (isAgeDropped(s.born)) return;
+    if (!belongs(s.name)) return;
     const metaKey = (typeof resolveSailorMetadataKey === 'function')
       ? resolveSailorMetadataKey(s.name)
       : s.name;
@@ -179,6 +186,7 @@ function recomputeSailors() {
       born: s.born || meta.born || null,
       club: s.club || meta.club || '',
       school: s.school || meta.school || '',
+      fleet: activeFleet,
       scores: Array(latestRegs.length).fill(null),
       ranks: Array(latestRegs.length).fill(null)
     });
@@ -189,6 +197,8 @@ function recomputeSailors() {
       const norm = normalizeName(s.name);
       if (!norm) return;
       if (droppedNorms.has(norm) || isDroppedSailor(s.name)) return;
+      // Strict split: silver sailors never score on gold board and vice versa
+      if (!belongs(s.name)) return;
 
       const profile = profileByNorm.get(norm);
       const resolvedBorn = (profile && profile.born) || bornByNorm.get(norm) || s.born;
@@ -204,6 +214,7 @@ function recomputeSailors() {
           born: resolvedBorn,
           club: (profile && profile.club) || s.club,
           school: (profile && profile.school) || s.school || '',
+          fleet: activeFleet,
           scores: Array(latestRegs.length).fill(null),
           ranks: Array(latestRegs.length).fill(null)
         });

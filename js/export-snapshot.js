@@ -90,7 +90,23 @@
       });
   }
 
-  function computeFleetStandings(allRegs, fleetId, droppedSet, excludedMap, refYear) {
+  function memberFleet(name, metadata) {
+    metadata = metadata || {};
+    var meta = metadata[name] || {};
+    // try case-insensitive key match
+    if (!meta.fleet) {
+      var n = normalizeName(name);
+      Object.keys(metadata).forEach(function (k) {
+        if (normalizeName(k) === n) meta = metadata[k] || meta;
+      });
+    }
+    if (String(meta.fleet || '').toLowerCase() === 'silver') return 'silver';
+    if (String(meta.fleet || '').toLowerCase() === 'gold') return 'gold';
+    return null; // unknown — infer from regatta later
+  }
+
+  function computeFleetStandings(allRegs, fleetId, droppedSet, excludedMap, refYear, metadata) {
+    metadata = metadata || {};
     var ordered = activeRegattasForFleet(allRegs, fleetId);
     var windowRegs = ordered.slice(-WINDOW);
     var byNorm = new Map();
@@ -100,6 +116,10 @@
         var norm = normalizeName(row.name);
         if (!norm || droppedSet.has(norm)) return;
         if (excludedMap.has(row.name) || excludedMap.has(norm)) return;
+        // Strict membership: only sailors assigned to this fleet (or unassigned → gold default)
+        var mf = memberFleet(row.name, metadata);
+        if (mf == null) mf = 'gold';
+        if (mf !== fleetId) return;
         if (!byNorm.has(norm)) {
           byNorm.set(norm, {
             name: row.name,
@@ -178,17 +198,16 @@
     return { list: list, windowRegs: windowRegs, squad: squad, refYear: refYear };
   }
 
-  function buildTrajectory(allRegs, fleetId, droppedSet, excludedMap, sailorNorm, refYear) {
+  function buildTrajectory(allRegs, fleetId, droppedSet, excludedMap, sailorNorm, refYear, metadata) {
     var ordered = activeRegattasForFleet(allRegs, fleetId);
     var points = [];
     for (var end = Math.min(WINDOW, ordered.length); end <= ordered.length; end++) {
       var prefixRegs = ordered.slice(Math.max(0, end - WINDOW), end);
-      // temporary slice: compute on prefix only by filtering allRegs to prefix names
       var nameSet = new Set(prefixRegs.map(function (r) { return r.name; }));
       var subset = (allRegs || []).filter(function (r) {
         return nameSet.has(r.name) && getRegattaFleet(r) === fleetId;
       });
-      var sub = computeFleetStandings(subset, fleetId, droppedSet, excludedMap, refYear);
+      var sub = computeFleetStandings(subset, fleetId, droppedSet, excludedMap, refYear, metadata || {});
       var me = sub.list.find(function (s) {
         return normalizeName(s.name) === sailorNorm;
       });
@@ -263,7 +282,14 @@
     var mergedSailors = new Map(); // norm -> sailor profile
 
     FLEET_IDS.forEach(function (fleetId) {
-      var computed = computeFleetStandings(regattas, fleetId, droppedSet, excludedMap, refYear);
+      var computed = computeFleetStandings(
+        regattas,
+        fleetId,
+        droppedSet,
+        excludedMap,
+        refYear,
+        state.metadata || {}
+      );
       var list = computed.list;
       var windowRegs = computed.windowRegs;
       var squad = computed.squad;
@@ -286,7 +312,15 @@
             fleet: fleetId,
           };
         });
-        var trajectory = buildTrajectory(regattas, fleetId, droppedSet, excludedMap, norm, refYear);
+        var trajectory = buildTrajectory(
+          regattas,
+          fleetId,
+          droppedSet,
+          excludedMap,
+          norm,
+          refYear,
+          state.metadata || {}
+        );
         return {
           id: id,
           slug: id,

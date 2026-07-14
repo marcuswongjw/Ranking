@@ -436,8 +436,8 @@
     <div class="panel" id="panel-fleet">
       <div class="two-col" style="margin-bottom:18px">
         <div class="card">
-          <div class="card-title">Promote / Add New Sailor</div>
-          <p class="card-desc">Add a new sailor to the active fleet. They will be included in the rankings system and can receive scores.</p>
+          <div class="card-title">Promote / Add New Sailor · <span id="fleet-panel-fleet-label">Gold</span></div>
+          <p class="card-desc">Adds a sailor to the <strong>active Gold/Silver membership pool</strong> (sidebar pill). Gold and Silver sailors are ranked in separate series.</p>
           <div style="display:flex; flex-direction:column; gap:10px; margin-bottom:12px;">
             <div class="fl">
               <label class="fl-lbl" for="fleet-add-name">Sailor Name</label>
@@ -486,12 +486,13 @@
           </div>
         </div>
         <div class="card">
-          <div class="card-title">Fleet Reshuffle Guidelines</div>
-          <p class="card-desc" style="margin-bottom:10px">The fleet is typically reshuffled in January and July each year. Dropping a sailor prevents them from appearing in overall rankings while preserving their historical scores in the system.</p>
+          <div class="card-title">Gold vs Silver membership</div>
+          <p class="card-desc" style="margin-bottom:10px">Each sailor belongs to <strong>one</strong> membership pool. Use <strong>→ Gold / → Silver</strong> on a sailor to move them between fleets (e.g. promotion).</p>
           <table class="ct">
-            <tr><td>Active Fleet</td><td style="font-weight:500">Currently ranked on dashboard</td></tr>
-            <tr><td>Dropped Fleet</td><td style="font-weight:500">Hidden from rankings, history kept</td></tr>
-            <tr><td>Promotions</td><td style="font-weight:500">Promoted silver sailors show in rankings</td></tr>
+            <tr><td>Gold / Silver pill</td><td style="font-weight:500">Which series board + membership list you manage</td></tr>
+            <tr><td>Membership</td><td style="font-weight:500">Stored per sailor — only that fleet’s ranking counts them</td></tr>
+            <tr><td>Dropped</td><td style="font-weight:500">Hidden from rankings in their fleet; history kept</td></tr>
+            <tr><td>Regatta fleet</td><td style="font-weight:500">Each event is Gold or Silver; scores stay in that series</td></tr>
           </table>
         </div>
       </div>
@@ -714,7 +715,12 @@
             </div>
             <div style="display:grid; grid-template-columns:1fr; gap:12px;">
               <div class="fl">
-                <label class="fl-lbl" for="sm-entered-gold">Gold Fleet Entry Date</label>
+                <label class="fl-lbl" for="sm-fleet">Fleet membership</label>
+                <select id="sm-fleet" style="width:100%; height:30px;" title="Gold and Silver sailors are ranked in separate series">
+                  <option value="gold">Gold Fleet</option>
+                  <option value="silver">Silver Fleet</option>
+                </select>
+                <label class="fl-lbl" for="sm-entered-gold" style="margin-top:8px;">Gold Fleet Entry Date</label>
                 <select id="sm-entered-gold" style="width:100%; height:30px;"></select>
               </div>
             </div>
@@ -840,14 +846,14 @@
 </div>
 
 <!-- Load Application Modules (?v= forces browsers to fetch after deploy) -->
-<script src="js/config.js?v=20260709o"></script>
-<script src="js/seed.js?v=20260709o"></script>
-<script src="js/utils.js?v=20260709o"></script>
-<script src="js/export-snapshot.js?v=20260709o"></script>
-<script src="js/state.js?v=20260709o"></script>
-<script src="js/calculations.js?v=20260709o"></script>
-<script src="js/ui.js?v=20260709o"></script>
-<script src="js/main.js?v=20260709o"></script>
-<script src="js/charts.js?v=20260709o"></script>
+<script src="js/config.js?v=20260709p"></script>
+<script src="js/seed.js?v=20260709p"></script>
+<script src="js/utils.js?v=20260709p"></script>
+<script src="js/export-snapshot.js?v=20260709p"></script>
+<script src="js/state.js?v=20260709p"></script>
+<script src="js/calculations.js?v=20260709p"></script>
+<script src="js/ui.js?v=20260709p"></script>
+<script src="js/main.js?v=20260709p"></script>
+<script src="js/charts.js?v=20260709p"></script>
 </body>
 </html>

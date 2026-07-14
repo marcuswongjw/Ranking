@@ -12,14 +12,21 @@ SailorPath (Vercel) loads that document via Firestore REST (revalidate ~60s). If
 
 ## Gold vs Silver
 
+Two independent dimensions:
+
+1. **Regatta series** — each event is Gold or Silver (scores stay in that series).  
+2. **Sailor membership** — each sailor belongs to **one** pool (`metadata.fleet`: `gold` | `silver`).
+
 | Concept | How it works |
 |---------|----------------|
+| **Membership** | Stored per sailor; Gold ranking **only** includes Gold members |
 | **Regatta.fleet** | `"gold"` or `"silver"` (default gold for legacy) |
-| **Separate series** | Best 3 of last 5 **per fleet** — silver results never mix into gold rank |
-| **Ranking tool UI** | Sidebar **Gold / Silver** pills switch the board |
-| **Add regatta** | Choose **Fleet (series)** + optional populate sailors |
-| **SailorPath URLs** | `/sg/optimist/gold`, `/sg/optimist/silver`, …/regattas, …/clubs |
-| **Sailor profile** | One person page; sections for each fleet they sailed |
+| **Separate series** | Best 3 of last 5 **per fleet** — no mixing |
+| **Ranking tool UI** | Sidebar **Gold / Silver** pills switch board **and** Manage Fleet list |
+| **Move sailor** | Manage Fleet → **→ Gold / → Silver** (or profile **Fleet membership**) |
+| **Add regatta** | Fleet dropdown; populate only that fleet’s members |
+| **SailorPath URLs** | `/sg/optimist/gold`, `/sg/optimist/silver`, … |
+| **Sailor profile** | Shows each membership/series section they have |
 
 ### Adding Silver (Excel uploads)
 

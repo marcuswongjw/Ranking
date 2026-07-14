@@ -328,6 +328,52 @@ function getEffectiveSquad(sailorName, periodKey, autoMap) {
   return { value: null, locked: false, periodKey };
 }
 
+/**
+ * Primary fleet membership for a sailor: 'gold' | 'silver'.
+ * Stored on SAILOR_METADATA[name].fleet. Default gold for legacy data.
+ * If unset, infer silver when they only appear on silver regattas.
+ */
+function getSailorFleet(name) {
+  if (!name) return 'gold';
+  const key = (typeof resolveSailorMetadataKey === 'function')
+    ? resolveSailorMetadataKey(name)
+    : (typeof cleanSailorName === 'function' ? cleanSailorName(name) : name);
+  const meta = (typeof SAILOR_METADATA === 'object' && SAILOR_METADATA)
+    ? (SAILOR_METADATA[key] || SAILOR_METADATA[name] || {})
+    : {};
+  if (String(meta.fleet || '').toLowerCase() === 'silver') return 'silver';
+  if (String(meta.fleet || '').toLowerCase() === 'gold') return 'gold';
+
+  // Infer from regatta participation when metadata not yet set
+  try {
+    let inGold = false;
+    let inSilver = false;
+    (REGATTAS || []).forEach(reg => {
+      const f = (reg && reg.fleet === 'silver') ? 'silver' : 'gold';
+      if (!(reg.sailors || []).some(s => isSameSailor(s.name, name))) return;
+      if (f === 'silver') inSilver = true;
+      else inGold = true;
+    });
+    if (inSilver && !inGold) return 'silver';
+  } catch (_) { /* ignore */ }
+  return 'gold';
+}
+
+function setSailorFleet(name, fleet) {
+  if (!name) return;
+  const key = (typeof resolveSailorMetadataKey === 'function')
+    ? resolveSailorMetadataKey(name)
+    : (typeof cleanSailorName === 'function' ? cleanSailorName(name) : name);
+  if (!key) return;
+  if (!SAILOR_METADATA[key]) SAILOR_METADATA[key] = {};
+  SAILOR_METADATA[key].fleet = fleet === 'silver' ? 'silver' : 'gold';
+}
+
+function sailorBelongsToFleet(name, fleet) {
+  const f = fleet === 'silver' ? 'silver' : 'gold';
+  return getSailorFleet(name) === f;
+}
+
 /** Write squad lock into SAILOR_METADATA (shared by Rankings + Historical & Gold). */
 function setSquadStatus(sailorName, periodKey, value) {
   const key = (typeof resolveSailorMetadataKey === 'function')
