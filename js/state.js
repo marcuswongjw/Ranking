@@ -109,6 +109,23 @@ function applyState(s) {
       const inferred = getSailorFleet(n, pk);
       setSailorFleet(n, inferred, pk);
     });
+
+    // One-time backfill: for any sailor who is Gold in a later period but has
+    // an unset immediately preceding period, stamp that preceding period as
+    // Silver. This repairs data created before setSailorFleet retroactively
+    // stamped the previous half-year on promotion.
+    const opts = typeof getFleetPeriodOptions === 'function' ? getFleetPeriodOptions() : [];
+    names.forEach(n => {
+      const key = (typeof resolveSailorMetadataKey === 'function') ? resolveSailorMetadataKey(n) : n;
+      if (!SAILOR_METADATA[key]) return;
+      for (let i = 1; i < opts.length; i++) {
+        const cur = opts[i];
+        const prev = opts[i - 1];
+        if (SAILOR_METADATA[key][cur.periodKey] === 'gold' && !SAILOR_METADATA[key][prev.periodKey]) {
+          SAILOR_METADATA[key][prev.periodKey] = 'silver';
+        }
+      }
+    });
   }
   SELECTED_REGATTA_NAMES = (s.selectedRegattas === undefined) ? null : s.selectedRegattas;
   // Firestore Timestamp or ISO / millis

@@ -269,6 +269,14 @@ function saveSailorProfile() {
     }
   };
 
+  // Stamp the period-specific fleet key (and retroactively Silver for the
+  // previous half-year when promoting to Gold). This keeps the Jan–Jun /
+  // Jul–Dec boards consistent and prevents the legacy .fleet fallback from
+  // leaking a later Gold assignment into an earlier Silver period.
+  if (typeof setSailorFleet === 'function') {
+    setSailorFleet(newName, fleetVal);
+  }
+
   // Squad status per period (shared keys with the rankings lock dropdowns)
   document.querySelectorAll('.sm-squad-select').forEach(sel => {
     const field = sel.getAttribute('data-field');

@@ -393,9 +393,22 @@ function getFleetPeriodOptions() {
   return opts;
 }
 
+function getFleetPeriodBounds(periodKey) {
+  const match = String(periodKey || '').match(/^fleet(jan|jul)(\d{2})$/i);
+  if (!match) return null;
+  const year = 2000 + parseInt(match[2], 10);
+  const kind = match[1].toLowerCase();
+  return {
+    start: kind === 'jan' ? new Date(year, 0, 1) : new Date(year, 6, 1),
+    end: kind === 'jan' ? new Date(year, 5, 30) : new Date(year, 11, 31),
+  };
+}
+
 /**
  * Fleet membership for a sailor in a given half-year: 'gold' | 'silver'.
- * Reads SAILOR_METADATA[name][fleetJanYY|fleetJulYY], then legacy .fleet, then infer.
+ * Reads SAILOR_METADATA[name][fleetJanYY|fleetJulYY], then legacy .fleet,
+ * then maps from Gold Fleet Entry Date to the earliest half-year where the sailor
+ * should appear on the Gold board.
  */
 function getSailorFleet(name, periodKey) {
   if (!name) return 'gold';
@@ -413,6 +426,13 @@ function getSailorFleet(name, periodKey) {
   // Legacy single-field membership
   if (String(meta.fleet || '').toLowerCase() === 'silver') return 'silver';
   if (String(meta.fleet || '').toLowerCase() === 'gold') return 'gold';
+
+  const enteredGold = typeof meta.enteredGold === 'string' ? meta.enteredGold : null;
+  const entryDate = parseGoldEntryDate(enteredGold);
+  const bounds = getFleetPeriodBounds(pk);
+  if (entryDate && bounds) {
+    return entryDate <= bounds.end ? 'gold' : 'silver';
+  }
 
   // Infer from regatta participation when metadata not yet set
   try {
@@ -448,6 +468,22 @@ function setSailorFleet(name, fleet, periodKey) {
   // Mirror onto legacy .fleet when editing the active period (current board)
   if (pk === getActiveFleetPeriod().periodKey) {
     SAILOR_METADATA[key].fleet = val;
+  }
+
+  // Approach A: when promoting to Gold in a period, retroactively stamp the
+  // immediately preceding half-year as Silver if it is unset. This fixes the
+  // case where a sailor promoted in Jul–Dec 2026 was Silver in Jan–Jun 2026
+  // but the earlier period had no fleet stamp and fell back to the legacy
+  // .fleet field (now overwritten to 'gold').
+  if (val === 'gold') {
+    const opts = typeof getFleetPeriodOptions === 'function' ? getFleetPeriodOptions() : [];
+    const idx = opts.findIndex(o => o.periodKey === pk);
+    if (idx > 0) {
+      const prev = opts[idx - 1];
+      if (prev && prev.periodKey && !SAILOR_METADATA[key][prev.periodKey]) {
+        SAILOR_METADATA[key][prev.periodKey] = 'silver';
+      }
+    }
   }
 }
 
