@@ -427,6 +427,11 @@ function renderSpecificRegattaResults(regName) {
       return;
     }
 
+    const searchInput = document.getElementById('regatta-results-search');
+    if (searchInput && regName !== CURRENT_SELECTED_REGATTA) {
+      searchInput.value = '';
+    }
+
     CURRENT_SELECTED_REGATTA = regName;
     const reg = REGATTAS.find(r => r.name === regName);
     if (!reg) {
@@ -528,7 +533,7 @@ function renderSpecificRegattaResults(regName) {
       const tabNett = canEditScores ? idx * 2 + 2 : -1;
       const disabledAttr = canEditScores ? '' : 'disabled';
       const inputBg = canEditScores ? '' : 'background:var(--bg2); color:var(--text3); cursor:not-allowed;';
-      return `<tr>
+      return `<tr class="regatta-table-row">
         <td class="rank-c">${idx + 1}</td>
         <td class="name-c" data-sailor="${safeName}" style="cursor:pointer; color:var(--accent); font-weight:600; text-decoration:underline;">${safeName}</td>
         <td class="sub-c">${escapeHtml(s.g || '—')}</td>
@@ -1089,18 +1094,28 @@ function renderRegattasPanel() {
     const dateStr = reg.date || 'Date not set';
     
     return `
-      <div class="card regatta-card" data-name="${safeName}" style="cursor:pointer; display:flex; flex-direction:column; justify-content:space-between; padding:18px; border:1px solid var(--border); border-radius:var(--r); background:var(--card); transition:transform 0.15s ease, box-shadow 0.15s ease;">
-        <div style="display:flex; flex-direction:column; gap:8px;">
-          <div style="font-size:16px; font-weight:700; color:var(--text); line-height:1.3;">${safeName}</div>
-          <div style="display:flex; align-items:center; gap:6px; font-size:12px; color:var(--text3); font-family:var(--mono);">
-            <span>📅 ${dateStr}</span>
-            <span>•</span>
-            <span>⛵ ${competitorCount} Sailors</span>
+      <div class="regatta-card" data-name="${safeName}" data-fleet="${reg.fleet || 'gold'}">
+        <div>
+          <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:10px;">
+            <div style="font-size:15px; font-weight:700; color:var(--text); line-height:1.35; max-width:70%; overflow:hidden; text-overflow:ellipsis;" title="${safeName}">${safeName}</div>
+            <span class="regatta-badge ${reg.fleet === 'silver' ? 'silver' : (reg.type === 'overseas' ? 'overseas' : 'gold')}">
+              ${reg.fleet === 'silver' ? 'Silver' : (reg.type === 'overseas' ? 'Overseas' : 'Gold')}
+            </span>
+          </div>
+          <div class="regatta-meta-info">
+            <div class="regatta-meta-item">
+              <svg viewBox="0 0 24 24"><path d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11zM7 10h5v5H7z"/></svg>
+              <span>${dateStr}</span>
+            </div>
+            <div class="regatta-meta-item">
+              <svg viewBox="0 0 24 24"><path d="M16.5 13c-1.2 0-3.07.34-4.5 1-1.43-.67-3.3-1-4.5-1C5.33 13 1 15.17 1 18.5V21h15v-2.5c0-3.33-4.33-5.5-7-5.5zm-9-2c1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3 1.34 3 3 3zm11.5 2c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V21h6v-2.5c0-2.33-4.67-3.5-7-3.5zm-1.5-2c1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3 1.34 3 3 3z"/></svg>
+              <span>${competitorCount} Sailors</span>
+            </div>
           </div>
         </div>
-        <div style="margin-top:14px; display:flex; justify-content:space-between; align-items:center;">
-          <span style="font-size:11px; color:var(--accent); font-weight:600; font-family:var(--mono);">View Results →</span>
-          ${isEditor() ? `<button class="excl-rm regatta-delete-btn" data-name="${safeName}" style="background:var(--red-l); color:var(--red); border:1px solid rgba(138,28,28,.15); height:24px; padding:0 8px; font-size:10px; border-radius:4px; font-family:var(--mono);">✕ Delete</button>` : ''}
+        <div style="margin-top:20px; display:flex; justify-content:space-between; align-items:center;">
+          <span class="regatta-action-link">View Results <span style="font-size:13px; font-weight:normal;">→</span></span>
+          ${isEditor() ? `<button class="excl-rm regatta-delete-btn regatta-btn-danger" data-name="${safeName}" style="height:26px; padding:0 8px; font-size:10.5px;">✕ Delete</button>` : ''}
         </div>
       </div>
     `;

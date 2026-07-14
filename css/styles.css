@@ -720,3 +720,170 @@ td{padding:8px 10px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   margin-right: 4px;
 }
 
+/* Regattas Redesign styles */
+.regatta-card {
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 20px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--card);
+  box-shadow: var(--sh);
+  transition: transform 0.22s cubic-bezier(0.165, 0.84, 0.44, 1), box-shadow 0.22s cubic-bezier(0.165, 0.84, 0.44, 1), border-color 0.22s cubic-bezier(0.165, 0.84, 0.44, 1);
+  position: relative;
+  overflow: hidden;
+}
+.regatta-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.05);
+}
+.regatta-card[data-fleet="gold"]:hover {
+  border-color: var(--accent);
+}
+.regatta-card[data-fleet="silver"]:hover {
+  border-color: var(--accent2);
+}
+.regatta-badge {
+  display: inline-flex;
+  align-items: center;
+  font-family: var(--mono);
+  font-size: 9px;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 999px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.regatta-badge.gold {
+  background: var(--accent-l);
+  color: var(--accent);
+}
+.regatta-badge.silver {
+  background: var(--accent2-l);
+  color: var(--accent2);
+}
+.regatta-badge.overseas {
+  background: var(--accent3-l);
+  color: var(--accent3);
+}
+.regatta-meta-info {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 12px;
+}
+.regatta-meta-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11.5px;
+  color: var(--text2);
+}
+.regatta-meta-item svg {
+  width: 14px;
+  height: 14px;
+  fill: currentColor;
+  opacity: 0.6;
+}
+.regatta-action-link {
+  font-size: 11px;
+  font-weight: 600;
+  font-family: var(--mono);
+  color: var(--accent);
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  transition: gap 0.15s ease;
+}
+.regatta-card:hover .regatta-action-link {
+  gap: 8px;
+}
+.regatta-card[data-fleet="silver"] .regatta-action-link {
+  color: var(--accent2);
+}
+.regatta-results-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 16px 20px;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+  gap: 16px;
+  box-shadow: var(--sh);
+}
+.regatta-search-wrapper {
+  display: flex;
+  align-items: center;
+  position: relative;
+  width: 240px;
+}
+.regatta-search-wrapper svg {
+  position: absolute;
+  left: 10px;
+  width: 14px;
+  height: 14px;
+  fill: var(--text3);
+  pointer-events: none;
+}
+.regatta-search-input {
+  width: 100%;
+  height: 32px;
+  padding-left: 32px !important;
+  font-size: 11.5px;
+}
+.regatta-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 14px;
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 600;
+  border-radius: var(--r);
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: all 0.15s ease;
+  height: 32px;
+}
+.regatta-btn-accent {
+  background: var(--accent);
+  color: #fff;
+}
+.regatta-btn-accent:hover {
+  background: #173d24;
+}
+.regatta-btn-accent2 {
+  background: var(--accent2);
+  color: #fff;
+}
+.regatta-btn-accent2:hover {
+  background: #233a6e;
+}
+.regatta-btn-secondary {
+  background: var(--bg2);
+  border-color: var(--border);
+  color: var(--text);
+}
+.regatta-btn-secondary:hover {
+  background: var(--bg3);
+}
+.regatta-btn-danger {
+  background: var(--red-l);
+  color: var(--red);
+  border-color: rgba(138, 28, 28, 0.15);
+}
+.regatta-btn-danger:hover {
+  background: #f7dcd5;
+}
+.regatta-table-row {
+  transition: background-color 0.15s ease;
+}
+.regatta-table-row:hover {
+  background-color: var(--bg2) !important;
+}
+

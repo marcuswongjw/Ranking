@@ -1524,6 +1524,24 @@
       forceMigrateLocalToCloud();
     });
 
+    document.getElementById('regatta-results-search')?.addEventListener('input', e => {
+      const val = e.target.value.toLowerCase().trim();
+      const rows = document.querySelectorAll('#specific-regatta-body tr');
+      rows.forEach(row => {
+        const nameCell = row.querySelector('.name-c');
+        const clubCell = row.querySelector('td:nth-child(5)'); // Club column is 5th
+        
+        const nameText = nameCell ? nameCell.textContent.toLowerCase() : '';
+        const clubText = clubCell ? clubCell.textContent.toLowerCase() : '';
+        
+        if (nameText.includes(val) || clubText.includes(val)) {
+          row.style.display = '';
+        } else {
+          row.style.display = 'none';
+        }
+      });
+    });
+
     // Auth Button
     const authBtn = document.getElementById('auth-btn');
     if (authBtn) {

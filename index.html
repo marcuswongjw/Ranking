@@ -157,38 +157,48 @@
       </div>
 
       <div class="tbl-wrap" id="specific-regatta-results-wrap" style="display:none; margin-top: 18px;">
-        <div style="padding:12px 18px; border-bottom:1px solid var(--border); display:flex; align-items:center; justify-content:space-between; background:var(--bg2); flex-wrap:wrap; gap:10px;">
-          <button id="regatta-back-btn" style="background:var(--bg3); color:var(--text); border:1px solid var(--border); border-radius:var(--r); font-size:11.5px; padding:6px 12px; cursor:pointer; font-family:var(--mono); font-weight:500;">← Back to List</button>
-          
-          <span id="specific-regatta-name" style="font-family:var(--mono); font-weight:600; font-size:13px;"></span>
-
-          <div style="display:flex; align-items:center; gap:6px;">
-            <label class="fl-lbl" for="resultsRegattaSelect" style="margin:0; font-family:var(--mono); font-size:11px;">Select Regatta:</label>
-            <select id="resultsRegattaSelect" style="height:28px; font-size:11.5px; background:var(--card); border:1px solid var(--border); border-radius:var(--r); color:var(--text); padding:0 6px;"></select>
+        <div class="regatta-results-toolbar">
+          <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
+            <button id="regatta-back-btn" class="regatta-btn regatta-btn-secondary">← Back to List</button>
+            <span id="specific-regatta-name" style="font-family:var(--sans); font-weight:700; font-size:14px; color:var(--text);"></span>
           </div>
 
-          <div style="display:flex; align-items:center; gap:6px; font-family:var(--mono); font-size:11.5px; color:var(--text2);">
-            <span>Date:</span>
-            <input type="date" id="specific-regatta-date-input" style="height:24px; padding:2px 6px; border:1px solid var(--border); border-radius:var(--r); background:var(--card); color:var(--text); font-size:11.5px;">
+          <div style="display:flex; align-items:center; gap:16px; flex-wrap:wrap;">
+            <div style="display:flex; align-items:center; gap:6px;">
+              <label class="fl-lbl" for="resultsRegattaSelect" style="margin:0; font-family:var(--mono); font-size:10px;">Select:</label>
+              <select id="resultsRegattaSelect" style="height:32px; font-size:11.5px; background:var(--card); border:1px solid var(--border); border-radius:var(--r); color:var(--text); padding:0 6px;"></select>
+            </div>
+
+            <div style="display:flex; align-items:center; gap:6px; font-family:var(--mono); font-size:11.5px; color:var(--text2);">
+              <span>Date:</span>
+              <input type="date" id="specific-regatta-date-input" style="height:32px; padding:2px 8px; border:1px solid var(--border); border-radius:var(--r); background:var(--card); color:var(--text); font-size:11.5px;">
+            </div>
+
+            <div style="display:flex; align-items:center; gap:6px; font-family:var(--mono); font-size:11.5px; color:var(--text2);">
+              <span>Sailors:</span>
+              <input type="number" id="specific-regatta-dns" style="width:60px; height:32px; text-align:center; border:1px solid var(--border); border-radius:var(--r); background:var(--card); color:var(--text);" min="1">
+            </div>
+
+            <div id="specific-regatta-doc-container" style="display:flex; align-items:center; gap:6px;"></div>
+          </div>
+        </div>
+
+        <div class="regatta-results-toolbar" style="margin-top:-10px;">
+          <div class="regatta-search-wrapper">
+            <svg viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
+            <input type="text" id="regatta-results-search" class="regatta-search-input" placeholder="Search sailor, club...">
           </div>
 
-          <div style="display:flex; align-items:center; gap:6px; font-family:var(--mono); font-size:11.5px; color:var(--text2);">
-            <span>Total Sailors in Regatta:</span>
-            <input type="number" id="specific-regatta-dns" style="width:55px; height:24px; text-align:center; border:1px solid var(--border); border-radius:var(--r); background:var(--card); color:var(--text);" min="1">
-          </div>
-
-          <div id="specific-regatta-doc-container" style="display:flex; align-items:center; gap:6px;"></div>
-
-          <div style="display:flex; gap:6px; align-items:center; margin-left:auto; flex-wrap:wrap;">
+          <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin-left:auto;">
             <span id="regatta-scores-upload-host" class="editor-only" style="display:inline-flex; align-items:center; gap:6px;">
-              <button type="button" id="regatta-scores-upload-trigger" style="background:var(--accent2); color:#fff; border:none; border-radius:3px; padding:6px 12px; font-size:11px; font-family:var(--mono); cursor:pointer; font-weight:600;" title="Excel: Name, Rank, Nett points">↑ Upload scores Excel</button>
+              <button type="button" id="regatta-scores-upload-trigger" class="regatta-btn regatta-btn-accent2" title="Excel: Name, Rank, Nett points">↑ Upload scores Excel</button>
               <input type="file" id="regattaScoresFileInput" accept=".xlsx,.xlsm,.xls" style="display:none;">
             </span>
-            <button class="editor-only" id="add-sailor-result-trigger" style="background:var(--accent); color:#fff; border:none; border-radius:3px; padding:6px 12px; font-size:11px; font-family:var(--mono); cursor:pointer; font-weight:600; transition:all .15s;">＋ Add Sailor Result</button>
-            <button class="editor-only" id="bulk-edit-toggle-btn" style="background:var(--bg3); color:var(--text); border:1px solid var(--border); border-radius:3px; padding:6px 12px; font-size:11px; font-family:var(--mono); cursor:pointer; font-weight:600; transition:all .15s;">✎ Bulk Edit</button>
-            <button id="bulk-edit-save-btn" style="display:none; background:var(--accent); color:#fff; border:none; border-radius:3px; padding:6px 12px; font-size:11px; font-family:var(--mono); cursor:pointer; font-weight:600; transition:all .15s;">💾 Save All Changes</button>
-            <button id="bulk-edit-cancel-btn" style="display:none; background:var(--bg2); color:var(--text); border:1px solid var(--border); border-radius:3px; padding:6px 12px; font-size:11px; font-family:var(--mono); cursor:pointer; font-weight:600; transition:all .15s;">✕ Cancel</button>
-            <button class="editor-only regatta-delete-btn-detail" style="background:var(--red-l); color:var(--red); border:1px solid rgba(138,28,28,.15); border-radius:3px; padding:6px 12px; font-size:11px; font-family:var(--mono); cursor:pointer; font-weight:600; transition:all .15s;">✕ Delete Regatta</button>
+            <button class="editor-only regatta-btn regatta-btn-accent" id="add-sailor-result-trigger">＋ Add Sailor Result</button>
+            <button class="editor-only regatta-btn regatta-btn-secondary" id="bulk-edit-toggle-btn">✎ Bulk Edit</button>
+            <button class="regatta-btn regatta-btn-accent" id="bulk-edit-save-btn" style="display:none;">💾 Save All Changes</button>
+            <button class="regatta-btn regatta-btn-secondary" id="bulk-edit-cancel-btn" style="display:none;">✕ Cancel</button>
+            <button class="editor-only regatta-btn regatta-btn-danger regatta-delete-btn-detail">✕ Delete Regatta</button>
           </div>
         </div>
         <div id="bulk-edit-hint" class="ux-banner ux-banner-info editor-only" style="display:none; margin: 0 0 12px;">
