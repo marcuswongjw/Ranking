@@ -1,4 +1,5 @@
 {
   "framework": "nextjs",
-  "buildCommand": "node ../scripts/build-snapshot.mjs && next build"
+  "installCommand": "npm install",
+  "buildCommand": "npm run build"
 }

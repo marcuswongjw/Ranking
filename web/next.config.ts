@@ -1,14 +1,8 @@
 import type { NextConfig } from 'next';
-import path from 'path';
-import { fileURLToPath } from 'url';
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-
+/** Keep this file ESM-simple — no import.meta / __dirname (breaks Vercel compile). */
 const nextConfig: NextConfig = {
-  // Pin workspace root so parent lockfiles don't confuse Turbopack
-  turbopack: {
-    root: __dirname,
-  },
+  reactStrictMode: true,
 };
 
 export default nextConfig;
