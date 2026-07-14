@@ -1022,9 +1022,53 @@
         ? 'OP Silver<br>Ranking'
         : 'OP Gold<br>Ranking';
     }
+    updateSquadUiForFleet();
     recomputeSailors();
     renderAll();
     if (typeof updateDataFreshnessUI === 'function') updateDataFreshnessUI();
+  }
+
+  function setActiveFleetPeriodFromKey(periodKey) {
+    const opts = typeof getFleetPeriodOptions === 'function' ? getFleetPeriodOptions() : [];
+    const found = opts.find(o => o.periodKey === periodKey);
+    ACTIVE_FLEET_PERIOD = found || (typeof getCurrentFleetPeriod === 'function' ? getCurrentFleetPeriod() : null);
+    const sel = document.getElementById('fleet-period-select');
+    if (sel && ACTIVE_FLEET_PERIOD) sel.value = ACTIVE_FLEET_PERIOD.periodKey;
+    const lbl = document.getElementById('fleet-period-label');
+    if (lbl && ACTIVE_FLEET_PERIOD) lbl.textContent = ACTIVE_FLEET_PERIOD.rangeLabel;
+    SELECTED_REGATTA_NAMES = null;
+    recomputeSailors();
+    renderAll();
+    if (typeof updateDataFreshnessUI === 'function') updateDataFreshnessUI();
+  }
+
+  function populateFleetPeriodSelect() {
+    const sel = document.getElementById('fleet-period-select');
+    if (!sel || typeof getFleetPeriodOptions !== 'function') return;
+    const cur = typeof getActiveFleetPeriod === 'function' ? getActiveFleetPeriod() : null;
+    if (!ACTIVE_FLEET_PERIOD && cur) ACTIVE_FLEET_PERIOD = cur;
+    const activeKey = (ACTIVE_FLEET_PERIOD && ACTIVE_FLEET_PERIOD.periodKey) || (cur && cur.periodKey);
+    sel.innerHTML = getFleetPeriodOptions().map(o =>
+      `<option value="${o.periodKey}" ${o.periodKey === activeKey ? 'selected' : ''}>${escapeHtml(o.rangeLabel)}</option>`
+    ).join('');
+    const lbl = document.getElementById('fleet-period-label');
+    if (lbl && ACTIVE_FLEET_PERIOD) lbl.textContent = ACTIVE_FLEET_PERIOD.rangeLabel;
+  }
+
+  /** Squad (Nat A/B/DS) only applies to Gold — hide on Silver board. */
+  function updateSquadUiForFleet() {
+    const isSilver = ACTIVE_FLEET === 'silver';
+    const squadFilter = document.getElementById('squadFilter');
+    if (squadFilter) {
+      squadFilter.style.display = isSilver ? 'none' : '';
+      if (isSilver) squadFilter.value = '';
+    }
+    const qfSec = document.getElementById('quick-filter-sec');
+    if (qfSec) qfSec.style.display = isSilver ? 'none' : '';
+    document.querySelectorAll('.quick-filter-btn').forEach(btn => {
+      btn.style.display = isSilver ? 'none' : '';
+      if (isSilver) btn.classList.remove('active');
+    });
   }
 
   function getAllSailorsInSystem() {
@@ -1440,6 +1484,11 @@
         e.stopPropagation(); // logo click also switches to rankings
         setActiveFleet(btn.getAttribute('data-fleet-pill'));
       });
+    });
+    populateFleetPeriodSelect();
+    updateSquadUiForFleet();
+    document.getElementById('fleet-period-select')?.addEventListener('change', (e) => {
+      setActiveFleetPeriodFromKey(e.target.value);
     });
 
     // Quick Squad Filters

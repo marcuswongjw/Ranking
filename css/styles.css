@@ -22,6 +22,11 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);font-size:13
 .fleet-pill.active{background:rgba(255,255,255,.14);color:#fff;border-color:rgba(255,255,255,.25)}
 .fleet-pill[data-fleet-pill="silver"].active{background:rgba(163,148,240,.25);border-color:rgba(163,148,240,.45)}
 .fleet-pill[data-fleet-pill="gold"].active{background:rgba(79,209,165,.2);border-color:rgba(79,209,165,.4)}
+.fleet-period-wrap{margin-top:10px;padding-top:8px;border-top:1px solid rgba(255,255,255,.08)}
+.fleet-period-lbl{display:block;font-family:var(--mono);font-size:8px;letter-spacing:.12em;text-transform:uppercase;color:rgba(255,255,255,.35);margin-bottom:4px}
+.fleet-period-select{width:100%;height:28px;font-size:11px;font-family:var(--sans);background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);border-radius:4px;color:#fff;padding:0 6px;cursor:pointer}
+.fleet-period-select option{color:#1a1916;background:#fff}
+.fleet-period-range{font-family:var(--mono);font-size:9px;color:rgba(255,255,255,.4);margin-top:4px}
 .badge-fleet-gold{background:var(--accent-l);color:var(--accent);font-family:var(--mono);font-size:9px;font-weight:700;padding:2px 6px;border-radius:3px}
 .badge-fleet-silver{background:var(--accent2-l);color:var(--accent2);font-family:var(--mono);font-size:9px;font-weight:700;padding:2px 6px;border-radius:3px}
 .sb-tag{display:inline-block;font-family:var(--mono);font-size:9px;margin-top:8px;padding:2px 8px;border-radius:3px;background:rgba(255,255,255,.08);color:rgba(255,255,255,.4)}

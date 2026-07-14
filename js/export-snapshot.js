@@ -90,23 +90,40 @@
       });
   }
 
-  function memberFleet(name, metadata) {
+  function currentFleetPeriodKey(refYear) {
+    var d = new Date();
+    var year = refYear || d.getFullYear();
+    // Prefer calendar half-year of "now" when exporting live data
+    var month = d.getMonth();
+    var kind = month < 6 ? 'jan' : 'jul';
+    var yy = String(year).slice(-2);
+    // If export year differs from now, use Jul of that year as default window
+    if (refYear && refYear !== d.getFullYear()) {
+      kind = 'jul';
+      yy = String(refYear).slice(-2);
+    }
+    return (kind === 'jan' ? 'fleetJan' : 'fleetJul') + yy;
+  }
+
+  function memberFleet(name, metadata, periodKey) {
     metadata = metadata || {};
     var meta = metadata[name] || {};
-    // try case-insensitive key match
-    if (!meta.fleet) {
-      var n = normalizeName(name);
-      Object.keys(metadata).forEach(function (k) {
-        if (normalizeName(k) === n) meta = metadata[k] || meta;
-      });
+    var n = normalizeName(name);
+    Object.keys(metadata).forEach(function (k) {
+      if (normalizeName(k) === n) meta = metadata[k] || meta;
+    });
+    // Period-specific membership first
+    if (periodKey && meta[periodKey]) {
+      return String(meta[periodKey]).toLowerCase() === 'silver' ? 'silver' : 'gold';
     }
     if (String(meta.fleet || '').toLowerCase() === 'silver') return 'silver';
     if (String(meta.fleet || '').toLowerCase() === 'gold') return 'gold';
-    return null; // unknown — infer from regatta later
+    return null;
   }
 
   function computeFleetStandings(allRegs, fleetId, droppedSet, excludedMap, refYear, metadata) {
     metadata = metadata || {};
+    var periodKey = currentFleetPeriodKey(refYear);
     var ordered = activeRegattasForFleet(allRegs, fleetId);
     var windowRegs = ordered.slice(-WINDOW);
     var byNorm = new Map();
@@ -116,8 +133,8 @@
         var norm = normalizeName(row.name);
         if (!norm || droppedSet.has(norm)) return;
         if (excludedMap.has(row.name) || excludedMap.has(norm)) return;
-        // Strict membership: only sailors assigned to this fleet (or unassigned → gold default)
-        var mf = memberFleet(row.name, metadata);
+        // Strict membership for this half-year period
+        var mf = memberFleet(row.name, metadata, periodKey);
         if (mf == null) mf = 'gold';
         if (mf !== fleetId) return;
         if (!byNorm.has(norm)) {
@@ -469,7 +486,8 @@
         source: source,
         fleets: FLEET_IDS.slice(),
         note:
-          'Multi-fleet snapshot. Gold and Silver series are ranked separately. Birth years excluded from public payload.',
+          'Multi-fleet snapshot. Gold and Silver series are ranked separately. Membership is per half-year period (Jan–Jun / Jul–Dec). Birth years excluded from public payload.',
+        membershipPeriod: currentFleetPeriodKey(refYear),
       },
       fleets: fleetsOut,
       // Flat aliases (default gold) for simpler pages / backward compat

@@ -15,18 +15,20 @@ SailorPath (Vercel) loads that document via Firestore REST (revalidate ~60s). If
 Two independent dimensions:
 
 1. **Regatta series** — each event is Gold or Silver (scores stay in that series).  
-2. **Sailor membership** — each sailor belongs to **one** pool (`metadata.fleet`: `gold` | `silver`).
+2. **Sailor membership by period** — half-year keys on the sailor:
+   - `fleetJan26` → Jan–Jun 2026  
+   - `fleetJul26` → Jul–Dec 2026  
+
+   So a sailor can be **Silver in H1 2026** and **Gold in H2 2026** (promotion).
 
 | Concept | How it works |
 |---------|----------------|
-| **Membership** | Stored per sailor; Gold ranking **only** includes Gold members |
-| **Regatta.fleet** | `"gold"` or `"silver"` (default gold for legacy) |
-| **Separate series** | Best 3 of last 5 **per fleet** — no mixing |
-| **Ranking tool UI** | Sidebar **Gold / Silver** pills switch board **and** Manage Fleet list |
-| **Move sailor** | Manage Fleet → **→ Gold / → Silver** (or profile **Fleet membership**) |
-| **Add regatta** | Fleet dropdown; populate only that fleet’s members |
-| **SailorPath URLs** | `/sg/optimist/gold`, `/sg/optimist/silver`, … |
-| **Sailor profile** | Shows each membership/series section they have |
+| **Period selector** | Sidebar **Period** (e.g. Jan–Jun 2026 / Jul–Dec 2026) |
+| **Membership** | Per period; board only includes members of active fleet **for that period** |
+| **Regatta.fleet** | Event is Gold or Silver (scores stay in that series) |
+| **Squad columns** | **Gold only** — hidden on Silver board |
+| **Move / assign** | → Gold / → Silver for the **selected period**; profile fleet dropdown same |
+| **SailorPath** | `/sg/optimist/gold` · `/sg/optimist/silver` |
 
 ### Adding Silver (Excel uploads)
 

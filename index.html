@@ -52,6 +52,11 @@
       <button type="button" class="fleet-pill active" data-fleet-pill="gold">Gold</button>
       <button type="button" class="fleet-pill" data-fleet-pill="silver">Silver</button>
     </div>
+    <div class="fleet-period-wrap" title="Membership for this half-year (promotion mid-year supported)">
+      <label class="fleet-period-lbl" for="fleet-period-select">Period</label>
+      <select id="fleet-period-select" class="fleet-period-select"></select>
+      <div id="fleet-period-label" class="fleet-period-range"></div>
+    </div>
     <button type="button" class="sb-menu-toggle" id="sb-menu-toggle" aria-label="Open menu" aria-expanded="false" aria-controls="sb-nav">☰</button>
   </div>
   <nav class="sb-nav" id="sb-nav">
@@ -715,8 +720,8 @@
             </div>
             <div style="display:grid; grid-template-columns:1fr; gap:12px;">
               <div class="fl">
-                <label class="fl-lbl" for="sm-fleet">Fleet membership</label>
-                <select id="sm-fleet" style="width:100%; height:30px;" title="Gold and Silver sailors are ranked in separate series">
+                <label class="fl-lbl" for="sm-fleet">Fleet membership (selected period)</label>
+                <select id="sm-fleet" style="width:100%; height:30px;" title="Applies to the half-year period selected in the sidebar (e.g. Jan–Jun 2026). Change period to set a different half-year.">
                   <option value="gold">Gold Fleet</option>
                   <option value="silver">Silver Fleet</option>
                 </select>
@@ -846,14 +851,14 @@
 </div>
 
 <!-- Load Application Modules (?v= forces browsers to fetch after deploy) -->
-<script src="js/config.js?v=20260709p"></script>
-<script src="js/seed.js?v=20260709p"></script>
-<script src="js/utils.js?v=20260709p"></script>
-<script src="js/export-snapshot.js?v=20260709p"></script>
-<script src="js/state.js?v=20260709p"></script>
-<script src="js/calculations.js?v=20260709p"></script>
-<script src="js/ui.js?v=20260709p"></script>
-<script src="js/main.js?v=20260709p"></script>
-<script src="js/charts.js?v=20260709p"></script>
+<script src="js/config.js?v=20260709q"></script>
+<script src="js/seed.js?v=20260709q"></script>
+<script src="js/utils.js?v=20260709q"></script>
+<script src="js/export-snapshot.js?v=20260709q"></script>
+<script src="js/state.js?v=20260709q"></script>
+<script src="js/calculations.js?v=20260709q"></script>
+<script src="js/ui.js?v=20260709q"></script>
+<script src="js/main.js?v=20260709q"></script>
+<script src="js/charts.js?v=20260709q"></script>
 </body>
 </html>

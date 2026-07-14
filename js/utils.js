@@ -329,18 +329,88 @@ function getEffectiveSquad(sailorName, periodKey, autoMap) {
 }
 
 /**
- * Primary fleet membership for a sailor: 'gold' | 'silver'.
- * Stored on SAILOR_METADATA[name].fleet. Default gold for legacy data.
- * If unset, infer silver when they only appear on silver regattas.
+ * Fleet membership period keys, parallel to squad locks:
+ *   fleetJan26 → Jan–Jun 2026
+ *   fleetJul26 → Jul–Dec 2026
+ * A sailor can be Silver in H1 and Gold in H2 (promotion).
  */
-function getSailorFleet(name) {
+function fleetPeriodKey(kind, year) {
+  const y = year != null ? year : (typeof COMP_YEAR === 'number' ? COMP_YEAR : new Date().getFullYear());
+  const yy = String(y).slice(-2);
+  return (kind === 'jan' ? 'fleetJan' : 'fleetJul') + yy;
+}
+
+function getCurrentFleetPeriod(refDate) {
+  const d = refDate instanceof Date ? refDate : new Date();
+  const year = d.getFullYear();
+  const month = d.getMonth();
+  if (month < 6) {
+    return {
+      kind: 'jan',
+      year,
+      periodKey: fleetPeriodKey('jan', year),
+      label: 'Jan ' + String(year).slice(-2),
+      rangeLabel: 'Jan–Jun ' + year
+    };
+  }
+  return {
+    kind: 'jul',
+    year,
+    periodKey: fleetPeriodKey('jul', year),
+    label: 'Jul ' + String(year).slice(-2),
+    rangeLabel: 'Jul–Dec ' + year
+  };
+}
+
+/** Active membership period (board + Manage Fleet). Falls back to calendar half-year. */
+function getActiveFleetPeriod() {
+  if (typeof ACTIVE_FLEET_PERIOD === 'object' && ACTIVE_FLEET_PERIOD && ACTIVE_FLEET_PERIOD.periodKey) {
+    return ACTIVE_FLEET_PERIOD;
+  }
+  return getCurrentFleetPeriod();
+}
+
+/** Options for period selector (recent + current + next half-year). */
+function getFleetPeriodOptions() {
+  const y = typeof COMP_YEAR === 'number' ? COMP_YEAR : new Date().getFullYear();
+  const opts = [];
+  for (let year = y - 1; year <= y + 1; year++) {
+    opts.push({
+      kind: 'jan',
+      year,
+      periodKey: fleetPeriodKey('jan', year),
+      label: 'Jan ' + String(year).slice(-2),
+      rangeLabel: 'Jan–Jun ' + year
+    });
+    opts.push({
+      kind: 'jul',
+      year,
+      periodKey: fleetPeriodKey('jul', year),
+      label: 'Jul ' + String(year).slice(-2),
+      rangeLabel: 'Jul–Dec ' + year
+    });
+  }
+  return opts;
+}
+
+/**
+ * Fleet membership for a sailor in a given half-year: 'gold' | 'silver'.
+ * Reads SAILOR_METADATA[name][fleetJanYY|fleetJulYY], then legacy .fleet, then infer.
+ */
+function getSailorFleet(name, periodKey) {
   if (!name) return 'gold';
+  const pk = periodKey || getActiveFleetPeriod().periodKey;
   const key = (typeof resolveSailorMetadataKey === 'function')
     ? resolveSailorMetadataKey(name)
     : (typeof cleanSailorName === 'function' ? cleanSailorName(name) : name);
   const meta = (typeof SAILOR_METADATA === 'object' && SAILOR_METADATA)
     ? (SAILOR_METADATA[key] || SAILOR_METADATA[name] || {})
     : {};
+
+  if (pk && meta[pk]) {
+    return String(meta[pk]).toLowerCase() === 'silver' ? 'silver' : 'gold';
+  }
+  // Legacy single-field membership
   if (String(meta.fleet || '').toLowerCase() === 'silver') return 'silver';
   if (String(meta.fleet || '').toLowerCase() === 'gold') return 'gold';
 
@@ -359,19 +429,31 @@ function getSailorFleet(name) {
   return 'gold';
 }
 
-function setSailorFleet(name, fleet) {
+/**
+ * Set fleet membership for a half-year period.
+ * @param {string} name
+ * @param {'gold'|'silver'} fleet
+ * @param {string} [periodKey] fleetJanYY / fleetJulYY — defaults to active period
+ */
+function setSailorFleet(name, fleet, periodKey) {
   if (!name) return;
   const key = (typeof resolveSailorMetadataKey === 'function')
     ? resolveSailorMetadataKey(name)
     : (typeof cleanSailorName === 'function' ? cleanSailorName(name) : name);
   if (!key) return;
   if (!SAILOR_METADATA[key]) SAILOR_METADATA[key] = {};
-  SAILOR_METADATA[key].fleet = fleet === 'silver' ? 'silver' : 'gold';
+  const pk = periodKey || getActiveFleetPeriod().periodKey;
+  const val = fleet === 'silver' ? 'silver' : 'gold';
+  SAILOR_METADATA[key][pk] = val;
+  // Mirror onto legacy .fleet when editing the active period (current board)
+  if (pk === getActiveFleetPeriod().periodKey) {
+    SAILOR_METADATA[key].fleet = val;
+  }
 }
 
-function sailorBelongsToFleet(name, fleet) {
+function sailorBelongsToFleet(name, fleet, periodKey) {
   const f = fleet === 'silver' ? 'silver' : 'gold';
-  return getSailorFleet(name) === f;
+  return getSailorFleet(name, periodKey) === f;
 }
 
 /** Write squad lock into SAILOR_METADATA (shared by Rankings + Historical & Gold). */

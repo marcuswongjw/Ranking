@@ -39,6 +39,12 @@ let SUPPRESS_SNAPSHOT = false;     // suppress snapshot echo when saving
 let CLOUD_HAS_DATA = false;        // true if doc exists with data
 /** Ranking board filter: gold | silver (regattas tagged per fleet). */
 let ACTIVE_FLEET = 'gold';
+/**
+ * Membership period for Gold/Silver (Jan–Jun / Jul–Dec).
+ * e.g. { kind:'jan', year:2026, periodKey:'fleetJan26', rangeLabel:'Jan–Jun 2026' }
+ * Null → derived from calendar via getActiveFleetPeriod().
+ */
+let ACTIVE_FLEET_PERIOD = null;
 
 function isEditor() { 
   return !!CURRENT_USER; 
@@ -87,8 +93,9 @@ function applyState(s) {
     EXCLUDED = new Map(Array.isArray(s.excluded) ? s.excluded : []);
   }
   SAILOR_METADATA = (s.metadata && typeof s.metadata === 'object') ? s.metadata : {};
-  // Ensure every known sailor has a fleet membership (default gold; silver if only on silver regs)
-  if (typeof setSailorFleet === 'function' && typeof getSailorFleet === 'function') {
+  // Ensure period membership exists for the current half-year (migrate legacy .fleet)
+  if (typeof setSailorFleet === 'function' && typeof getSailorFleet === 'function' && typeof getActiveFleetPeriod === 'function') {
+    const pk = getActiveFleetPeriod().periodKey;
     const names = new Set();
     REGATTAS.forEach(reg => (reg.sailors || []).forEach(row => {
       if (row && row.name) names.add(row.name);
@@ -96,10 +103,11 @@ function applyState(s) {
     Object.keys(SAILOR_METADATA).forEach(n => names.add(n));
     names.forEach(n => {
       const key = (typeof resolveSailorMetadataKey === 'function') ? resolveSailorMetadataKey(n) : n;
-      const meta = SAILOR_METADATA[key] || SAILOR_METADATA[n];
-      if (meta && (meta.fleet === 'gold' || meta.fleet === 'silver')) return;
-      // Stamp inferred fleet so Gold/Silver pools stay split going forward
-      setSailorFleet(n, getSailorFleet(n));
+      const meta = SAILOR_METADATA[key] || SAILOR_METADATA[n] || {};
+      if (meta[pk] === 'gold' || meta[pk] === 'silver') return;
+      // Prefer legacy .fleet, else infer, then stamp onto this period
+      const inferred = getSailorFleet(n, pk);
+      setSailorFleet(n, inferred, pk);
     });
   }
   SELECTED_REGATTA_NAMES = (s.selectedRegattas === undefined) ? null : s.selectedRegattas;

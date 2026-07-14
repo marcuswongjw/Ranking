@@ -813,10 +813,23 @@ function renderRankingsPanel() {
   const regWindowLabel = latestRegs.length
     ? latestRegs.map(r => r.name).join(' · ')
     : 'none selected';
+  const isSilver = (typeof ACTIVE_FLEET === 'string' && ACTIVE_FLEET === 'silver');
+  const fleetPeriod = typeof getActiveFleetPeriod === 'function'
+    ? getActiveFleetPeriod()
+    : { rangeLabel: '' };
+  const fleetLabel = isSilver ? 'Silver' : 'Gold';
+  const squadCols = isSilver ? '' : `
+          <th class="col-squad sort-header" style="cursor:pointer;user-select:none;white-space:normal;line-height:1.35" data-sort="squad">Squad<br><span style="font-weight:400;color:var(--text3)">(Jul ${String(COMP_YEAR).slice(-2)})</span>${getSortIndicator('squad')}</th>
+          ${isEditor() ? `<th class="col-squad sort-header editor-only-col" style="cursor:pointer;user-select:none;white-space:normal;line-height:1.35" data-sort="squadNext">Squad<br><span style="font-weight:400;color:var(--text3)">(Jan ${String(COMP_YEAR + 1).slice(-2)})</span>${getSortIndicator('squadNext')}</th>` : ''}
+  `;
 
   container.innerHTML = `
     <div class="rankings-status" aria-label="Rankings summary">
-      <span><strong>${SAILORS.length}</strong> sailors in rankings</span>
+      <span><strong>${escapeHtml(fleetLabel)}</strong> fleet</span>
+      <span class="rankings-status-sep">·</span>
+      <span>${escapeHtml(fleetPeriod.rangeLabel || '')}</span>
+      <span class="rankings-status-sep">·</span>
+      <span><strong>${SAILORS.length}</strong> sailors</span>
       <span class="rankings-status-sep">·</span>
       <span>Best <strong>3 of ${latestRegs.length}</strong> regattas</span>
       <span class="rankings-status-sep">·</span>
@@ -827,6 +840,7 @@ function renderRankingsPanel() {
       <span class="leg-item"><span class="pos-tag best">12</span> Counted in best 3</span>
       <span class="leg-item"><span class="pos-tag">28</span> Regatta finish</span>
       <span class="leg-item"><span class="pos-tag dns">85</span> DNS — did not race (default for non-starters)</span>
+      ${isSilver ? '' : '<span class="leg-item" style="color:var(--text3);">Squad = Nat A / B / DS (Gold only)</span>'}
       <span class="leg-item" style="color:var(--text3);">Scroll sideways for all regatta columns</span>
     </div>
     <div class="tbl-wrap rankings-tbl-wrap" title="Scroll horizontally to see all columns">
@@ -836,8 +850,7 @@ function renderRankingsPanel() {
           <th class="col-name sort-header" style="cursor:pointer;user-select:none" data-sort="name">Sailor${getSortIndicator('name')}</th>
           <th class="sort-header" style="cursor:pointer;user-select:none" data-sort="gender">G${getSortIndicator('gender')}</th>
           <th class="sort-header" style="cursor:pointer;user-select:none" data-sort="born">Born${getSortIndicator('born')}</th>
-          <th class="col-squad sort-header" style="cursor:pointer;user-select:none;white-space:normal;line-height:1.35" data-sort="squad">Squad<br><span style="font-weight:400;color:var(--text3)">(Jul ${String(COMP_YEAR).slice(-2)})</span>${getSortIndicator('squad')}</th>
-          ${isEditor() ? `<th class="col-squad sort-header editor-only-col" style="cursor:pointer;user-select:none;white-space:normal;line-height:1.35" data-sort="squadNext">Squad<br><span style="font-weight:400;color:var(--text3)">(Jan ${String(COMP_YEAR + 1).slice(-2)})</span>${getSortIndicator('squadNext')}</th>` : ''}
+          ${squadCols}
           <th class="col-score sort-header" style="cursor:pointer;user-select:none" data-sort="score">Best 3 of ${latestRegs.length}${getSortIndicator('score')}</th>
           ${regHeaders}
         </tr></thead>
@@ -852,11 +865,12 @@ function renderRankingsPanel() {
 function renderRankings() {
   const body = document.getElementById('rank-body');
   if (!body || !SAILORS.length) return;
-  const sqF = document.getElementById('squadFilter').value;
+  const isSilverBoard = (typeof ACTIVE_FLEET === 'string' && ACTIVE_FLEET === 'silver');
+  const sqF = isSilverBoard ? '' : (document.getElementById('squadFilter')?.value || '');
   const nm = document.getElementById('nameSearch').value.toLowerCase();
   const t50 = document.getElementById('top50').checked;
-  const sq = computeSquads(SAILORS);
-  const sqNext = computeSquads(SAILORS, COMP_YEAR + 1);
+  const sq = isSilverBoard ? new Map() : computeSquads(SAILORS);
+  const sqNext = isSilverBoard ? new Map() : computeSquads(SAILORS, COMP_YEAR + 1);
 
   // Squad locks: shared SAILOR_METADATA keys (squadJul26 / squadJan27) with Historical & Gold
   const squadJulKey = squadPeriodKey('jul', COMP_YEAR);
@@ -872,7 +886,7 @@ function renderRankings() {
 
   const data = SAILORS.filter(s => {
     if (genderFilter !== 'all' && s.g !== genderFilter) return false;
-    if (sqF) {
+    if (!isSilverBoard && sqF) {
       const locked = isExcludedSailor(s.name) ? null : getLockedSquad(s.name, rosterFilterKey);
       if (locked !== sqF) return false;
     }
@@ -880,6 +894,11 @@ function renderRankings() {
     if (t50 && s.cur > 50) return false;
     return true;
   });
+
+  // Squad sort is Gold-only
+  if (isSilverBoard && (sortKey === 'squad' || sortKey === 'squadNext')) {
+    sortKey = 'cur';
+  }
 
   data.sort((a, b) => {
     let valA, valB;
@@ -932,6 +951,10 @@ function renderRankings() {
     }
   });
 
+  const baseCols = isSilverBoard
+    ? 5  // rank, name, g, born, score
+    : (isEditor() ? 7 : 6);
+
   body.innerHTML = data.map(s => {
     const isExcl = isExcludedSailor(s.name);
     const effJul = isExcl ? { value: null, locked: false } : getEffectiveSquad(s.name, squadJulKey, sq);
@@ -977,21 +1000,24 @@ function renderRankings() {
       </select>`;
     };
 
-    const squadNextCell = isEditor()
+    const squadNextCell = (!isSilverBoard && isEditor())
       ? `<td class="col-squad">${isExcl ? '<span class="badge b-n">Excl.</span>' : isRetiringNext ? '<span class="badge b-n" style="background:var(--red-l);color:var(--red)" title="Turns 16 by then — ages out of the Gold Fleet">Retiring</span>' : squadLockCell(squadJanNextKey, effNext)}</td>`
       : '';
+    const squadJulCell = isSilverBoard
+      ? ''
+      : `<td class="col-squad">${squadLockCell(squadJulKey, effJul)}</td>`;
 
     return `<tr style="${rowSt}">
       <td class="rank-c col-rank">${s.cur}</td>
       <td class="name-c col-name" data-sailor="${dataName}" style="cursor:pointer; color:var(--accent); font-weight:600; text-decoration:underline;">${safeName}${exclTag}</td>
       <td class="sub-c">${safeGender}</td>
       <td class="sub-c">${safeBorn}</td>
-      <td class="col-squad">${squadLockCell(squadJulKey, effJul)}</td>
+      ${squadJulCell}
       ${squadNextCell}
       <td class="score-c col-score" style="text-align:center">${s.score}</td>
       ${cells}
     </tr>`;
-  }).join('') || `<tr><td colspan="${(isEditor() ? 7 : 6) + latestRegs.length}" style="text-align:center;color:var(--text3);padding:24px">
+  }).join('') || `<tr><td colspan="${baseCols + latestRegs.length}" style="text-align:center;color:var(--text3);padding:24px">
       <div style="margin-bottom:10px">No sailors match the current filters${sqF ? ` (locked ${escapeHtml(currentSquadPeriod.label || '')} roster)` : ''}.</div>
       <button type="button" id="clear-rankings-filters" class="btn-secondary" style="display:inline-flex;">Clear filters</button>
     </td></tr>`;
@@ -1871,7 +1897,7 @@ function renderFleetPanel() {
         <span style="font-family:var(--mono);font-size:10px;color:var(--text3);min-width:32px">${rankStr}</span>
         <div style="min-width:0">
           <div class="excl-name name-c" data-sailor="${dataName}" style="cursor:pointer; color:var(--accent); text-decoration:underline; font-weight:600;">${safeName}</div>
-          <div class="excl-reason">${safeGender} · ${safeBorn} · ${safeClub} · <span class="badge-fleet-${fleet}">${fleetLabel}</span></div>
+          <div class="excl-reason">${safeGender} · ${safeBorn} · ${safeClub} · <span class="badge-fleet-${fleet}">${fleetLabel}</span>${typeof getActiveFleetPeriod === 'function' ? ' · ' + escapeHtml(getActiveFleetPeriod().rangeLabel || '') : ''}</div>
         </div>
       </div>
       <div style="display:flex;gap:4px;flex-shrink:0;">
