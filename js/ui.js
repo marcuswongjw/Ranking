@@ -69,10 +69,12 @@ function openSailorModal(sailorName, skipHash) {
   document.getElementById('sm-school').value = sailor.school || meta.school || '';
 
   document.getElementById('sm-entered-gold').value = meta.enteredGold || '—';
+  document.getElementById('sm-entered-silver').value = meta.enteredSilver || '—';
+  document.getElementById('sm-dropped-optimist').value = meta.droppedOptimist || '—';
   const fleetEl = document.getElementById('sm-fleet');
   if (fleetEl) {
     fleetEl.value = (typeof getSailorFleet === 'function')
-      ? getSailorFleet(sailor.name)
+      ? (getSailorFleet(sailor.name) || 'gold')
       : (meta.fleet === 'silver' ? 'silver' : 'gold');
   }
 
@@ -153,6 +155,8 @@ function saveSailorProfile() {
   const school = document.getElementById('sm-school').value.trim();
   
   const enteredGold = document.getElementById('sm-entered-gold').value;
+  const enteredSilver = document.getElementById('sm-entered-silver').value;
+  const droppedOptimist = document.getElementById('sm-dropped-optimist').value;
   const histJun24Raw = document.getElementById('sm-override-jun24').value;
   const histDec24Raw = document.getElementById('sm-override-dec24').value;
   const histJun25Raw = document.getElementById('sm-override-jun25').value;
@@ -251,6 +255,8 @@ function saveSailorProfile() {
   SAILOR_METADATA[newName] = {
     ...prevMeta,
     enteredGold,
+    enteredSilver,
+    droppedOptimist,
     histJun24,
     histDec24,
     histJun25,
@@ -1302,6 +1308,8 @@ const HG_COLUMN_DEFS = [
   { id: 'gender', label: 'Gender', locked: false },
   { id: 'born', label: 'Birth Year', locked: false },
   { id: 'enteredGold', label: 'Entered Gold', locked: false },
+  { id: 'enteredSilver', label: 'Entered Silver', locked: false },
+  { id: 'droppedOptimist', label: 'Drop Date', locked: false },
   { id: 'valJun24', label: 'Jun 24 rank', locked: false },
   { id: 'valDec24', label: 'Dec 24 rank', locked: false },
   { id: 'valJun25', label: 'Jun 25 rank', locked: false },
@@ -1315,7 +1323,7 @@ function getHgColumnVisibility() {
     hgColumnVisibility = {};
     HG_COLUMN_DEFS.forEach(c => {
       // Default: core cols + birth year + historical ranks + current period squad (Jan 25)
-      if (c.id === 'name' || c.id === 'rank' || c.id === 'gender' || c.id === 'born' || c.id === 'enteredGold') {
+      if (c.id === 'name' || c.id === 'rank' || c.id === 'gender' || c.id === 'born' || c.id === 'enteredGold' || c.id === 'enteredSilver' || c.id === 'droppedOptimist') {
         hgColumnVisibility[c.id] = true;
       } else if (c.id.startsWith('val')) {
         hgColumnVisibility[c.id] = true;
@@ -1355,7 +1363,7 @@ function populateHgBulkValueSelect() {
   const field = document.getElementById('hg-bulk-field')?.value || 'enteredGold';
   const valueEl = document.getElementById('hg-bulk-value');
   if (!valueEl) return;
-  if (field === 'enteredGold') {
+  if (field === 'enteredGold' || field === 'enteredSilver' || field === 'droppedOptimist') {
     populateGoldEntrySelect(valueEl);
   } else if (field.startsWith('squad')) {
     valueEl.innerHTML = `
@@ -1465,6 +1473,8 @@ function renderHistGoldPanel() {
         <span style="font-size:12px; font-weight:600; font-family:var(--mono); color:var(--text2);">Bulk Edit:</span>
         <select id="hg-bulk-field" style="height:30px; font-size:12px; background:var(--bg2); border:1px solid var(--border); border-radius:var(--r); color:var(--text); padding:0 8px; cursor:pointer;">
           <option value="enteredGold">Entered Gold</option>
+          <option value="enteredSilver">Entered Silver</option>
+          <option value="droppedOptimist">Optimist Drop Date</option>
           ${squadOpts}
         </select>
         <select id="hg-bulk-value" style="height:30px; font-size:12px; background:var(--bg2); border:1px solid var(--border); border-radius:var(--r); color:var(--text); padding:0 8px; cursor:pointer;"></select>
@@ -1489,6 +1499,14 @@ function renderHistGoldPanel() {
             const key = resolveSailorMetadataKey(name);
             if (!SAILOR_METADATA[key]) SAILOR_METADATA[key] = {};
             SAILOR_METADATA[key].enteredGold = val;
+          } else if (field === 'enteredSilver') {
+            const key = resolveSailorMetadataKey(name);
+            if (!SAILOR_METADATA[key]) SAILOR_METADATA[key] = {};
+            SAILOR_METADATA[key].enteredSilver = val;
+          } else if (field === 'droppedOptimist') {
+            const key = resolveSailorMetadataKey(name);
+            if (!SAILOR_METADATA[key]) SAILOR_METADATA[key] = {};
+            SAILOR_METADATA[key].droppedOptimist = val;
           } else if (field.startsWith('squad')) {
             setSquadStatus(name, field, val || '');
           }
@@ -1538,6 +1556,8 @@ function renderHistGoldPanel() {
     const gender = activeObj ? (activeObj.g || '—') : (meta.g || sObj?.g || '—');
     const born = activeObj ? (activeObj.born || '—') : (meta.born || sObj?.born || '—');
     const enteredGold = meta.enteredGold || '—';
+    const enteredSilver = meta.enteredSilver || '—';
+    const droppedOptimist = meta.droppedOptimist || '—';
     
     const valJun24 = meta.histJun24 !== undefined && meta.histJun24 !== null ? meta.histJun24 : '';
     const valDec24 = meta.histDec24 !== undefined && meta.histDec24 !== null ? meta.histDec24 : '';
@@ -1551,6 +1571,8 @@ function renderHistGoldPanel() {
       gender,
       born,
       enteredGold,
+      enteredSilver,
+      droppedOptimist,
       valJun24,
       valDec24,
       valJun25,
@@ -1581,7 +1603,7 @@ function renderHistGoldPanel() {
 
   list = list.filter(item => {
     if (searchVal && !item.name.toLowerCase().includes(searchVal)) return false;
-    if (onlyActive && !item.isActive && (item.enteredGold === '—' || !item.enteredGold)) return false;
+    if (onlyActive && !item.isActive && (item.enteredGold === '—' || !item.enteredGold) && (item.enteredSilver === '—' || !item.enteredSilver)) return false;
     return true;
   });
 
@@ -1690,6 +1712,12 @@ function renderHistGoldPanel() {
     } else if (hgSortKey === 'enteredGold') {
       valA = a.enteredGold === '—' ? 'zzzz' : a.enteredGold;
       valB = b.enteredGold === '—' ? 'zzzz' : b.enteredGold;
+    } else if (hgSortKey === 'enteredSilver') {
+      valA = a.enteredSilver === '—' ? 'zzzz' : a.enteredSilver;
+      valB = b.enteredSilver === '—' ? 'zzzz' : b.enteredSilver;
+    } else if (hgSortKey === 'droppedOptimist') {
+      valA = a.droppedOptimist === '—' ? 'zzzz' : a.droppedOptimist;
+      valB = b.droppedOptimist === '—' ? 'zzzz' : b.droppedOptimist;
     } else if (hgSortKey === 'valJun24') {
       valA = getHistoricalSortValue(a, 'valJun24', '2024-06-30');
       valB = getHistoricalSortValue(b, 'valJun24', '2024-06-30');
@@ -1774,6 +1802,8 @@ function renderHistGoldPanel() {
     const safeGender = escapeHtml(s.gender);
     const safeBorn = escapeHtml(String(s.born ?? '—'));
     const safeEntered = escapeHtml(s.enteredGold);
+    const safeSilver = escapeHtml(s.enteredSilver);
+    const safeDrop = escapeHtml(s.droppedOptimist);
     const cbCol = isEditable
       ? `<td style="text-align:center; padding:4px;"><input type="checkbox" class="hg-row-cb" data-sailor="${dataName}" style="width:15px; height:15px; cursor:pointer;"></td>`
       : '';
@@ -1785,6 +1815,8 @@ function renderHistGoldPanel() {
       ${isHgColVisible('gender') ? `<td class="sub-c" style="text-align:center;">${safeGender}</td>` : ''}
       ${isHgColVisible('born') ? `<td class="sub-c" style="text-align:center;">${safeBorn}</td>` : ''}
       ${isHgColVisible('enteredGold') ? `<td style="font-family:var(--sans);font-size:11px;color:var(--text2)">${safeEntered}</td>` : ''}
+      ${isHgColVisible('enteredSilver') ? `<td style="font-family:var(--sans);font-size:11px;color:var(--text2)">${safeSilver}</td>` : ''}
+      ${isHgColVisible('droppedOptimist') ? `<td style="font-family:var(--sans);font-size:11px;color:var(--text2)">${safeDrop}</td>` : ''}
       ${renderRankCell('histJun24', s.valJun24, '2024-06-30')}
       ${renderRankCell('histDec24', s.valDec24, '2024-12-31')}
       ${renderRankCell('histJun25', s.valJun25, '2025-06-30')}
@@ -1810,6 +1842,8 @@ function renderHistGoldPanel() {
     th('gender', 'gender', 'G', 'width:32px; text-align:center;'),
     th('born', 'born', 'Born', 'width:50px; text-align:center;'),
     th('enteredGold', 'enteredGold', 'Entered Gold', 'width:100px; text-align:center;'),
+    th('enteredSilver', 'enteredSilver', 'Entered Silver', 'width:100px; text-align:center;'),
+    th('droppedOptimist', 'droppedOptimist', 'Drop Date', 'width:100px; text-align:center;'),
     th('valJun24', 'valJun24', 'Jun 24', 'width:70px; text-align:center;'),
     th('valDec24', 'valDec24', 'Dec 24', 'width:70px; text-align:center;'),
     th('valJun25', 'valJun25', 'Jun 25', 'width:70px; text-align:center;'),

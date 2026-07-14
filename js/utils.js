@@ -405,36 +405,39 @@ function getFleetPeriodBounds(periodKey) {
 }
 
 /**
- * Fleet membership for a sailor in a given half-year: 'gold' | 'silver'.
- * Reads SAILOR_METADATA[name][fleetJanYY|fleetJulYY], then legacy .fleet,
- * then maps from Gold Fleet Entry Date to the earliest half-year where the sailor
- * should appear on the Gold board.
+ * Parse a period string or key into a comparable numeric index.
+ * e.g., "Jan 2026", "fleetJan26", "squadJan26", "Jan 26" -> 2026 * 2 + 0 = 4052.
  */
-function getSailorFleet(name, periodKey) {
-  if (!name) return 'gold';
-  const pk = periodKey || getActiveFleetPeriod().periodKey;
-  const key = (typeof resolveSailorMetadataKey === 'function')
-    ? resolveSailorMetadataKey(name)
-    : (typeof cleanSailorName === 'function' ? cleanSailorName(name) : name);
-  const meta = (typeof SAILOR_METADATA === 'object' && SAILOR_METADATA)
-    ? (SAILOR_METADATA[key] || SAILOR_METADATA[name] || {})
-    : {};
-
-  if (pk && meta[pk]) {
-    return String(meta[pk]).toLowerCase() === 'silver' ? 'silver' : 'gold';
+function parsePeriodToValue(p) {
+  if (!p || p === '—') return null;
+  // Format: "Jan 2026", "Jul 2025"
+  let m = String(p).match(/^(Jan|Jul)\s+(\d{4})$/i);
+  if (m) {
+    const isJul = m[1].toLowerCase() === 'jul';
+    const year = parseInt(m[2]);
+    return year * 2 + (isJul ? 1 : 0);
   }
-  // Legacy single-field membership
+  // Format: "fleetJan26", "fleetJul25", "squadJan26", "squadJul25"
+  m = String(p).match(/^(?:fleet|squad)(Jan|Jul)(\d{2})$/i);
+  if (m) {
+    const isJul = m[1].toLowerCase() === 'jul';
+    const year = 2000 + parseInt(m[2]);
+    return year * 2 + (isJul ? 1 : 0);
+  }
+  // Format: "Jan 26", "Jul 25"
+  m = String(p).match(/^(Jan|Jul)\s+(\d{2})$/i);
+  if (m) {
+    const isJul = m[1].toLowerCase() === 'jul';
+    const year = 2000 + parseInt(m[2]);
+    return year * 2 + (isJul ? 1 : 0);
+  }
+  return null;
+}
+
+function getLegacyOrInferredFleet(meta, name) {
   if (String(meta.fleet || '').toLowerCase() === 'silver') return 'silver';
   if (String(meta.fleet || '').toLowerCase() === 'gold') return 'gold';
-
-  const enteredGold = typeof meta.enteredGold === 'string' ? meta.enteredGold : null;
-  const entryDate = parseGoldEntryDate(enteredGold);
-  const bounds = getFleetPeriodBounds(pk);
-  if (entryDate && bounds) {
-    return entryDate <= bounds.end ? 'gold' : 'silver';
-  }
-
-  // Infer from regatta participation when metadata not yet set
+  // Infer from regatta participation
   try {
     let inGold = false;
     let inSilver = false;
@@ -447,6 +450,61 @@ function getSailorFleet(name, periodKey) {
     if (inSilver && !inGold) return 'silver';
   } catch (_) { /* ignore */ }
   return 'gold';
+}
+
+/**
+ * Fleet membership for a sailor in a given half-year: 'gold' | 'silver' | null.
+ * Reads enteredGold, enteredSilver, and droppedOptimist dates from SAILOR_METADATA.
+ */
+function getSailorFleet(name, periodKey) {
+  if (!name) return 'gold';
+  const pk = periodKey || getActiveFleetPeriod().periodKey;
+  const key = (typeof resolveSailorMetadataKey === 'function')
+    ? resolveSailorMetadataKey(name)
+    : (typeof cleanSailorName === 'function' ? cleanSailorName(name) : name);
+  const meta = (typeof SAILOR_METADATA === 'object' && SAILOR_METADATA)
+    ? (SAILOR_METADATA[key] || SAILOR_METADATA[name] || {})
+    : {};
+
+  const targetVal = parsePeriodToValue(pk);
+  if (targetVal === null) return 'gold';
+
+  // 1) Drop check
+  const dropVal = parsePeriodToValue(meta.droppedOptimist);
+  if (dropVal !== null && targetVal >= dropVal) {
+    return null;
+  }
+
+  // 2) Gold entry check
+  const goldEntryVal = parsePeriodToValue(meta.enteredGold);
+  let effectiveGoldVal = null;
+  if (goldEntryVal !== null) {
+    effectiveGoldVal = goldEntryVal;
+  } else if (getLegacyOrInferredFleet(meta, name) === 'gold') {
+    effectiveGoldVal = parsePeriodToValue("Jan 2024");
+  }
+
+  if (effectiveGoldVal !== null && targetVal >= effectiveGoldVal) {
+    return 'gold';
+  }
+
+  // 3) Silver entry check
+  const silverEntryVal = parsePeriodToValue(meta.enteredSilver);
+  let effectiveSilverVal = null;
+  if (silverEntryVal !== null) {
+    effectiveSilverVal = silverEntryVal;
+  } else if (meta.enteredGold && meta.enteredGold !== '—') {
+    // If they have a Gold Entry Date but no Silver Entry Date, they default to Silver from Jan 2024
+    effectiveSilverVal = parsePeriodToValue("Jan 2024");
+  } else if (getLegacyOrInferredFleet(meta, name) === 'silver') {
+    effectiveSilverVal = parsePeriodToValue("Jan 2024");
+  }
+
+  if (effectiveSilverVal !== null && targetVal >= effectiveSilverVal) {
+    return 'silver';
+  }
+
+  return null;
 }
 
 /**
@@ -463,11 +521,39 @@ function setSailorFleet(name, fleet, periodKey) {
   if (!key) return;
   if (!SAILOR_METADATA[key]) SAILOR_METADATA[key] = {};
   const pk = periodKey || getActiveFleetPeriod().periodKey;
+  
+  const m = pk.match(/^(?:fleet|squad)(Jan|Jul)(\d{2})$/i);
+  let labelVal = '';
+  if (m) {
+    labelVal = `${m[1] === 'Jan' ? 'Jan' : 'Jul'} 20${m[2]}`;
+  } else {
+    const pOptions = getFleetPeriodOptions();
+    const foundOpt = pOptions.find(o => o.periodKey === pk);
+    if (foundOpt) {
+      labelVal = `${foundOpt.kind === 'jan' ? 'Jan' : 'Jul'} ${foundOpt.year}`;
+    }
+  }
+
   const val = fleet === 'silver' ? 'silver' : 'gold';
   SAILOR_METADATA[key][pk] = val;
-  // Mirror onto legacy .fleet when editing the active period (current board)
-  if (pk === getActiveFleetPeriod().periodKey) {
-    SAILOR_METADATA[key].fleet = val;
+  SAILOR_METADATA[key].fleet = val;
+
+  if (val === 'gold') {
+    SAILOR_METADATA[key].enteredGold = labelVal;
+    // Clear dropped status if conflicting
+    const dropVal = parsePeriodToValue(SAILOR_METADATA[key].droppedOptimist);
+    const targetVal = parsePeriodToValue(pk);
+    if (dropVal !== null && targetVal !== null && targetVal >= dropVal) {
+      delete SAILOR_METADATA[key].droppedOptimist;
+    }
+  } else {
+    SAILOR_METADATA[key].enteredSilver = labelVal;
+    // Clear enteredGold if conflicting
+    const goldVal = parsePeriodToValue(SAILOR_METADATA[key].enteredGold);
+    const targetVal = parsePeriodToValue(pk);
+    if (goldVal !== null && targetVal !== null && targetVal >= goldVal) {
+      SAILOR_METADATA[key].enteredGold = '—';
+    }
   }
 
   // Approach A: when promoting to Gold in a period, retroactively stamp the

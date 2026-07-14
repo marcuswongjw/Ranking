@@ -93,40 +93,7 @@ function applyState(s) {
     EXCLUDED = new Map(Array.isArray(s.excluded) ? s.excluded : []);
   }
   SAILOR_METADATA = (s.metadata && typeof s.metadata === 'object') ? s.metadata : {};
-  // Ensure period membership exists for the current half-year (migrate legacy .fleet)
-  if (typeof setSailorFleet === 'function' && typeof getSailorFleet === 'function' && typeof getActiveFleetPeriod === 'function') {
-    const pk = getActiveFleetPeriod().periodKey;
-    const names = new Set();
-    REGATTAS.forEach(reg => (reg.sailors || []).forEach(row => {
-      if (row && row.name) names.add(row.name);
-    }));
-    Object.keys(SAILOR_METADATA).forEach(n => names.add(n));
-    names.forEach(n => {
-      const key = (typeof resolveSailorMetadataKey === 'function') ? resolveSailorMetadataKey(n) : n;
-      const meta = SAILOR_METADATA[key] || SAILOR_METADATA[n] || {};
-      if (meta[pk] === 'gold' || meta[pk] === 'silver') return;
-      // Prefer legacy .fleet, else infer, then stamp onto this period
-      const inferred = getSailorFleet(n, pk);
-      setSailorFleet(n, inferred, pk);
-    });
-
-    // One-time backfill: for any sailor who is Gold in a later period but has
-    // an unset immediately preceding period, stamp that preceding period as
-    // Silver. This repairs data created before setSailorFleet retroactively
-    // stamped the previous half-year on promotion.
-    const opts = typeof getFleetPeriodOptions === 'function' ? getFleetPeriodOptions() : [];
-    names.forEach(n => {
-      const key = (typeof resolveSailorMetadataKey === 'function') ? resolveSailorMetadataKey(n) : n;
-      if (!SAILOR_METADATA[key]) return;
-      for (let i = 1; i < opts.length; i++) {
-        const cur = opts[i];
-        const prev = opts[i - 1];
-        if (SAILOR_METADATA[key][cur.periodKey] === 'gold' && !SAILOR_METADATA[key][prev.periodKey]) {
-          SAILOR_METADATA[key][prev.periodKey] = 'silver';
-        }
-      }
-    });
-  }
+  // Period membership is resolved dynamically; no need to stamp static overrides on load.
   SELECTED_REGATTA_NAMES = (s.selectedRegattas === undefined) ? null : s.selectedRegattas;
   // Firestore Timestamp or ISO / millis
   if (s.updatedAt) {

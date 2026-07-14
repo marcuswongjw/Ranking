@@ -8,6 +8,8 @@
     setupDropZone();
     bindStaticEventListeners();
     populateGoldEntrySelect(document.getElementById('sm-entered-gold'));
+    populateGoldEntrySelect(document.getElementById('sm-entered-silver'));
+    populateGoldEntrySelect(document.getElementById('sm-dropped-optimist'));
     const fleetBornInput = document.getElementById('fleet-add-born');
     if (fleetBornInput) {
       // Default to typical Optimist age (~13), always within [COMP_YEAR-20, COMP_YEAR]
@@ -1104,12 +1106,13 @@
       (reg.sailors || []).forEach(upsertSailor);
     });
 
-    // 2) Gold fleet via Entered Gold only (no auto-DNS regatta rows).
-    //    First time Entered Gold is set, they join rankings with DNS for missed events.
+    // 2) Gold/Silver fleet via Entered Gold/Silver only (no auto-DNS regatta rows).
+    //    First time Entered Gold or Silver is set, they join rankings with DNS for missed events.
     Object.keys(SAILOR_METADATA || {}).forEach(name => {
       const meta = SAILOR_METADATA[name] || {};
       const enteredGold = meta.enteredGold && meta.enteredGold !== '—';
-      if (!enteredGold) return;
+      const enteredSilver = meta.enteredSilver && meta.enteredSilver !== '—';
+      if (!enteredGold && !enteredSilver) return;
       upsertSailor({
         name,
         g: meta.g,

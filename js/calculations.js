@@ -263,6 +263,8 @@ function recomputeSailors() {
       scores: s.scores,
       ranks: s.ranks,
       enteredGold: metadata.enteredGold || '—',
+      enteredSilver: metadata.enteredSilver || '—',
+      droppedOptimist: metadata.droppedOptimist || '—',
       histJun24: metadata.histJun24 || null,
       histDec24: metadata.histDec24 || null,
       histJun25: metadata.histJun25 || null,
