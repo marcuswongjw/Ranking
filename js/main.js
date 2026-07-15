@@ -5,7 +5,6 @@
   document.addEventListener('DOMContentLoaded', () => {
     initAuth();
     dataLoadedPromise = loadData();
-    setupDropZone();
     bindStaticEventListeners();
     populateGoldEntrySelect(document.getElementById('sm-entered-gold'));
     populateGoldEntrySelect(document.getElementById('sm-entered-silver'));
@@ -47,6 +46,9 @@
       if (CURRENT_USER) {
         if (dataLoadedPromise) await dataLoadedPromise;
         await maybeMigrate();
+        if (typeof ensureSailorpathSnapshotPublished === 'function') {
+          await ensureSailorpathSnapshotPublished();
+        }
         backfillRegattaTotalSailors();
       }
       // Subscribe to updates in real-time
@@ -210,69 +212,8 @@
     el.title = parts.join('\n');
   }
 
-  // Excel drop zone setup
-  function setupDropZone() {
-    const ov = document.getElementById('dropOverlay');
-    const dz = document.getElementById('main-dz');
-    
-    if (ov) {
-      document.addEventListener('dragover', e => {
-        e.preventDefault();
-        ov.classList.add('show');
-      });
-      document.addEventListener('dragleave', e => {
-        if (!e.relatedTarget) ov.classList.remove('show');
-      });
-      document.addEventListener('drop', e => {
-        e.preventDefault();
-        ov.classList.remove('show');
-        const f = e.dataTransfer?.files[0];
-        if (f) loadFile(f);
-      });
-    }
-    if (dz) {
-      dz.addEventListener('click', () => document.getElementById('fileInput')?.click());
-      dz.addEventListener('dragover', e => {
-        e.preventDefault();
-        dz.classList.add('over');
-      });
-      dz.addEventListener('dragleave', () => dz.classList.remove('over'));
-      dz.addEventListener('drop', e => {
-        e.preventDefault();
-        dz.classList.remove('over');
-        const f = e.dataTransfer?.files[0];
-        if (f) loadFile(f);
-      });
-    }
-    
-    const fileInput = document.getElementById('fileInput');
-    if (fileInput) {
-      fileInput.addEventListener('change', e => {
-        if (e.target.files[0]) loadFile(e.target.files[0]);
-        e.target.value = '';
-      });
-    }
-  }
-
-  function loadFile(file) {
-    if (!requireEditor()) return;
-    const n = file.name.toLowerCase();
-    if (!n.endsWith('.xlsx') && !n.endsWith('.xlsm') && !n.endsWith('.xls')) {
-      toastWarn('Please drop an Excel file (.xlsx, .xlsm, or .xls).');
-      return;
-    }
-    const reader = new FileReader();
-    reader.onload = e => {
-      try {
-        const wb = XLSX.read(e.target.result, { type: 'array' });
-        const sn = wb.SheetNames.find(n => /sheet1/i.test(n)) || wb.SheetNames[0];
-        parseSheet(XLSX.utils.sheet_to_json(wb.Sheets[sn], { header: 1, defval: null }), file.name);
-      } catch (err) {
-        toastError('Could not read file: ' + err.message);
-      }
-    };
-    reader.readAsArrayBuffer(file);
-  }
+  // Bulk ranking Excel drop/import removed — cloud is the source of truth.
+  // Per-regatta scores Excel remains via uploadRegattaScoresExcel().
 
   function parseVal(v) {
     if (v === null || v === undefined) return null;
@@ -1201,7 +1142,7 @@
 
   function clearAllData() {
     if (!requireEditor()) return;
-    if (confirm("Clear ALL shared cloud data (regattas, exclusions, drops, metadata)? Everyone will see an empty database until a new sheet is uploaded.")) {
+    if (confirm("Clear ALL shared cloud data (regattas, exclusions, drops, metadata)? Everyone will see an empty database until an editor restores data.")) {
       REGATTAS = [];
       SAILORS = [];
       DROPPED_SAILORS = new Set();
@@ -1212,7 +1153,7 @@
 
       const tag = document.getElementById('sb-tag');
       if (tag) {
-        tag.textContent = 'No file loaded';
+        tag.textContent = 'No cloud data';
         tag.className = 'sb-tag';
       }
       const footer = document.getElementById('sb-footer');
@@ -1220,12 +1161,12 @@
       
       const srcTag = document.getElementById('src-tag');
       if (srcTag) {
-        srcTag.textContent = 'No file loaded';
+        srcTag.textContent = 'No cloud data';
         srcTag.className = 'src-tag';
       }
       
       renderAll();
-      alert("Platform cleared successfully. Ready for your Excel upload!");
+      alert("Cloud data cleared. Sign in as editor to restore rankings in the app.");
     }
   }
 
@@ -1502,13 +1443,7 @@
       });
     });
 
-    // Excel Upload buttons triggers
-    document.getElementById('load-xlsx-trigger')?.addEventListener('click', () => {
-      document.getElementById('fileInput')?.click();
-    });
-    document.getElementById('fleet-excel-upload-trigger')?.addEventListener('click', () => {
-      document.getElementById('fleetFileInput')?.click();
-    });
+    // Per-regatta scores Excel only (no bulk ranking / roster Excel)
     document.getElementById('regatta-scores-upload-trigger')?.addEventListener('click', () => {
       if (!requireEditor()) return;
       if (!CURRENT_SELECTED_REGATTA) {
@@ -1696,9 +1631,6 @@
     document.getElementById('fleet-search-dropped')?.addEventListener('input', () => renderFleetPanel());
     document.getElementById('sim-add-sailor-btn')?.addEventListener('click', () => addSailorInput());
     document.getElementById('fleet-add-sailor-btn')?.addEventListener('click', () => addNewFleetSailor());
-    document.getElementById('fleetFileInput')?.addEventListener('change', e => {
-      if (e.target.files[0]) uploadFleetExcel(e.target);
-    });
 
     
     // Major Competitions Panel elements

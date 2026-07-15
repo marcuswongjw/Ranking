@@ -8,23 +8,17 @@
   
   <!-- Local libraries for offline support and CDNs for Firebase -->
   <!-- ?v= busts CDN/browser cache after deploys -->
-  <script src="js/libs/chart.umd.js?v=20260709n"></script>
-  <script src="js/libs/xlsx.full.min.js?v=20260709n"></script>
+  <script src="js/libs/chart.umd.js?v=20260715a"></script>
+  <script src="js/libs/xlsx.full.min.js?v=20260715a"></script>
   <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-storage-compat.js"></script>
 
   <!-- External Stylesheet -->
-  <link rel="stylesheet" href="css/styles.css?v=20260709o">
+  <link rel="stylesheet" href="css/styles.css?v=20260715a">
 </head>
 <body>
-<div id="dropOverlay" class="drop-overlay">
-  <div style="font-size:48px">📊</div>
-  <div class="do-text">Drop Excel file</div>
-  <div class="do-sub">Release to load ranking data</div>
-</div>
-
 <div id="toast-host" class="toast-host" aria-live="polite" aria-relevant="additions"></div>
 
 <div id="signin-modal" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="signin-modal-title">
@@ -118,11 +112,9 @@
       </label>
     </div>
     <div class="topbar-right">
-      <span class="src-tag" id="src-tag">No file loaded</span>
+      <span class="src-tag" id="src-tag">Loading…</span>
       <span id="sync-status" class="src-tag" style="font-family:var(--mono);">View-only</span>
       <span id="data-freshness" class="src-tag data-freshness" title="When rankings data was last saved, and the latest regatta in the ranking window">—</span>
-      <button class="editor-only upload-btn" id="load-xlsx-trigger" title="Import regatta scores (multi-column sheet). New events are tagged with the active Gold/Silver fleet.">↑ Load scores .xlsx</button>
-      <input type="file" id="fileInput" accept=".xlsx,.xlsm,.xls" style="display:none;">
       <button id="auth-btn" style="background:var(--text);color:#fff;border:none;border-radius:var(--r);font-size:11px;padding:6px 12px;font-family:var(--mono);cursor:pointer;font-weight:500;height:30px;transition:all .15s;">🔒 Sign in to edit</button>
     </div>
   </div>
@@ -132,13 +124,9 @@
     <div class="panel active" id="panel-rankings">
       <div id="rankings-content">
         <div class="welcome">
-          <div class="drop-zone" id="main-dz">
-            <div class="dz-icon">📊</div>
-            <div class="dz-title">Drop your ranking file here</div>
-            <div class="dz-sub">Drag and drop <strong>OP_Gold_for_website.xlsx</strong><br>or any updated version of it</div>
-            <div class="dz-hint">Accepts .xlsx · .xlsm · .xls · Drop again anytime to refresh</div>
-          </div>
-          <p style="font-size:11px;color:var(--text3);font-family:var(--mono)">After each regatta, update col Y in the Excel file and drop it here again.</p>
+          <div class="dz-icon">☁️</div>
+          <div class="dz-title">Loading cloud rankings…</div>
+          <div class="dz-sub">Official series data is stored in Firebase.<br>Sign in as editor to manage regattas and scores.</div>
         </div>
       </div>
     </div>
@@ -485,13 +473,10 @@
           <div style="display:flex; flex-direction:column; gap:8px;">
             <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
               <button class="run-btn editor-only" id="fleet-add-sailor-btn">＋ Add New Sailor</button>
-              <button class="run-btn editor-only" id="fleet-excel-upload-trigger" title="Uses the Gold/Silver pill currently selected in the sidebar">↑ Upload roster Excel (active fleet)</button>
-              <input type="file" id="fleetFileInput" accept=".xlsx,.xlsm,.xls" style="display:none;">
             </div>
             <p class="card-desc" style="margin:0; font-size:11px; line-height:1.45;">
-              <strong>Roster upload</strong> uses the sidebar <strong>Gold / Silver</strong> pill.
-              Columns: <code>Name</code>, <code>Gender</code>, <code>Born</code>, <code>Club</code>, <code>School</code> (header row).
-              Sailors are added to the latest regatta of that fleet (or a new “Fleet Roster” event) with blank ranks until scores are uploaded.
+              Add sailors one at a time. Membership follows the sidebar <strong>Gold / Silver</strong> pill and period.
+              For scores after a regatta, open that event and use <strong>Upload scores Excel</strong> (Name / Rank / Nett) or edit rows in the app.
             </p>
           </div>
           <div class="editor-only" style="margin-top:14px; padding-top:14px; border-top:1px solid var(--border); display:flex; flex-direction:column; gap:6px;">
@@ -865,14 +850,14 @@
 </div>
 
 <!-- Load Application Modules (?v= forces browsers to fetch after deploy) -->
-<script src="js/config.js?v=20260709q"></script>
-<script src="js/seed.js?v=20260709q"></script>
-<script src="js/utils.js?v=20260709q"></script>
-<script src="js/export-snapshot.js?v=20260709q"></script>
-<script src="js/state.js?v=20260709q"></script>
-<script src="js/calculations.js?v=20260709q"></script>
-<script src="js/ui.js?v=20260709q"></script>
-<script src="js/main.js?v=20260709q"></script>
-<script src="js/charts.js?v=20260709q"></script>
+<script src="js/config.js?v=20260715a"></script>
+<script src="js/seed.js?v=20260715a"></script>
+<script src="js/utils.js?v=20260715a"></script>
+<script src="js/export-snapshot.js?v=20260715a"></script>
+<script src="js/state.js?v=20260715a"></script>
+<script src="js/calculations.js?v=20260715a"></script>
+<script src="js/ui.js?v=20260715a"></script>
+<script src="js/main.js?v=20260715a"></script>
+<script src="js/charts.js?v=20260715a"></script>
 </body>
 </html>

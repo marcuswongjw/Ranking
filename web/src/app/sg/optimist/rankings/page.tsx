@@ -5,8 +5,10 @@ export const metadata: Metadata = {
   description: 'Singapore Optimist national ranking tool (editor + public board).',
 };
 
-/** Same-origin copy of the ranking SPA (synced at build from repo root). */
-const RANKING_APP = '/ranking-app/';
+/** Canonical Ranking tool (same Firebase cloud as SailorPath public boards). */
+const RANKING_APP = 'https://marcuswongjw.github.io/Ranking/';
+/** Same-origin copy kept for offline / alternate embed. */
+const RANKING_APP_LOCAL = '/ranking-app/';
 
 export default function RankingsEmbedPage() {
   return (
@@ -14,9 +16,8 @@ export default function RankingsEmbedPage() {
       <div className="eyebrow">Official series tool</div>
       <h1>SG Optimist rankings</h1>
       <p className="lede">
-        Full ranking board, regattas, and editor — hosted on SailorPath at{' '}
-        <code style={{ fontSize: '0.9em' }}>/ranking-app/</code>. This is the live tool (Firebase).
-        Public SailorPath profiles use a published snapshot and may lag until export is wired.
+        Full ranking board, regattas, and editor. Data lives in Firebase (shared with this site).
+        Public SailorPath profiles refresh from the cloud snapshot within about a minute after an editor save.
       </p>
       <p style={{ marginBottom: '1rem', display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
         <a className="btn btn-secondary" href={`${RANKING_APP}#regattas`} target="_blank" rel="noreferrer">
@@ -24,6 +25,9 @@ export default function RankingsEmbedPage() {
         </a>
         <a className="btn btn-secondary" href={RANKING_APP} target="_blank" rel="noreferrer">
           Open full tool ↗
+        </a>
+        <a className="btn btn-secondary" href={RANKING_APP_LOCAL} target="_blank" rel="noreferrer">
+          Same-origin tool ↗
         </a>
       </p>
       <div className="iframe-frame">

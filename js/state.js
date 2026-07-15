@@ -139,7 +139,11 @@ function readLegacyLocalState() {
 async function publishSailorpathSnapshot() {
   if (typeof buildSailorpathSnapshot !== 'function') {
     console.warn('buildSailorpathSnapshot not loaded — skip SailorPath publish');
-    return;
+    return false;
+  }
+  if (!Array.isArray(REGATTAS) || REGATTAS.length === 0) {
+    console.warn('No regattas loaded — skip SailorPath publish');
+    return false;
   }
   try {
     const snapshot = buildSailorpathSnapshot({
@@ -156,8 +160,30 @@ async function publishSailorpathSnapshot() {
       json: JSON.stringify(snapshot)
     });
     console.log('✅ SailorPath snapshot published', snapshot.meta.exportedAt);
+    return true;
   } catch (e) {
     console.error('SailorPath snapshot publish failed:', e);
+    return false;
+  }
+}
+
+/**
+ * If cloud ranking state exists but the public SailorPath snapshot was never
+ * written, publish it once so sailorpath.com stops falling back to seed.
+ * Safe to call on every editor login.
+ */
+async function ensureSailorpathSnapshotPublished() {
+  if (!isEditor() || !CLOUD_HAS_DATA) return;
+  if (!Array.isArray(REGATTAS) || REGATTAS.length === 0) return;
+  try {
+    const snap = await CLOUD_SAILORPATH_DOC().get();
+    if (snap.exists && snap.data() && snap.data().json) return;
+    const ok = await publishSailorpathSnapshot();
+    if (ok && typeof toastSuccess === 'function') {
+      toastSuccess('SailorPath public data published to the cloud.');
+    }
+  } catch (e) {
+    console.error('ensureSailorpathSnapshotPublished failed:', e);
   }
 }
 
@@ -224,8 +250,15 @@ async function maybeMigrate() {
     const snap = await CLOUD_DOC().get();
     cloudHasData = snap.exists && snap.data() && Array.isArray(snap.data().regattas);
   } catch (e) { return; }
-  if (cloudHasData) { CLOUD_HAS_DATA = true; PENDING_LOCAL_MIGRATION = null; return; }
-  
+  if (cloudHasData) {
+    CLOUD_HAS_DATA = true;
+    PENDING_LOCAL_MIGRATION = null;
+    // Cloud is the source of truth — ensure SailorPath public snapshot exists too
+    await ensureSailorpathSnapshotPublished();
+    return;
+  }
+
+  // Cloud empty: only offer one-time publish (seed or legacy browser cache).
   const msg = PENDING_LOCAL_MIGRATION
     ? "The cloud database is empty. Publish this browser's existing data to the cloud as the starting point?"
     : "The cloud database is empty. Publish the data currently shown to the cloud now so all viewers share it?";

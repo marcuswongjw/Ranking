@@ -116,8 +116,8 @@ function loadLocalFile(): Snapshot {
 }
 
 /**
- * Prefer live Firestore snapshot (published by ranking editor on save).
- * Fall back to bundled seed snapshot for build/dev offline.
+ * Prefer live Firestore snapshot (published by ranking editor on save / login).
+ * Fall back to bundled seed snapshot only for offline build/dev when cloud is empty.
  */
 export const getSnapshot = cache(async (): Promise<Snapshot> => {
   try {
@@ -128,8 +128,17 @@ export const getSnapshot = cache(async (): Promise<Snapshot> => {
       const doc = await res.json();
       const snap = parseFirestoreDoc(doc);
       if (snap && (snap.fleets?.gold?.standings?.length || snap.standings?.length)) {
+        // Ensure meta.source reflects live cloud when present
+        if (snap.meta && snap.meta.source !== 'firestore') {
+          snap.meta = { ...snap.meta, source: 'firestore' };
+        }
         return snap;
       }
+    } else if (res.status === 404) {
+      console.warn(
+        'SailorPath snapshot missing in Firestore (opRanking/sailorpathSnapshot). ' +
+          'Sign into the Ranking editor once to auto-publish. Using bundled seed fallback.'
+      );
     }
   } catch (e) {
     console.warn('Live SailorPath snapshot fetch failed, using local file:', e);

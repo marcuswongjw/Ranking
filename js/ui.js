@@ -806,16 +806,14 @@ function renderRankingsPanel() {
   if (REGATTAS.length === 0) {
     container.innerHTML = `
       <div class="welcome">
-        <div class="drop-zone" id="main-dz">
-          <div class="dz-icon">📊</div>
-          <div class="dz-title">Drop your ranking file here</div>
-          <div class="dz-sub">Drag and drop <strong>OP_Gold_for_website.xlsx</strong><br>or any updated version of it</div>
-          <div class="dz-hint">Accepts .xlsx · .xlsm · .xls · Drop again anytime to refresh</div>
+        <div class="dz-icon">☁️</div>
+        <div class="dz-title">No cloud rankings loaded</div>
+        <div class="dz-sub">
+          Official data lives in Firebase. If this persists, check your connection<br>
+          or sign in as editor to restore / publish the shared cloud database.
         </div>
-        <p style="font-size:11px;color:var(--text3);font-family:var(--mono)">After each regatta, update col Y in the Excel file and drop it here again.</p>
       </div>
     `;
-    setupDropZone();
     return;
   }
 
@@ -1084,7 +1082,7 @@ function renderRegattasPanel() {
   if (!container) return;
   
   if (REGATTAS.length === 0) {
-    container.innerHTML = '<div class="excl-empty" style="grid-column: 1 / -1;">No regattas uploaded yet. Drop an Excel file or click the load button.</div>';
+    container.innerHTML = '<div class="excl-empty" style="grid-column: 1 / -1;">No regattas in the cloud yet. Sign in as editor and add regattas, or restore cloud data.</div>';
     return;
   }
   
@@ -2139,7 +2137,8 @@ function quickFilter(sq) {
 }
 
 function updateDatabaseSourceTags() {
-  const isSeed = !CLOUD_HAS_DATA || !REGATTAS.length;
+  const fromCloud = !!CLOUD_HAS_DATA && REGATTAS.length > 0;
+  const hasData = REGATTAS.length > 0;
 
   // Sidebar quick filters label: current locked half-year roster
   const qfSec = document.getElementById('quick-filter-sec');
@@ -2156,23 +2155,34 @@ function updateDatabaseSourceTags() {
   
   const sbTag = document.getElementById('sb-tag');
   if (sbTag) {
-    sbTag.textContent = SAILORS.length ? SAILORS.length + ' sailors' : 'No file loaded';
+    sbTag.textContent = SAILORS.length ? SAILORS.length + ' sailors' : 'No cloud data';
     sbTag.className = SAILORS.length ? 'sb-tag ok' : 'sb-tag';
   }
   
   const footer = document.getElementById('sb-footer');
   if (footer) {
-    footer.textContent = SAILORS.length 
-      ? (isSeed ? 'Seed Dataset loaded · ' : 'Cloud Database loaded · ') + SAILORS.length + ' sailors'
-      : 'Ranking Database';
+    if (!hasData) {
+      footer.textContent = 'Ranking Database';
+    } else if (fromCloud) {
+      footer.textContent = 'Cloud · ' + SAILORS.length + ' sailors';
+    } else {
+      footer.textContent = 'Local fallback · ' + SAILORS.length + ' sailors (not published)';
+    }
   }
   
   const srcTag = document.getElementById('src-tag');
   if (srcTag) {
-    srcTag.textContent = SAILORS.length 
-      ? (isSeed ? 'Seed Data' : 'Cloud Database') 
-      : 'No file loaded';
-    srcTag.className = SAILORS.length ? 'src-tag ok' : 'src-tag';
+    if (!hasData) {
+      srcTag.textContent = 'No cloud data';
+      srcTag.className = 'src-tag';
+    } else if (fromCloud) {
+      srcTag.textContent = 'Cloud Database';
+      srcTag.className = 'src-tag ok';
+    } else {
+      srcTag.textContent = 'Local fallback';
+      srcTag.className = 'src-tag';
+      srcTag.title = 'Not loaded from Firestore — sign in and publish to cloud';
+    }
   }
 }
 
