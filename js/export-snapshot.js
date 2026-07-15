@@ -105,19 +105,92 @@
     return (kind === 'jan' ? 'fleetJan' : 'fleetJul') + yy;
   }
 
-  function memberFleet(name, metadata, periodKey) {
+  /** Match utils.js parsePeriodToValue — half-year index for comparisons. */
+  function parsePeriodToValue(p) {
+    if (!p || p === '—') return null;
+    var m = String(p).match(/^(Jan|Jul)\s+(\d{4})$/i);
+    if (m) {
+      var isJul = m[1].toLowerCase() === 'jul';
+      var year = parseInt(m[2], 10);
+      return year * 2 + (isJul ? 1 : 0);
+    }
+    m = String(p).match(/^(?:fleet|squad)(Jan|Jul)(\d{2})$/i);
+    if (m) {
+      isJul = m[1].toLowerCase() === 'jul';
+      year = 2000 + parseInt(m[2], 10);
+      return year * 2 + (isJul ? 1 : 0);
+    }
+    m = String(p).match(/^(Jan|Jul)\s+(\d{2})$/i);
+    if (m) {
+      isJul = m[1].toLowerCase() === 'jul';
+      year = 2000 + parseInt(m[2], 10);
+      return year * 2 + (isJul ? 1 : 0);
+    }
+    return null;
+  }
+
+  function lookupMeta(name, metadata) {
     metadata = metadata || {};
     var meta = metadata[name] || {};
     var n = normalizeName(name);
     Object.keys(metadata).forEach(function (k) {
       if (normalizeName(k) === n) meta = metadata[k] || meta;
     });
-    // Period-specific membership first
-    if (periodKey && meta[periodKey]) {
-      return String(meta[periodKey]).toLowerCase() === 'silver' ? 'silver' : 'gold';
-    }
+    return meta;
+  }
+
+  function legacyFleet(meta, name, allRegs) {
     if (String(meta.fleet || '').toLowerCase() === 'silver') return 'silver';
     if (String(meta.fleet || '').toLowerCase() === 'gold') return 'gold';
+    var inGold = false;
+    var inSilver = false;
+    (allRegs || []).forEach(function (reg) {
+      var f = getRegattaFleet(reg);
+      var hit = (reg.sailors || []).some(function (s) {
+        return normalizeName(s.name) === normalizeName(name);
+      });
+      if (!hit) return;
+      if (f === 'silver') inSilver = true;
+      else inGold = true;
+    });
+    if (inSilver && !inGold) return 'silver';
+    return 'gold';
+  }
+
+  /**
+   * Entry/drop-date membership (aligned with utils.js getSailorFleet).
+   * Ignores fleetJan/Jul stamps. Returns 'gold' | 'silver' | null.
+   */
+  function memberFleet(name, metadata, periodKey, allRegs) {
+    var meta = lookupMeta(name, metadata);
+    var targetVal = parsePeriodToValue(periodKey);
+    if (targetVal === null) {
+      var leg = legacyFleet(meta, name, allRegs);
+      return leg === 'silver' ? 'silver' : 'gold';
+    }
+
+    var dropVal = parsePeriodToValue(meta.droppedOptimist);
+    if (dropVal !== null && targetVal >= dropVal) return null;
+
+    var goldEntryVal = parsePeriodToValue(meta.enteredGold);
+    var effectiveGoldVal = null;
+    if (goldEntryVal !== null) {
+      effectiveGoldVal = goldEntryVal;
+    } else if (legacyFleet(meta, name, allRegs) === 'gold') {
+      effectiveGoldVal = parsePeriodToValue('Jan 2024');
+    }
+    if (effectiveGoldVal !== null && targetVal >= effectiveGoldVal) return 'gold';
+
+    var silverEntryVal = parsePeriodToValue(meta.enteredSilver);
+    var effectiveSilverVal = null;
+    if (silverEntryVal !== null) {
+      effectiveSilverVal = silverEntryVal;
+    } else if (meta.enteredGold && meta.enteredGold !== '—') {
+      effectiveSilverVal = parsePeriodToValue('Jan 2024');
+    } else if (legacyFleet(meta, name, allRegs) === 'silver') {
+      effectiveSilverVal = parsePeriodToValue('Jan 2024');
+    }
+    if (effectiveSilverVal !== null && targetVal >= effectiveSilverVal) return 'silver';
     return null;
   }
 
@@ -133,10 +206,9 @@
         var norm = normalizeName(row.name);
         if (!norm || droppedSet.has(norm)) return;
         if (excludedMap.has(row.name) || excludedMap.has(norm)) return;
-        // Strict membership for this half-year period
-        var mf = memberFleet(row.name, metadata, periodKey);
-        if (mf == null) mf = 'gold';
-        if (mf !== fleetId) return;
+        // Strict membership for this half-year (entry/drop dates, not stamps)
+        var mf = memberFleet(row.name, metadata, periodKey, allRegs);
+        if (mf == null || mf !== fleetId) return;
         if (!byNorm.has(norm)) {
           byNorm.set(norm, {
             name: row.name,

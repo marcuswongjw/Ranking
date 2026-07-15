@@ -266,6 +266,7 @@ function saveSailorProfile() {
     born: born,
     club: club,
     school: school,
+    // Legacy label only — boards use enteredGold / enteredSilver / droppedOptimist
     fleet: fleetVal,
     majorComps: {
       worlds: mcWorlds,
@@ -275,12 +276,18 @@ function saveSailorProfile() {
     }
   };
 
-  // Stamp the period-specific fleet key (and retroactively Silver for the
-  // previous half-year when promoting to Gold). This keeps the Jan–Jun /
-  // Jul–Dec boards consistent and prevents the legacy .fleet fallback from
-  // leaking a later Gold assignment into an earlier Silver period.
-  if (typeof setSailorFleet === 'function') {
-    setSailorFleet(newName, fleetVal);
+  // If the period fleet dropdown disagrees with entry dates, adjust entry dates
+  // (sticky gold: demotion to Silver is refused).
+  if (typeof setSailorFleet === 'function' && typeof getSailorFleet === 'function') {
+    const resolved = getSailorFleet(newName);
+    if (resolved !== fleetVal) {
+      const res = setSailorFleet(newName, fleetVal);
+      if (res && res.ok === false && typeof toastWarn === 'function') {
+        toastWarn(res.reason || 'Could not change fleet membership for this period.');
+        // Keep entry dates as edited; restore fleet label to computed membership
+        SAILOR_METADATA[newName].fleet = getSailorFleet(newName) || fleetVal;
+      }
+    }
   }
 
   // Squad status per period (shared keys with the rankings lock dropdowns)
@@ -2003,12 +2010,20 @@ function moveSailorToFleet(name, fleet) {
   const cleaned = cleanSailorName(name);
   if (!cleaned) return;
   const target = fleet === 'silver' ? 'silver' : 'gold';
-  setSailorFleet(cleaned, target);
+  const res = typeof setSailorFleet === 'function' ? setSailorFleet(cleaned, target) : { ok: true };
+  if (res && res.ok === false) {
+    toastWarn(res.reason || 'Could not move sailor.');
+    return;
+  }
   recomputeSailors();
   saveData();
   renderAll();
   renderFleetPanel();
-  toastSuccess(`Moved ${cleaned} to ${target === 'silver' ? 'Silver' : 'Gold'} fleet.`);
+  toastSuccess(
+    target === 'gold'
+      ? `Set Gold Fleet Entry for ${cleaned} (sticky until Optimist Drop).`
+      : `Set Silver Fleet Entry for ${cleaned}.`
+  );
 }
 
 function dropSailor(name) {

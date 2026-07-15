@@ -37,6 +37,8 @@ let CURRENT_USER = null;          // set by auth listener; non-null = editor
 let PENDING_LOCAL_MIGRATION = null; // legacy localStorage backup
 let SUPPRESS_SNAPSHOT = false;     // suppress snapshot echo when saving
 let CLOUD_HAS_DATA = false;        // true if doc exists with data
+/** Dedup key for last cloud payload applied (updatedAt millis string). */
+let lastAppliedCloudUpdatedAt = null;
 /** Ranking board filter: gold | silver (regattas tagged per fleet). */
 let ACTIVE_FLEET = 'gold';
 /**
@@ -108,6 +110,15 @@ function applyState(s) {
 }
 
 function applyStateFromSeed() {
+  if (typeof getSeedRegattas !== 'function') {
+    console.warn('Seed data not loaded — cannot apply seed state');
+    REGATTAS = [];
+    DROPPED_SAILORS = new Set();
+    EXCLUDED = new Map();
+    SAILOR_METADATA = {};
+    SELECTED_REGATTA_NAMES = null;
+    return;
+  }
   REGATTAS = getSeedRegattas();
   DROPPED_SAILORS = getDefaultDroppedSailors();
   EXCLUDED = getDefaultExcludedSailors();
@@ -224,6 +235,14 @@ async function loadData() {
   if (cloud && Array.isArray(cloud.regattas)) {
     CLOUD_HAS_DATA = true;
     applyState(cloud);
+    // Mark for realtime listener so the first onSnapshot does not re-render everything
+    const u = cloud.updatedAt;
+    if (u && typeof u.toMillis === 'function') lastAppliedCloudUpdatedAt = String(u.toMillis());
+    else if (u && typeof u.toDate === 'function') lastAppliedCloudUpdatedAt = String(u.toDate().getTime());
+    else if (u instanceof Date) lastAppliedCloudUpdatedAt = String(u.getTime());
+    else if (typeof u === 'string') lastAppliedCloudUpdatedAt = u;
+    else if (u && u.seconds != null) lastAppliedCloudUpdatedAt = String(u.seconds * 1000);
+    else lastAppliedCloudUpdatedAt = null;
   } else {
     CLOUD_HAS_DATA = false;
     const legacy = readLegacyLocalState();
@@ -231,6 +250,7 @@ async function loadData() {
       applyState(legacy);
       PENDING_LOCAL_MIGRATION = legacy;
     } else {
+      if (typeof ensureSeedLoaded === 'function') await ensureSeedLoaded();
       applyStateFromSeed();
     }
   }

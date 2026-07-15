@@ -1,6 +1,40 @@
   // Main Application Initialization & Event Listeners
 
   let dataLoadedPromise = null;
+  const ASSET_V = '20260715b';
+  let seedLoadPromise = null;
+  let xlsxLoadPromise = null;
+
+  function loadScriptOnce(src, flagName) {
+    if (window[flagName]) return Promise.resolve();
+    return new Promise((resolve, reject) => {
+      const s = document.createElement('script');
+      s.src = src;
+      s.async = true;
+      s.onload = () => {
+        window[flagName] = true;
+        resolve();
+      };
+      s.onerror = () => reject(new Error('Failed to load ' + src));
+      document.head.appendChild(s);
+    });
+  }
+
+  /** Load seed.js only when cloud is empty (saves ~300KB on normal loads). */
+  function ensureSeedLoaded() {
+    if (typeof getSeedRegattas === 'function') return Promise.resolve();
+    if (seedLoadPromise) return seedLoadPromise;
+    seedLoadPromise = loadScriptOnce(`js/seed.js?v=${ASSET_V}`, '__seedJsLoaded');
+    return seedLoadPromise;
+  }
+
+  /** Load SheetJS only when an editor uploads per-regatta scores Excel. */
+  function ensureXlsxLoaded() {
+    if (typeof XLSX !== 'undefined') return Promise.resolve();
+    if (xlsxLoadPromise) return xlsxLoadPromise;
+    xlsxLoadPromise = loadScriptOnce(`js/libs/xlsx.full.min.js?v=${ASSET_V}`, '__xlsxJsLoaded');
+    return xlsxLoadPromise;
+  }
 
   document.addEventListener('DOMContentLoaded', () => {
     initAuth();
@@ -16,25 +50,59 @@
     }
   });
 
-  // Real-time viewer synchronization
+  let realtimeRenderTimer = null;
+
+  function cloudUpdatedAtKey(data) {
+    if (!data || !data.updatedAt) return null;
+    const u = data.updatedAt;
+    if (typeof u.toMillis === 'function') return String(u.toMillis());
+    if (typeof u.toDate === 'function') return String(u.toDate().getTime());
+    if (u instanceof Date) return String(u.getTime());
+    if (typeof u === 'number') return String(u);
+    if (typeof u === 'string') return u;
+    if (u.seconds != null) return String(u.seconds * 1000);
+    return null;
+  }
+
+  // Real-time viewer synchronization (debounced; skip duplicate payloads)
   function subscribeRealtime() {
     CLOUD_DOC().onSnapshot(snap => {
       if (!snap.exists) return;
       if (snap.metadata.hasPendingWrites) return; // our own optimistic echo
       if (SUPPRESS_SNAPSHOT) return;
       if (isEditor()) return;                      // don't clobber an editor's in-progress work
-      
+
       const data = snap.data();
+      const key = cloudUpdatedAtKey(data);
+      if (key && key === lastAppliedCloudUpdatedAt && CLOUD_HAS_DATA) {
+        return;
+      }
+
       if (data && Array.isArray(data.regattas)) {
         CLOUD_HAS_DATA = true;
+        lastAppliedCloudUpdatedAt = key;
         applyState(data);
       } else {
         CLOUD_HAS_DATA = false;
+        lastAppliedCloudUpdatedAt = null;
+        if (typeof ensureSeedLoaded === 'function') {
+          ensureSeedLoaded().then(() => {
+            applyStateFromSeed();
+            recomputeSailors();
+            renderAll();
+            if (typeof updateDataFreshnessUI === 'function') updateDataFreshnessUI();
+          });
+          return;
+        }
         applyStateFromSeed();
       }
-      recomputeSailors();
-      renderAll();
-      if (typeof updateDataFreshnessUI === 'function') updateDataFreshnessUI();
+      if (realtimeRenderTimer) clearTimeout(realtimeRenderTimer);
+      realtimeRenderTimer = setTimeout(() => {
+        realtimeRenderTimer = null;
+        recomputeSailors();
+        renderAll();
+        if (typeof updateDataFreshnessUI === 'function') updateDataFreshnessUI();
+      }, 150);
     }, err => console.error('Realtime listener error:', err));
   }
 
@@ -809,7 +877,7 @@
    * Upload scores for the currently open regatta only.
    * Columns: Name | Rank | Nett (or Points). Headers flexible.
    */
-  function uploadRegattaScoresExcel(input) {
+  async function uploadRegattaScoresExcel(input) {
     const file = input.files[0];
     if (!file) return;
     if (!requireEditor()) return;
@@ -817,6 +885,14 @@
     const reg = REGATTAS.find(r => r.name === regName);
     if (!reg) {
       toastWarn('Open a regatta first, then upload scores for that event.');
+      input.value = '';
+      return;
+    }
+
+    try {
+      await ensureXlsxLoaded();
+    } catch (err) {
+      toastError('Could not load Excel library: ' + (err && err.message));
       input.value = '';
       return;
     }

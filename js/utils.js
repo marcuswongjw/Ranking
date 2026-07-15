@@ -434,10 +434,32 @@ function parsePeriodToValue(p) {
   return null;
 }
 
+/** Convert fleetJan26 / fleetJul25 into display label "Jan 2026". */
+function periodKeyToLabelClean(periodKey) {
+  const m = String(periodKey || '').match(/^(?:fleet|squad)?(Jan|Jul)(\d{2})$/i);
+  if (m) {
+    const mon = m[1].toLowerCase() === 'jan' ? 'Jan' : 'Jul';
+    return `${mon} 20${m[2]}`;
+  }
+  const m2 = String(periodKey || '').match(/^(Jan|Jul)\s+(\d{2,4})$/i);
+  if (m2) {
+    const mon = m2[1].toLowerCase() === 'jan' ? 'Jan' : 'Jul';
+    const y = m2[2].length === 2 ? `20${m2[2]}` : m2[2];
+    return `${mon} ${y}`;
+  }
+  const opts = typeof getFleetPeriodOptions === 'function' ? getFleetPeriodOptions() : [];
+  const found = opts.find(o => o.periodKey === periodKey);
+  if (found) return `${found.kind === 'jan' ? 'Jan' : 'Jul'} ${found.year}`;
+  return '';
+}
+
+/**
+ * Legacy / inferred pool when entry dates are missing.
+ * Does NOT read fleetJan/Jul stamps — those are not source of truth.
+ */
 function getLegacyOrInferredFleet(meta, name) {
   if (String(meta.fleet || '').toLowerCase() === 'silver') return 'silver';
   if (String(meta.fleet || '').toLowerCase() === 'gold') return 'gold';
-  // Infer from regatta participation
   try {
     let inGold = false;
     let inSilver = false;
@@ -452,52 +474,70 @@ function getLegacyOrInferredFleet(meta, name) {
   return 'gold';
 }
 
-/**
- * Fleet membership for a sailor in a given half-year: 'gold' | 'silver' | null.
- * Reads enteredGold, enteredSilver, and droppedOptimist dates from SAILOR_METADATA.
- */
-function getSailorFleet(name, periodKey) {
-  if (!name) return 'gold';
-  const pk = periodKey || getActiveFleetPeriod().periodKey;
+function resolveSailorMeta(name) {
   const key = (typeof resolveSailorMetadataKey === 'function')
     ? resolveSailorMetadataKey(name)
     : (typeof cleanSailorName === 'function' ? cleanSailorName(name) : name);
   const meta = (typeof SAILOR_METADATA === 'object' && SAILOR_METADATA)
     ? (SAILOR_METADATA[key] || SAILOR_METADATA[name] || {})
     : {};
+  return { key, meta };
+}
+
+/**
+ * Fleet membership for a sailor in a given half-year: 'gold' | 'silver' | null.
+ *
+ * Source of truth (in order):
+ *  1. Optimist Drop Date — period >= drop → off both boards
+ *  2. Gold Fleet Entry Date (or Jan 2024 if current gold with no date) — sticky until drop
+ *  3. Silver Fleet Entry Date; if Gold Entry is set, auto-silver from Jan 2024 until gold
+ *
+ * Does NOT use fleetJanYY / fleetJulYY period stamps.
+ */
+function getSailorFleet(name, periodKey) {
+  if (!name) return null;
+  const pk = periodKey || (typeof getActiveFleetPeriod === 'function'
+    ? getActiveFleetPeriod().periodKey
+    : null);
+  const { meta } = resolveSailorMeta(name);
 
   const targetVal = parsePeriodToValue(pk);
-  if (targetVal === null) return 'gold';
+  if (targetVal === null) {
+    // Unknown period — fall back to legacy fleet label only
+    const legacy = getLegacyOrInferredFleet(meta, name);
+    return legacy === 'silver' ? 'silver' : 'gold';
+  }
 
-  // 1) Drop check
+  // 1) Drop — inclusive from drop half-year
   const dropVal = parsePeriodToValue(meta.droppedOptimist);
   if (dropVal !== null && targetVal >= dropVal) {
     return null;
   }
 
-  // 2) Gold entry check
+  // 2) Gold — sticky from entry onward
   const goldEntryVal = parsePeriodToValue(meta.enteredGold);
   let effectiveGoldVal = null;
   if (goldEntryVal !== null) {
     effectiveGoldVal = goldEntryVal;
   } else if (getLegacyOrInferredFleet(meta, name) === 'gold') {
-    effectiveGoldVal = parsePeriodToValue("Jan 2024");
+    // Current gold sailors without an entry date: Gold from Jan 2024
+    effectiveGoldVal = parsePeriodToValue('Jan 2024');
   }
 
   if (effectiveGoldVal !== null && targetVal >= effectiveGoldVal) {
     return 'gold';
   }
 
-  // 3) Silver entry check
+  // 3) Silver (before gold, or silver-only sailors)
   const silverEntryVal = parsePeriodToValue(meta.enteredSilver);
   let effectiveSilverVal = null;
   if (silverEntryVal !== null) {
     effectiveSilverVal = silverEntryVal;
   } else if (meta.enteredGold && meta.enteredGold !== '—') {
-    // If they have a Gold Entry Date but no Silver Entry Date, they default to Silver from Jan 2024
-    effectiveSilverVal = parsePeriodToValue("Jan 2024");
+    // Auto-silver before gold: from Jan 2024 until gold entry
+    effectiveSilverVal = parsePeriodToValue('Jan 2024');
   } else if (getLegacyOrInferredFleet(meta, name) === 'silver') {
-    effectiveSilverVal = parsePeriodToValue("Jan 2024");
+    effectiveSilverVal = parsePeriodToValue('Jan 2024');
   }
 
   if (effectiveSilverVal !== null && targetVal >= effectiveSilverVal) {
@@ -508,69 +548,70 @@ function getSailorFleet(name, periodKey) {
 }
 
 /**
- * Set fleet membership for a half-year period.
- * @param {string} name
- * @param {'gold'|'silver'} fleet
- * @param {string} [periodKey] fleetJanYY / fleetJulYY — defaults to active period
+ * Adjust entry dates so the sailor belongs to fleet for the given period.
+ * Gold is sticky: cannot place on Silver for period >= Gold Entry.
+ * @returns {{ ok: boolean, reason?: string }}
  */
 function setSailorFleet(name, fleet, periodKey) {
-  if (!name) return;
+  if (!name) return { ok: false, reason: 'missing name' };
   const key = (typeof resolveSailorMetadataKey === 'function')
     ? resolveSailorMetadataKey(name)
     : (typeof cleanSailorName === 'function' ? cleanSailorName(name) : name);
-  if (!key) return;
+  if (!key) return { ok: false, reason: 'missing key' };
   if (!SAILOR_METADATA[key]) SAILOR_METADATA[key] = {};
+  const meta = SAILOR_METADATA[key];
   const pk = periodKey || getActiveFleetPeriod().periodKey;
-  
-  const m = pk.match(/^(?:fleet|squad)(Jan|Jul)(\d{2})$/i);
-  let labelVal = '';
-  if (m) {
-    labelVal = `${m[1] === 'Jan' ? 'Jan' : 'Jul'} 20${m[2]}`;
-  } else {
-    const pOptions = getFleetPeriodOptions();
-    const foundOpt = pOptions.find(o => o.periodKey === pk);
-    if (foundOpt) {
-      labelVal = `${foundOpt.kind === 'jan' ? 'Jan' : 'Jul'} ${foundOpt.year}`;
-    }
-  }
-
+  const labelVal = periodKeyToLabelClean(pk);
+  const targetVal = parsePeriodToValue(pk);
   const val = fleet === 'silver' ? 'silver' : 'gold';
-  SAILOR_METADATA[key][pk] = val;
-  SAILOR_METADATA[key].fleet = val;
+
+  // Clear drop if re-adding into a period at/after a prior drop
+  const dropVal = parsePeriodToValue(meta.droppedOptimist);
+  if (dropVal !== null && targetVal !== null && targetVal >= dropVal) {
+    delete meta.droppedOptimist;
+  }
 
   if (val === 'gold') {
-    SAILOR_METADATA[key].enteredGold = labelVal;
-    // Clear dropped status if conflicting
-    const dropVal = parsePeriodToValue(SAILOR_METADATA[key].droppedOptimist);
-    const targetVal = parsePeriodToValue(pk);
-    if (dropVal !== null && targetVal !== null && targetVal >= dropVal) {
-      delete SAILOR_METADATA[key].droppedOptimist;
+    const goldVal = parsePeriodToValue(meta.enteredGold);
+    // Earliest gold entry wins (don't push entry later on re-promote)
+    if (goldVal === null || (targetVal !== null && targetVal < goldVal)) {
+      meta.enteredGold = labelVal || meta.enteredGold;
+    } else if (!meta.enteredGold || meta.enteredGold === '—') {
+      meta.enteredGold = labelVal;
     }
+    meta.fleet = 'gold';
+    return { ok: true };
+  }
+
+  // Silver — blocked if already sticky gold for this period (no demotion)
+  const goldVal = parsePeriodToValue(meta.enteredGold);
+  if (goldVal !== null && targetVal !== null && targetVal >= goldVal) {
+    return {
+      ok: false,
+      reason: 'Gold is sticky until Optimist Drop Date. Change Gold Entry or set Drop Date — cannot demote to Silver.'
+    };
+  }
+  // Current gold without entry date defaults to Gold from Jan 2024 — also sticky
+  if (goldVal === null && getLegacyOrInferredFleet(meta, name) === 'gold') {
+    const defaultGold = parsePeriodToValue('Jan 2024');
+    if (targetVal !== null && defaultGold !== null && targetVal >= defaultGold) {
+      return {
+        ok: false,
+        reason: 'This sailor is treated as Gold from Jan 2024 (no Gold Entry Date). Set Gold Entry Date, Optimist Drop, or change Fleet Entry dates on their profile — cannot demote via → Silver.'
+      };
+    }
+  }
+
+  meta.fleet = 'silver';
+  if (!meta.enteredSilver || meta.enteredSilver === '—') {
+    meta.enteredSilver = labelVal;
   } else {
-    SAILOR_METADATA[key].enteredSilver = labelVal;
-    // Clear enteredGold if conflicting
-    const goldVal = parsePeriodToValue(SAILOR_METADATA[key].enteredGold);
-    const targetVal = parsePeriodToValue(pk);
-    if (goldVal !== null && targetVal !== null && targetVal >= goldVal) {
-      SAILOR_METADATA[key].enteredGold = '—';
+    const sv = parsePeriodToValue(meta.enteredSilver);
+    if (sv === null || (targetVal !== null && targetVal < sv)) {
+      meta.enteredSilver = labelVal;
     }
   }
-
-  // Approach A: when promoting to Gold in a period, retroactively stamp the
-  // immediately preceding half-year as Silver if it is unset. This fixes the
-  // case where a sailor promoted in Jul–Dec 2026 was Silver in Jan–Jun 2026
-  // but the earlier period had no fleet stamp and fell back to the legacy
-  // .fleet field (now overwritten to 'gold').
-  if (val === 'gold') {
-    const opts = typeof getFleetPeriodOptions === 'function' ? getFleetPeriodOptions() : [];
-    const idx = opts.findIndex(o => o.periodKey === pk);
-    if (idx > 0) {
-      const prev = opts[idx - 1];
-      if (prev && prev.periodKey && !SAILOR_METADATA[key][prev.periodKey]) {
-        SAILOR_METADATA[key][prev.periodKey] = 'silver';
-      }
-    }
-  }
+  return { ok: true };
 }
 
 function sailorBelongsToFleet(name, fleet, periodKey) {

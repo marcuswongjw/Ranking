@@ -6,17 +6,16 @@
   <title>Optimist Gold Fleet Ranking</title>
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><defs><linearGradient id='g' x1='0%' y1='0%' x2='100%' y2='100%'><stop offset='0%' stop-color='%231a472a'/><stop offset='100%' stop-color='%232d4a8a'/></linearGradient></defs><rect width='100' height='100' rx='22' fill='url(%23g)'/><text x='50' y='66' font-size='46' font-weight='800' font-family='-apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, Roboto, sans-serif' fill='white' text-anchor='middle' letter-spacing='-0.03em'>OP</text></svg>">
   
-  <!-- Local libraries for offline support and CDNs for Firebase -->
+  <!-- Critical libs only — SheetJS (xlsx) and seed data load lazily when needed -->
   <!-- ?v= busts CDN/browser cache after deploys -->
-  <script src="js/libs/chart.umd.js?v=20260715a"></script>
-  <script src="js/libs/xlsx.full.min.js?v=20260715a"></script>
+  <script src="js/libs/chart.umd.js?v=20260715b"></script>
   <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-storage-compat.js"></script>
 
   <!-- External Stylesheet -->
-  <link rel="stylesheet" href="css/styles.css?v=20260715a">
+  <link rel="stylesheet" href="css/styles.css?v=20260715b">
 </head>
 <body>
 <div id="toast-host" class="toast-host" aria-live="polite" aria-relevant="additions"></div>
@@ -715,17 +714,20 @@
             </div>
             <div style="display:grid; grid-template-columns:1fr; gap:12px;">
               <div class="fl">
-                <label class="fl-lbl" for="sm-fleet">Fleet membership (selected period)</label>
-                <select id="sm-fleet" style="width:100%; height:30px;" title="Applies to the half-year period selected in the sidebar (e.g. Jan–Jun 2026). Change period to set a different half-year.">
+                <label class="fl-lbl" for="sm-fleet">Fleet (selected period — derived from entry dates)</label>
+                <select id="sm-fleet" style="width:100%; height:30px;" title="Boards use Gold/Silver Entry and Optimist Drop dates. Gold is sticky until Drop.">
                   <option value="gold">Gold Fleet</option>
                   <option value="silver">Silver Fleet</option>
                 </select>
                 <label class="fl-lbl" for="sm-entered-gold" style="margin-top:8px;">Gold Fleet Entry Date</label>
-                <select id="sm-entered-gold" style="width:100%; height:30px;"></select>
+                <select id="sm-entered-gold" style="width:100%; height:30px;" title="From this half-year onward the sailor is on the Gold board (sticky until Drop)."></select>
                 <label class="fl-lbl" for="sm-entered-silver" style="margin-top:8px;">Silver Fleet Entry Date</label>
-                <select id="sm-entered-silver" style="width:100%; height:30px;"></select>
+                <select id="sm-entered-silver" style="width:100%; height:30px;" title="Starts Silver board membership. If Gold Entry is set, auto-silver applies from Jan 2024 until Gold Entry."></select>
                 <label class="fl-lbl" for="sm-dropped-optimist" style="margin-top:8px;">Optimist Drop Date</label>
-                <select id="sm-dropped-optimist" style="width:100%; height:30px;"></select>
+                <select id="sm-dropped-optimist" style="width:100%; height:30px;" title="From this half-year onward the sailor is off both Gold and Silver boards."></select>
+                <p style="font-size:10px;color:var(--text3);margin:6px 0 0;line-height:1.4;font-family:var(--mono);">
+                  Rankings by period use these three dates only (not period stamps). Missing Gold Entry + current Gold → Gold from Jan 2024.
+                </p>
               </div>
             </div>
             
@@ -849,15 +851,14 @@
 </main>
 </div>
 
-<!-- Load Application Modules (?v= forces browsers to fetch after deploy) -->
-<script src="js/config.js?v=20260715a"></script>
-<script src="js/seed.js?v=20260715a"></script>
-<script src="js/utils.js?v=20260715a"></script>
-<script src="js/export-snapshot.js?v=20260715a"></script>
-<script src="js/state.js?v=20260715a"></script>
-<script src="js/calculations.js?v=20260715a"></script>
-<script src="js/ui.js?v=20260715a"></script>
-<script src="js/main.js?v=20260715a"></script>
-<script src="js/charts.js?v=20260715a"></script>
+<!-- Load Application Modules (?v= forces browsers to fetch after deploy). seed.js loads only if cloud is empty. -->
+<script src="js/config.js?v=20260715b"></script>
+<script src="js/utils.js?v=20260715b"></script>
+<script src="js/export-snapshot.js?v=20260715b"></script>
+<script src="js/state.js?v=20260715b"></script>
+<script src="js/calculations.js?v=20260715b"></script>
+<script src="js/ui.js?v=20260715b"></script>
+<script src="js/main.js?v=20260715b"></script>
+<script src="js/charts.js?v=20260715b"></script>
 </body>
 </html>
