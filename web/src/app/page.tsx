@@ -1,10 +1,10 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import { SquadBadge } from '@/components/SquadBadge';
+import { FoundingForm } from '@/components/FoundingForm';
 
 export const revalidate = 60;
 
-/** Demo-only counters & profiles for the marketing homepage (privacy). */
 const DEMO_STATS = {
   sailors: 187,
   regattas: 42,
@@ -34,7 +34,7 @@ const FEATURED = [
     rank: 24,
     note: 'Club pathway · demo',
     href: '/demo',
-    photo: '/demo/action.jpg',
+    photo: '/demo/headshot.jpg',
   },
   {
     name: 'Maya Lim',
@@ -46,14 +46,44 @@ const FEATURED = [
     rank: 12,
     note: 'Silver fleet · demo',
     href: '/demo',
-    photo: '/demo/race-reach.jpg',
+    photo: '/demo/headshot.jpg',
+  },
+];
+
+const PATHWAY = [
+  {
+    step: '01',
+    title: 'Club & Silver',
+    body: 'Build race craft in club fleets and the Silver series. Entry dates track when you join each half-year board.',
+    href: '/sg/optimist/silver',
+    cta: 'Silver board',
+  },
+  {
+    step: '02',
+    title: 'Gold Fleet',
+    body: 'Promotion into Gold. Official best-3 of 5 window, national ranking points, and regatta history in one place.',
+    href: '/sg/optimist/gold',
+    cta: 'Gold board',
+  },
+  {
+    step: '03',
+    title: 'National squads',
+    body: 'DS · Nat B · Nat A selection periods. Locked squad rosters and selection windows for parents and coaches.',
+    href: '/sg/optimist/rankings',
+    cta: 'Ranking tool',
+  },
+  {
+    step: '04',
+    title: 'Regional & Worlds',
+    body: 'Asians, Worlds, and major championships — log representation on your SailorPath and keep the story together.',
+    href: '/demo',
+    cta: 'Sample profile',
   },
 ];
 
 export default function HomePage() {
   return (
     <>
-      {/* Hero */}
       <section className="home-hero">
         <div className="home-hero-bg" aria-hidden>
           <Image
@@ -68,15 +98,14 @@ export default function HomePage() {
         </div>
         <div className="home-hero-inner shell">
           <div className="home-hero-copy">
-            <div className="eyebrow home-eyebrow">SailorPath · Singapore Optimist</div>
+            <div className="eyebrow home-eyebrow">SailorPath · Your athletic identity on the water</div>
             <h1>Your sailing legacy, charted.</h1>
             <p className="lede home-lede">
-              The digital logbook for competitive youth sailors to track fleet progressions, coordinate
-              training plans, and analyze regatta results across local, regional, and international
-              regattas.
+              The digital logbook for competitive youth sailors — claim a handle, link your official
+              ranking profile, and track fleet progressions from Silver to Gold to national teams.
             </p>
             <div className="hero-actions">
-              <Link className="btn btn-primary btn-lg" href="/demo">
+              <Link className="btn btn-primary btn-lg" href="/claim">
                 Claim your handle
               </Link>
               <Link className="btn btn-ghost" href="/sg/optimist/gold">
@@ -87,7 +116,6 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* Live fleet stats (demo numbers for privacy on marketing surface) */}
       <section className="shell home-stats-band">
         <div className="home-stats">
           <div className="home-stat">
@@ -108,12 +136,70 @@ export default function HomePage() {
         </p>
       </section>
 
+      {/* How it works — Podium-style claim path */}
+      <section className="shell section">
+        <div className="section-head">
+          <div>
+            <h2>How it works</h2>
+            <p>Three steps from account to official sailor link — like claiming an athlete bio.</p>
+          </div>
+        </div>
+        <div className="home-how-grid">
+          <article className="card home-how-card">
+            <span className="home-how-num">1</span>
+            <h3>Create an account</h3>
+            <p>Register with email. Parents can manage a sailor’s identity securely.</p>
+          </article>
+          <article className="card home-how-card">
+            <span className="home-how-num">2</span>
+            <h3>Claim your handle</h3>
+            <p>
+              Reserve <code className="inline-code">sailorpath.com/you</code> — your permanent sailing
+              identity.
+            </p>
+          </article>
+          <article className="card home-how-card">
+            <span className="home-how-num">3</span>
+            <h3>Link your sailor</h3>
+            <p>Search official rankings and connect your board results to your handle.</p>
+          </article>
+        </div>
+        <div style={{ marginTop: '1.25rem' }}>
+          <Link className="btn btn-primary" href="/claim">
+            Start claiming
+          </Link>
+        </div>
+      </section>
+
+      {/* Development pathway */}
+      <section className="shell section" id="pathway">
+        <div className="section-head">
+          <div>
+            <h2>Development pathway</h2>
+            <p>From club fleets to national squads — SailorPath maps the journey.</p>
+          </div>
+        </div>
+        <div className="pathway-rail">
+          {PATHWAY.map((p, i) => (
+            <article key={p.step} className="pathway-card card">
+              <div className="pathway-step">{p.step}</div>
+              {i < PATHWAY.length - 1 && <div className="pathway-connector" aria-hidden />}
+              <h3>{p.title}</h3>
+              <p>{p.body}</p>
+              <Link className="fleet-card-cta" href={p.href}>
+                {p.cta} →
+              </Link>
+            </article>
+          ))}
+        </div>
+      </section>
+
       {/* Value props */}
       <section className="shell section home-value">
         <div className="section-head">
           <div>
             <h2>Why SailorPath</h2>
-            <p>Built for the whole Optimist community — on the water and on shore.</p>
+            <p>Built for sailors, parents, and the wider Optimist community.</p>
           </div>
         </div>
         <div className="home-value-grid">
@@ -123,14 +209,13 @@ export default function HomePage() {
             </div>
             <h3>For sailors</h3>
             <p>
-              Your digital trophy cabinet: Gold or Silver fleet status, National Squad badges, and the
-              kit you race — hull, sail, and foils — on a page that looks like you.
+              Digital trophy cabinet: fleet status, squad badges, and kit — on a page that looks like
+              you.
             </p>
             <div className="home-mock-cabinet">
               <span className="badge badge-a">Gold Fleet</span>
               <SquadBadge squad="Nat A" />
               <span className="chip">Winner hull</span>
-              <span className="chip">J-Sails</span>
             </div>
           </article>
           <article className="card home-value-card">
@@ -139,15 +224,9 @@ export default function HomePage() {
             </div>
             <h3>For parents</h3>
             <p>
-              Replace messy personal spreadsheets. Track national ranking points, squad selection
-              windows, and regatta results in one shared source of truth — without hunting through
-              group chats.
+              Replace messy spreadsheets. Ranking points, squad windows, and regatta history in one
+              shared place.
             </p>
-            <ul className="home-bullet">
-              <li>Best-3 of 5 series logic, visible</li>
-              <li>Gold / Silver membership by period</li>
-              <li>Export-ready history for reviews</li>
-            </ul>
           </article>
           <article className="card home-value-card">
             <div className="home-value-icon" aria-hidden>
@@ -155,33 +234,52 @@ export default function HomePage() {
             </div>
             <h3>For the community</h3>
             <p>
-              Connect fleets across clubs. See who is racing where, follow series boards, and keep the
-              national Optimist calendar honest for coaches, clubs, and sailors.
+              Connect fleets across clubs. Live standings and the official ranking tool, hosted on
+              SailorPath.
             </p>
-            <ul className="home-bullet">
-              <li>Club &amp; regatta directories</li>
-              <li>Live ranking tool for officials</li>
-              <li>Shared public standings</li>
-            </ul>
           </article>
         </div>
       </section>
 
-      {/* Featured profiles — all demo */}
+      {/* Founding membership */}
+      <section className="shell section" id="founding">
+        <div className="founding-band">
+          <div>
+            <div className="eyebrow">Early access</div>
+            <h2>Founding membership</h2>
+            <p className="muted" style={{ maxWidth: '32rem', lineHeight: 1.55 }}>
+              Join a limited group of sailors, parents, and coaches shaping SailorPath. Founding
+              members get early product updates, a founding badge on their profile, and a direct line
+              for feedback. No payment required to join the list.
+            </p>
+            <ul className="home-bullet">
+              <li>Priority claim support</li>
+              <li>Input on pathway &amp; profile features</li>
+              <li>Founding member recognition</li>
+            </ul>
+          </div>
+          <div className="founding-form-wrap card">
+            <h3 style={{ fontSize: '1.05rem', marginBottom: '0.75rem' }}>Join the list</h3>
+            <FoundingForm />
+          </div>
+        </div>
+      </section>
+
+      {/* Featured demo profiles */}
       <section className="shell section">
         <div className="section-head">
           <div>
             <h2>Featured profiles</h2>
-            <p>Sample pages only — mix of national squad and club pathway looks. Not real sailors.</p>
+            <p>Sample pages only — not real sailors. Privacy-safe demos of the product look.</p>
           </div>
           <Link className="btn btn-secondary" href="/demo">
-            Open full demo profile
+            Open full demo
           </Link>
         </div>
         <div className="home-featured-grid">
           {FEATURED.map((f) => (
             <Link key={f.handle} href={f.href} className="card home-featured-card">
-              <div className="home-featured-photo">
+              <div className="home-featured-photo home-featured-photo-portrait">
                 <Image src={f.photo} alt="" fill sizes="280px" className="demo-img-cover" />
               </div>
               <div className="home-featured-body">
@@ -200,22 +298,20 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* CTA band */}
       <section className="shell section">
         <div className="home-cta-band">
           <div>
             <h2>Ready to own your handle?</h2>
             <p className="muted">
-              Preview a full claimed profile, then explore live Singapore Optimist Gold &amp; Silver
-              standings.
+              Claim your identity, then explore live Singapore Optimist Gold &amp; Silver standings.
             </p>
           </div>
           <div className="hero-actions">
-            <Link className="btn btn-primary" href="/demo">
+            <Link className="btn btn-primary" href="/claim">
               Claim your handle
             </Link>
-            <Link className="btn btn-secondary" href="/sg/optimist">
-              Fleet hub
+            <Link className="btn btn-secondary" href="/#founding">
+              Founding membership
             </Link>
           </div>
         </div>

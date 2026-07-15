@@ -15,9 +15,9 @@ export function SiteHeader() {
           <Link href="/sg/optimist">Fleets</Link>
           <Link href="/sg/optimist/gold">Gold</Link>
           <Link href="/sg/optimist/silver">Silver</Link>
-          <Link href="/sg/optimist/rankings">Tool</Link>
+          <Link href="/sg/optimist/rankings">Rankings</Link>
           <Link href="/demo">Sample</Link>
-          <Link href="/demo" className="nav-cta">
+          <Link href="/claim" className="nav-cta">
             Claim your handle
           </Link>
         </nav>

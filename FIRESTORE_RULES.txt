@@ -1,23 +1,53 @@
-Firestore Security Rules for OP Ranking
-========================================
+Firestore Security Rules for OP Ranking + SailorPath claims
+=========================================================
 
 Paste this into: Firebase console -> Firestore -> Rules tab -> Publish.
-
-These make the data PUBLICLY READABLE (anyone with the link can view the
-rankings) but WRITABLE ONLY by the signed-in admin account
-(marcuswongjw@gmail.com). Everything else in the database is denied.
 
 ----------------------------------------------------------------------
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // App state: opRanking/state
-    // SailorPath public snapshot: opRanking/sailorpathSnapshot (written on editor save)
+    // Ranking app state + SailorPath public snapshot
     match /opRanking/{docId} {
       allow read: if true;
       allow write: if request.auth != null
                    && request.auth.token.email == 'marcuswongjw@gmail.com';
+    }
+
+    // Founding membership waitlist (anyone can join with email)
+    match /foundingMembers/{id} {
+      allow create: if request.resource.data.email is string
+                    && request.resource.data.email.size() > 3
+                    && request.resource.data.email.size() < 200;
+      allow read, update, delete: if false;
+    }
+
+    // Claimed handles — unique doc id = handle string
+    match /handles/{handle} {
+      allow read: if true;
+      allow create: if request.auth != null
+                    && request.resource.data.uid == request.auth.uid
+                    && handle.matches('^[a-z0-9]([a-z0-9-]{1,30}[a-z0-9])?$');
+      allow update: if request.auth != null
+                    && resource.data.uid == request.auth.uid;
+      allow delete: if false;
+    }
+
+    // User profile
+    match /users/{uid} {
+      allow read: if request.auth != null && request.auth.uid == uid;
+      allow create, update: if request.auth != null && request.auth.uid == uid;
+      allow delete: if false;
+      // Allow querying by linkedSailorSlug for conflict check (auth required)
+      allow list: if request.auth != null;
+    }
+
+    // Claim audit
+    match /claims/{uid} {
+      allow read: if request.auth != null && request.auth.uid == uid;
+      allow create, update: if request.auth != null && request.auth.uid == uid;
+      allow delete: if false;
     }
 
     // Deny everything else.
@@ -29,12 +59,9 @@ service cloud.firestore {
 ----------------------------------------------------------------------
 
 After publishing:
-  - Reads stop returning "permission-denied" (the app's seed-fallback errors
-    in the console will disappear).
-  - To edit, click "Sign in to edit" in the app and enter the passcode you
-    set when you created the marcuswongjw@gmail.com user under
-    Authentication -> Users.
+  1. Authentication → Sign-in method → enable Email/Password.
+  2. Redeploy SailorPath (Vercel).
+  3. Test /claim register + handle + link sailor.
+  4. Test founding form on homepage.
 
-Note: the write rule is locked to that exact email. If you ever add more
-admin accounts, either list them here (use `in [...]`) or switch to a custom
-claim / allowlist document.
+Admin ranking editor remains locked to marcuswongjw@gmail.com on opRanking/*.

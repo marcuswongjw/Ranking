@@ -9,7 +9,6 @@ export const metadata: Metadata = {
     'Preview of a claimed SailorPath profile: identity, stats, trophy case, logbook, and kit — sample data only.',
 };
 
-/** Fully fictional demo sailor — not a real athlete. */
 const DEMO = {
   name: 'Alexandra “Alex” Reyes',
   handle: 'alex-reyes',
@@ -79,15 +78,6 @@ const LOGBOOK = [
     nett: 28,
     races: ['7', '12', '4', '10', '5', '8'],
   },
-  {
-    name: 'Asian Optimist Championship',
-    date: 'Dec 2025',
-    place: 18,
-    fleet: 120,
-    nett: 96,
-    races: ['22', '15', '18', '11', '19', '14'],
-    overseas: true,
-  },
 ];
 
 const KIT = [
@@ -115,54 +105,35 @@ export default function DemoProfilePage() {
   return (
     <>
       <div className="notice">
-        <strong>Sample profile</strong> — fully fictional demo data for design review. Not a real sailor.
-        Photos are stock-style placeholders.
+        <strong>Sample profile</strong> — fully fictional demo data. Not a real sailor.
       </div>
 
-      {/* A. Header — identity & affiliation */}
-      <header className="demo-header card">
-        <div className="demo-header-media">
-          <div className="demo-action-shot">
-            <Image
-              src="/demo/action.jpg"
-              alt="Action shot — Optimist hiking"
-              fill
-              sizes="(max-width: 900px) 100vw, 60vw"
-              className="demo-img-cover"
-              priority
-            />
-            <span className="demo-photo-tag">Action</span>
-          </div>
-          <div className="demo-headshot-wrap">
-            <Image
-              src="/demo/headshot.jpg"
-              alt="Profile headshot"
-              width={160}
-              height={160}
-              className="demo-headshot"
-              priority
-            />
-          </div>
+      {/* Single photo header */}
+      <header className="card profile-hero profile-hero-single">
+        <div className="profile-photo-wrap">
+          <Image
+            src="/demo/headshot.jpg"
+            alt="Profile photo"
+            width={120}
+            height={120}
+            className="profile-photo"
+            priority
+          />
         </div>
-
-        <div className="demo-header-body">
+        <div>
           <div className="eyebrow">Demo · Claimed SailorPath</div>
           <h1>{DEMO.name}</h1>
-          <p className="demo-sail-number" title="Sail number">
-            {DEMO.sailNumber}
-          </p>
+          <p className="demo-sail-number">{DEMO.sailNumber}</p>
           <p className="muted demo-bio">{DEMO.bio}</p>
           <div className="profile-meta">
             <span className="chip">{DEMO.club}</span>
             <span className="chip">{DEMO.school}</span>
             <span className="badge badge-a">{DEMO.fleet}</span>
             <SquadBadge squad={DEMO.squad} />
-            <span className="badge badge-official">National Training Squad</span>
             <span className="chip">sailorpath.com/{DEMO.handle}</span>
           </div>
         </div>
-
-        <div className="rank-pill demo-rank-pill">
+        <div className="rank-pill">
           <strong>#{DEMO.nationalRank}</strong>
           <span>National rank</span>
           <div className="muted" style={{ marginTop: 6, fontSize: 12 }}>
@@ -171,16 +142,9 @@ export default function DemoProfilePage() {
         </div>
       </header>
 
-      {/* B. Tale of the tape */}
       <section className="card section demo-tape">
-        <div className="section-head" style={{ marginBottom: '1rem' }}>
-          <div>
-            <h2>Tale of the tape</h2>
-            <p className="sub" style={{ margin: 0 }}>
-              Current stats · Optimist class
-            </p>
-          </div>
-        </div>
+        <h2>Tale of the tape</h2>
+        <p className="sub">Current stats · Optimist class</p>
         <div className="demo-tape-grid">
           <div className="stat">
             <strong>{DEMO.age}</strong>
@@ -213,7 +177,6 @@ export default function DemoProfilePage() {
       </section>
 
       <div className="grid-2 section">
-        {/* C. Trophy case */}
         <section className="card">
           <h2>Trophy case</h2>
           <p className="sub">Top-3 finishes at major events · sample</p>
@@ -241,7 +204,6 @@ export default function DemoProfilePage() {
           </div>
         </section>
 
-        {/* E. Equipment log */}
         <section className="card">
           <h2>Equipment log</h2>
           <p className="sub">The kit · hull, sail &amp; foils</p>
@@ -257,7 +219,6 @@ export default function DemoProfilePage() {
         </section>
       </div>
 
-      {/* Race photos */}
       <section className="card section">
         <h2>Race photos</h2>
         <p className="sub">Gallery from the season (demo media)</p>
@@ -273,7 +234,6 @@ export default function DemoProfilePage() {
         </div>
       </section>
 
-      {/* D. Logbook */}
       <section className="card section">
         <h2>Logbook</h2>
         <p className="sub">Chronological regatta history · overall, nett &amp; race-by-race</p>
@@ -283,10 +243,7 @@ export default function DemoProfilePage() {
               <div className="demo-log-head">
                 <div>
                   <strong>{r.name}</strong>
-                  <span>
-                    {r.date}
-                    {r.overseas ? ' · Overseas (self-reported)' : ' · National series'}
-                  </span>
+                  <span>{r.date} · National series</span>
                 </div>
                 <div className="demo-log-place">
                   <strong>
@@ -298,13 +255,12 @@ export default function DemoProfilePage() {
               </div>
               <div className="demo-log-meta">
                 <span className="chip">Nett {r.nett}</span>
-                {r.overseas && <span className="badge badge-ds">Does not affect national rank</span>}
               </div>
-              <div className="demo-race-breaks" aria-label="Individual race finishes">
+              <div className="demo-race-breaks">
                 {r.races.map((score, i) => (
                   <span
                     key={`${r.name}-r${i}`}
-                    className={`demo-race-chip ${score === 'BFD' || score === 'DNF' || score === 'DNS' ? 'is-penalty' : ''}`}
+                    className={`demo-race-chip ${score === 'BFD' ? 'is-penalty' : ''}`}
                   >
                     <em>R{i + 1}</em> {score}
                   </span>
@@ -316,11 +272,11 @@ export default function DemoProfilePage() {
       </section>
 
       <p style={{ marginTop: '2rem', display: 'flex', flexWrap: 'wrap', gap: '0.75rem' }}>
-        <Link className="btn btn-primary" href="/">
-          Back to home
+        <Link className="btn btn-primary" href="/claim">
+          Claim your handle
         </Link>
-        <Link className="btn btn-secondary" href="/sg/optimist/gold">
-          Live Gold standings
+        <Link className="btn btn-secondary" href="/">
+          Home
         </Link>
       </p>
     </>

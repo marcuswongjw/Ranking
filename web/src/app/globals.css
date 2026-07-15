@@ -1269,3 +1269,379 @@ tr:hover td {
 main:has(.home-hero) {
   padding-top: 0;
 }
+
+/* Single photo profile */
+.profile-hero-single {
+  grid-template-columns: auto 1fr;
+  align-items: center;
+}
+
+@media (min-width: 800px) {
+  .profile-hero-single {
+    grid-template-columns: auto 1fr auto;
+  }
+}
+
+.profile-photo-wrap {
+  width: 104px;
+  height: 104px;
+  border-radius: 28px;
+  overflow: hidden;
+  border: 3px solid var(--line);
+  box-shadow: var(--shadow);
+  flex-shrink: 0;
+}
+
+.profile-photo {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.profile-photo-fallback {
+  width: 104px;
+  height: 104px;
+  border-radius: 28px;
+}
+
+/* Rankings embed */
+.rankings-embed-page {
+  margin: 0 calc(50% - 50vw);
+  width: 100vw;
+  max-width: 100vw;
+  padding: 0 1rem 1.5rem;
+}
+
+.rankings-embed-bar {
+  width: min(1120px, 100%);
+  margin: 0 auto 0.75rem;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.rankings-embed-title {
+  font-size: 1.5rem;
+  margin: 0;
+}
+
+.rankings-embed-lede {
+  margin: 0.35rem 0 0;
+  color: var(--muted);
+  font-size: 0.92rem;
+  max-width: 40rem;
+  line-height: 1.45;
+}
+
+.rankings-iframe-frame {
+  width: min(1400px, 100%);
+  margin: 0 auto;
+  min-height: calc(100vh - 200px);
+  height: calc(100vh - 180px);
+}
+
+.rankings-iframe-frame iframe {
+  min-height: calc(100vh - 200px);
+  height: 100%;
+}
+
+.rankings-embed-foot {
+  width: min(1120px, 100%);
+  margin: 0.75rem auto 0;
+  font-size: 0.9rem;
+  color: var(--muted);
+}
+
+/* How it works */
+.home-how-grid {
+  display: grid;
+  gap: 1rem;
+}
+
+@media (min-width: 800px) {
+  .home-how-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+.home-how-num {
+  display: inline-flex;
+  width: 2rem;
+  height: 2rem;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: var(--teal);
+  color: white;
+  font-weight: 800;
+  font-size: 0.9rem;
+  margin-bottom: 0.5rem;
+}
+
+.home-how-card h3 {
+  font-size: 1.05rem;
+  margin: 0.25rem 0 0.4rem;
+}
+
+.home-how-card p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.92rem;
+  line-height: 1.5;
+}
+
+.inline-code {
+  font-family: var(--mono);
+  font-size: 0.85em;
+  background: var(--bg);
+  padding: 0.1rem 0.35rem;
+  border-radius: 6px;
+}
+
+/* Pathway */
+.pathway-rail {
+  display: grid;
+  gap: 1rem;
+}
+
+@media (min-width: 900px) {
+  .pathway-rail {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+.pathway-card {
+  position: relative;
+}
+
+.pathway-step {
+  font-family: var(--mono);
+  font-weight: 800;
+  font-size: 0.8rem;
+  letter-spacing: 0.08em;
+  color: var(--teal);
+  margin-bottom: 0.5rem;
+}
+
+.pathway-card h3 {
+  font-size: 1.1rem;
+  margin: 0 0 0.45rem;
+}
+
+.pathway-card p {
+  margin: 0 0 0.75rem;
+  color: var(--muted);
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+/* Founding */
+.founding-band {
+  display: grid;
+  gap: 1.5rem;
+  padding: 1.75rem;
+  border-radius: var(--radius);
+  background: linear-gradient(135deg, #0f766e 0%, #1e3a5f 100%);
+  color: white;
+  box-shadow: var(--shadow);
+}
+
+@media (min-width: 900px) {
+  .founding-band {
+    grid-template-columns: 1.2fr 0.9fr;
+    align-items: start;
+  }
+}
+
+.founding-band .eyebrow {
+  color: #5eead4;
+}
+
+.founding-band h2 {
+  color: white;
+  margin-bottom: 0.5rem;
+}
+
+.founding-band .muted {
+  color: rgba(255, 255, 255, 0.85) !important;
+}
+
+.founding-band .home-bullet {
+  color: rgba(255, 255, 255, 0.88);
+}
+
+.founding-form-wrap {
+  background: var(--card);
+  color: var(--ink);
+}
+
+.founding-form .fl,
+.claim-form .fl {
+  margin-bottom: 0.85rem;
+}
+
+.fl-lbl {
+  display: block;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--muted);
+  margin-bottom: 0.3rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.founding-form input,
+.founding-form textarea,
+.claim-form input {
+  width: 100%;
+  padding: 0.65rem 0.8rem;
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  background: var(--bg);
+  font: inherit;
+}
+
+.founding-form textarea {
+  resize: vertical;
+}
+
+.form-error {
+  color: #b91c1c;
+  font-size: 0.88rem;
+  margin: 0 0 0.65rem;
+}
+
+.form-ok {
+  color: #166534;
+  font-size: 0.88rem;
+  margin: 0.35rem 0;
+}
+
+.founding-success {
+  padding: 1rem;
+  border-radius: 14px;
+  background: #ecfdf5;
+  color: #166534;
+}
+
+.founding-success p {
+  margin: 0.35rem 0 0;
+}
+
+.home-featured-photo-portrait {
+  aspect-ratio: 1;
+}
+
+/* Claim flow */
+.claim-steps {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1rem;
+  list-style: none;
+  padding: 0;
+  margin: 0 0 1.25rem;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--muted);
+}
+
+.claim-steps .is-active {
+  color: var(--teal);
+}
+
+.claim-card {
+  max-width: 32rem;
+}
+
+.claim-form {
+  margin-top: 0.5rem;
+}
+
+.handle-input-row {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--bg);
+  overflow: hidden;
+}
+
+.handle-prefix {
+  padding: 0.65rem 0.5rem 0.65rem 0.8rem;
+  font-family: var(--mono);
+  font-size: 0.78rem;
+  color: var(--muted);
+  white-space: nowrap;
+  border-right: 1px solid var(--line);
+  background: var(--bg-deep);
+}
+
+.handle-input-row input {
+  border: 0 !important;
+  background: transparent !important;
+  border-radius: 0 !important;
+}
+
+.linkish {
+  background: none;
+  border: 0;
+  padding: 0;
+  color: var(--teal);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+.claim-sailor-list {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 1rem;
+  max-height: 240px;
+  overflow-y: auto;
+  display: grid;
+  gap: 0.4rem;
+}
+
+.claim-sailor-btn {
+  width: 100%;
+  text-align: left;
+  padding: 0.7rem 0.85rem;
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  background: var(--bg);
+  cursor: pointer;
+  font: inherit;
+}
+
+.claim-sailor-btn strong {
+  display: block;
+}
+
+.claim-sailor-btn span {
+  font-size: 0.82rem;
+  color: var(--muted);
+}
+
+.claim-sailor-btn.is-selected {
+  border-color: var(--teal);
+  background: #ecfdf5;
+}
+
+.claim-check {
+  display: flex;
+  gap: 0.5rem;
+  align-items: flex-start;
+  font-size: 0.9rem;
+  color: var(--muted);
+  margin: 0.75rem 0 1rem;
+  cursor: pointer;
+}
+
+.claim-check input {
+  width: auto;
+  margin-top: 0.2rem;
+}

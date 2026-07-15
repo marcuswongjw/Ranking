@@ -1,38 +1,59 @@
 import type { Metadata } from 'next';
+import Link from 'next/link';
 
 export const metadata: Metadata = {
   title: 'Official Rankings · SG Optimist',
-  description: 'Singapore Optimist national ranking tool (editor + public board).',
+  description: 'Singapore Optimist national ranking tool — live board and editor, embedded on SailorPath.',
 };
 
-/** Canonical Ranking tool (same Firebase cloud as SailorPath public boards). */
+/** Canonical Ranking tool (GitHub Pages) — same Firebase cloud as SailorPath. */
 const RANKING_APP = 'https://marcuswongjw.github.io/Ranking/';
-/** Same-origin copy kept for offline / alternate embed. */
-const RANKING_APP_LOCAL = '/ranking-app/';
 
 export default function RankingsEmbedPage() {
   return (
-    <>
-      <div className="eyebrow">Official series tool</div>
-      <h1>SG Optimist rankings</h1>
-      <p className="lede">
-        Full ranking board, regattas, and editor. Data lives in Firebase (shared with this site).
-        Public SailorPath profiles refresh from the cloud snapshot within about a minute after an editor save.
-      </p>
-      <p style={{ marginBottom: '1rem', display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
-        <a className="btn btn-secondary" href={`${RANKING_APP}#regattas`} target="_blank" rel="noreferrer">
-          Open regattas ↗
+    <div className="rankings-embed-page">
+      <div className="rankings-embed-bar">
+        <div>
+          <div className="eyebrow" style={{ marginBottom: 4 }}>
+            Official series tool
+          </div>
+          <h1 className="rankings-embed-title">SG Optimist rankings</h1>
+          <p className="rankings-embed-lede">
+            Live board and editor, embedded here. Data is shared via Firebase. Sign in inside the tool to
+            edit.
+          </p>
+        </div>
+        <a
+          className="btn btn-secondary"
+          href={RANKING_APP}
+          target="_blank"
+          rel="noreferrer"
+          title="Open the ranking tool in a full browser tab"
+        >
+          Open fullscreen ↗
         </a>
-        <a className="btn btn-secondary" href={RANKING_APP} target="_blank" rel="noreferrer">
-          Open full tool ↗
-        </a>
-        <a className="btn btn-secondary" href={RANKING_APP_LOCAL} target="_blank" rel="noreferrer">
-          Same-origin tool ↗
-        </a>
-      </p>
-      <div className="iframe-frame">
-        <iframe title="Singapore Optimist Rankings" src={RANKING_APP} />
       </div>
-    </>
+      <div className="iframe-frame rankings-iframe-frame">
+        <iframe
+          title="Singapore Optimist Rankings"
+          src={RANKING_APP}
+          loading="lazy"
+          referrerPolicy="no-referrer-when-downgrade"
+        />
+      </div>
+      <p className="rankings-embed-foot">
+        <Link className="name-link" href="/sg/optimist/gold">
+          Gold standings
+        </Link>
+        {' · '}
+        <Link className="name-link" href="/sg/optimist/silver">
+          Silver standings
+        </Link>
+        {' · '}
+        <Link className="name-link" href="/">
+          Home
+        </Link>
+      </p>
+    </div>
   );
 }

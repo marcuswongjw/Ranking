@@ -3,7 +3,6 @@ import { notFound } from 'next/navigation';
 import { getSailor, getSnapshot } from '@/lib/snapshot';
 import { formatDate } from '@/lib/format';
 import { SquadBadge } from '@/components/SquadBadge';
-import { TrajectoryChart } from '@/components/TrajectoryChart';
 import { FLEET_LABELS, type FleetId } from '@/lib/types';
 
 export const revalidate = 60;
@@ -42,15 +41,18 @@ export default async function SailorProfilePage({
   const fleetIds = (Object.keys(sailor.fleets || {}) as FleetId[]).filter(
     (f) => f === 'gold' || f === 'silver'
   );
-  // Prefer showing gold first
   fleetIds.sort((a, b) => (a === 'gold' ? -1 : b === 'gold' ? 1 : a.localeCompare(b)));
 
   const primary = fleetIds[0] ? sailor.fleets[fleetIds[0]] : null;
+  const totalEvents = fleetIds.reduce((n, f) => {
+    const block = sailor.fleets[f];
+    return n + (block?.results?.filter((r) => !r.didNotSail).length || 0);
+  }, 0);
 
   return (
     <>
-      <div className="card profile-hero">
-        <div className="avatar" aria-hidden>
+      <header className="card profile-hero profile-hero-single">
+        <div className="avatar profile-photo-fallback" aria-hidden>
           {initials || 'SP'}
         </div>
         <div>
@@ -76,7 +78,38 @@ export default async function SailorProfilePage({
             </div>
           </div>
         )}
-      </div>
+      </header>
+
+      <section className="card section demo-tape">
+        <h2>Tale of the tape</h2>
+        <p className="sub">From official series data</p>
+        <div className="demo-tape-grid">
+          <div className="stat">
+            <strong>{sailor.ageBand || '—'}</strong>
+            <span>Age band</span>
+          </div>
+          <div className="stat">
+            <strong>{primary ? `#${primary.rank}` : '—'}</strong>
+            <span>National ranking</span>
+          </div>
+          <div className="stat">
+            <strong>{primary?.score ?? '—'}</strong>
+            <span>Best-3 score</span>
+          </div>
+          <div className="stat">
+            <strong>{totalEvents}</strong>
+            <span>Events scored</span>
+          </div>
+          <div className="stat">
+            <strong>{fleetIds[0] ? FLEET_LABELS[fleetIds[0]].replace(' Fleet', '') : '—'}</strong>
+            <span>Primary fleet</span>
+          </div>
+          <div className="stat">
+            <strong>{sailor.club || '—'}</strong>
+            <span>Club</span>
+          </div>
+        </div>
+      </section>
 
       {fleetIds.map((fleetId) => {
         const block = sailor.fleets[fleetId];
@@ -101,40 +134,33 @@ export default async function SailorProfilePage({
               <SquadBadge squad={block.squad} />
             </div>
 
-            <div className="grid-2">
-              <section className="card">
-                <h2>Trajectory</h2>
-                <p className="sub">{FLEET_LABELS[fleetId]} series window</p>
-                <TrajectoryChart data={block.trajectory} />
-              </section>
-              <section className="card">
-                <h2>Personal bests</h2>
-                <p className="sub">Official {FLEET_LABELS[fleetId].toLowerCase()} only</p>
-                <div className="stat-grid" style={{ gridTemplateColumns: '1fr 1fr' }}>
-                  <div className="stat">
-                    <strong>#{block.rank}</strong>
-                    <span>Current rank</span>
-                  </div>
-                  <div className="stat">
-                    <strong>{block.score}</strong>
-                    <span>Best-3 score</span>
-                  </div>
-                  <div className="stat">
-                    <strong>{bestPlace != null ? bestPlace : '—'}</strong>
-                    <span>Best finish</span>
-                  </div>
-                  <div className="stat">
-                    <strong>{block.results.filter((r) => !r.didNotSail).length}</strong>
-                    <span>Events scored</span>
-                  </div>
+            <section className="card">
+              <h2>Personal bests</h2>
+              <p className="sub">Official {FLEET_LABELS[fleetId].toLowerCase()} only</p>
+              <div className="stat-grid" style={{ gridTemplateColumns: '1fr 1fr' }}>
+                <div className="stat">
+                  <strong>#{block.rank}</strong>
+                  <span>Current rank</span>
                 </div>
-              </section>
-            </div>
+                <div className="stat">
+                  <strong>{block.score}</strong>
+                  <span>Best-3 score</span>
+                </div>
+                <div className="stat">
+                  <strong>{bestPlace != null ? bestPlace : '—'}</strong>
+                  <span>Best finish</span>
+                </div>
+                <div className="stat">
+                  <strong>{block.results.filter((r) => !r.didNotSail).length}</strong>
+                  <span>Events scored</span>
+                </div>
+              </div>
+            </section>
 
             <section className="card" style={{ marginTop: '1.25rem' }}>
-              <h2>Race history</h2>
+              <h2>Logbook</h2>
               <p className="sub">{FLEET_LABELS[fleetId]} · finish rank</p>
-              <div className="timeline">
+              <div className="timeline demo-logbook" style={{ maxHeight: '28rem' }}>
                 {[...block.results].reverse().map((r) => (
                   <div key={r.regattaId + fleetId} className="timeline-item">
                     <div>
@@ -170,6 +196,15 @@ export default async function SailorProfilePage({
           </p>
         </div>
       )}
+
+      <p style={{ marginTop: '2rem' }}>
+        <Link className="btn btn-primary" href="/claim">
+          Claim your handle
+        </Link>{' '}
+        <Link className="btn btn-secondary" href="/sg/optimist/gold">
+          Gold standings
+        </Link>
+      </p>
     </>
   );
 }
